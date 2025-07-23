@@ -13,11 +13,8 @@ export default class BattleScene extends Phaser.Scene {
         this.gridX = 0;
         this.gridY = 0;
         this.backpack = null;
-        this.gridX = 0; // ★ 追加
-        this.gridY = 0; // ★ 追加
-        this.backpack = null; // ★ 追加
-        this.inventoryItemImages = []; // ★ inventoryItems からリネーム
-        this.backpackGridObjects = [];
+        this.inventoryItems = [];
+        
         this.playerStats = { attack: 0, defense: 0, hp: 0 }; 
         this.enemyStats = { attack: 0, defense: 0, hp: 0 };  
         this.initialBattleParams = null;
@@ -33,10 +30,6 @@ export default class BattleScene extends Phaser.Scene {
         this.playerPlaceholderText = null;
         this.enemyPlaceholderText = null;
         this.startBattleButton = null;
-
-         this.playerItems = []; // { item, data, nextActionTime } の配列
-        this.enemyItems = [];
-        this.gameTime = 0; // ゲーム内時間
     }
 
      init(data) {
@@ -62,95 +55,92 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // ★★★ 修正点①: createメソッドをasyncにする ★★★
-    // BattleScene.js の create メソッド
+     // BattleScene.js の create メソッド (改訂版)
+
+  // BattleScene.js の create メソッド (改訂2版)
+
+  // BattleScene.js の create メソッド (三度目の正直・完成版)
+
+// BattleScene.js の create メソッド (完成・省略なし)
 
     async create() {
         console.log("BattleScene: create 開始");
         this.cameras.main.setBackgroundColor('#8a2be2');
 
-        // --- 1. 必要なマネージャーを取得 ---
+        // --- 1. 最初に、全てのプロパティとマネージャーを準備する ---
+        this.gameState = 'prepare';
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
-        if (!this.stateManager || !this.soundManager) {
-            console.error("BattleScene: マネージャーの取得に失敗しました。");
-            return;
-        }
+        
+        // --- 2. 次に、レイアウトに必要な変数を全て定義する ---
+        const gameWidth = this.scale.width;
+        const gameHeight = this.scale.height;
+        this.backpackGridSize = 6;
+        this.cellSize = 60;
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const gridHeight = this.backpackGridSize * this.cellSize;
+        
+        // プレイヤーグリッドの座標と論理配列をここで定義！
+        this.gridX = 100;
+        this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
+        this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
 
-        // --- 2. BGM再生とHP初期化 ---
+        // --- 3. UIコンテナを生成する ---
+        this.prepareContainer = this.add.container(0, 0);
+        this.battleContainer = this.add.container(0, 0);
+        this.battleContainer.setVisible(false);
+
+        // --- 4. BGMとHPの初期値を設定する ---
         this.soundManager.playBgm('ronpa_bgm');
-        console.log("戦闘bgm開始！");
         const maxHp = this.initialBattleParams.initialPlayerMaxHp;
         this.stateManager.setF('player_max_hp', maxHp); 
         this.stateManager.setF('player_hp', maxHp);
         this.stateManager.setF('enemy_max_hp', 100); 
         this.stateManager.setF('enemy_hp', 100);
 
-        // --- 3. レイアウトとコンテナの定義 ---
-        this.gameState = 'prepare'; // シーン開始時の状態
-        const gameWidth = this.scale.width;
-        const gameHeight = this.scale.height;
+        // --- 5. ここから、実際に画面にオブジェクトを描画していく ---
 
-        // UIコンテナを生成
-        this.prepareContainer = this.add.container(0, 0); // 準備画面のUIを入れる箱
-        this.battleContainer = this.add.container(0, 0);  // 戦闘画面のUIを入れる箱
-        this.battleContainer.setVisible(false); // 戦闘用の箱は最初は隠しておく
-
-        // --- 4. 戦闘画面の要素 (グリッドなど) を battleContainer に格納 ---
-        // グリッド定義
-        this.backpackGridSize = 6;
-        this.cellSize = 60;
-        const gridWidth = this.backpackGridSize * this.cellSize;
-        const gridHeight = this.backpackGridSize * this.cellSize;
-        
-        // プレイヤーグリッド (左側)
-        const playerGridX = 100;
-        const playerGridY = gameHeight / 2 - gridHeight / 2;
-        const playerGridBg = this.add.rectangle(playerGridX + gridWidth / 2, playerGridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9);
-        this.battleContainer.add(playerGridBg); // ★箱に入れる
+        // 5a. プレイヤーグリッド (常に表示)
+        this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
         for (let i = 0; i <= this.backpackGridSize; i++) {
-            this.battleContainer.add(this.add.line(0, 0, playerGridX, playerGridY + i * this.cellSize, playerGridX + gridWidth, playerGridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0));
-            this.battleContainer.add(this.add.line(0, 0, playerGridX + i * this.cellSize, playerGridY, playerGridX + i * this.cellSize, playerGridY + gridHeight, 0x666666, 0.5).setOrigin(0));
+            this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2);
+            this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2);
         }
 
-        // 敵グリッド (右側)
+        // 5b. 敵グリッド (戦闘中のみ表示)
         const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = playerGridY;
-        const enemyGridBg = this.add.rectangle(enemyGridX + gridWidth / 2, enemyGridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9);
-        this.battleContainer.add(enemyGridBg); // ★箱に入れる
+        const enemyGridY = this.gridY;
+        const enemyGridBg = this.add.rectangle(enemyGridX + gridWidth / 2, enemyGridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
+        this.battleContainer.add(enemyGridBg);
         for (let i = 0; i <= this.backpackGridSize; i++) {
-            this.battleContainer.add(this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + gridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0));
-            this.battleContainer.add(this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0));
+            this.battleContainer.add(this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + gridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2));
+            this.battleContainer.add(this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2));
         }
         
-        // 敵アイテム配置
         const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
         const currentRound = this.receivedParams.round || 1;
         const currentLayout = enemyLayouts[currentRound] || {};
         for (const itemId in currentLayout) {
             const itemData = ITEM_DATA[itemId];
+            if (!itemData) continue;
             const pos = currentLayout[itemId].pos;
             const itemImage = this.add.image(
                 enemyGridX + (pos[1] * this.cellSize) + (itemData.shape[0].length * this.cellSize / 2),
                 enemyGridY + (pos[0] * this.cellSize) + (itemData.shape.length * this.cellSize / 2),
                 itemData.storage
-            );
+            ).setDepth(3);
             itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
-            this.battleContainer.add(itemImage); // ★箱に入れる
+            this.battleContainer.add(itemImage);
         }
-
-        // --- 5. 準備画面の要素 (インベントリなど) を prepareContainer に格納 ---
+        
+        // 5c. インベントリ (準備中のみ表示)
         const inventoryAreaY = 520;
         const inventoryAreaHeight = gameHeight - inventoryAreaY;
-        
-        // インベントリ背景
-        const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8);
-        this.prepareContainer.add(invBg); // ★箱に入れる
-        
-        // インベントリテキスト
-        const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
-        this.prepareContainer.add(invText); // ★箱に入れる
-        
-        // ★ ドラッグ可能なアイテムはシーン直下に生成する
+        const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
+        const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+        this.prepareContainer.add([invBg, invText]);
+
+        // 5d. ドラッグ可能なアイテム (準備中のみ表示)
         this.inventoryItemImages = [];
         const initialInventory = ['sword', 'shield', 'potion', 'magic_wand', 'whetstone'];
         const itemStartX = 200;
@@ -161,12 +151,12 @@ export default class BattleScene extends Phaser.Scene {
                 this.inventoryItemImages.push(itemImage);
             }
         });
-        
-        // 戦闘開始ボタン
-        this.startBattleButton = this.add.text(gameWidth - 150, gameHeight - 50, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:10, y:5} }).setOrigin(0.5).setInteractive();
-        this.prepareContainer.add(this.startBattleButton); // ★箱に入れる
 
-        // --- 6. 「戦闘開始」ボタンのイベントリスナー設定 ---
+        // 5e. 戦闘開始ボタン (準備中のみ表示)
+        this.startBattleButton = this.add.text(gameWidth - 150, gameHeight - 50, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:10, y:5} }).setOrigin(0.5).setInteractive().setDepth(11);
+        this.prepareContainer.add(this.startBattleButton);
+
+        // --- 6. イベントリスナーを設定する ---
         this.startBattleButton.on('pointerdown', () => {
             if (this.gameState !== 'prepare') return;
             this.gameState = 'battle';
@@ -197,13 +187,11 @@ export default class BattleScene extends Phaser.Scene {
 
             // 戦闘ロジックの開始 (今はコンソールログだけ)
             this.time.delayedCall(500, () => {
-                // this.prepareForBattle();
-                // this.startBattle();
                 console.log("★★ 本来ならここで戦闘ロジックが開始されます ★★");
             });
         });
 
-        // --- 7. 準備完了を通知 ---
+        // --- 7. 準備完了を通知する ---
         this.events.emit('scene-ready');
         console.log("BattleScene: create 完了");
     }
@@ -257,7 +245,22 @@ export default class BattleScene extends Phaser.Scene {
                     params: this.receivedParams // 最初のinitで受け取ったパラメータを再度渡す
                 });
             });
+// createメソッドの一番最後、events.emit('scene-ready')の直前に追加
 
+        // --- ★★★ 最後のデバッグコード ★★★ ---
+        const debugGraphics = this.add.graphics().setDepth(999);
+        
+        // プレイヤーグリッドのデバッグ
+        const playerGridBounds = new Phaser.Geom.Rectangle(this.gridX, this.gridY, gridWidth, gridHeight);
+        debugGraphics.lineStyle(4, 0xff0000, 1.0); // 赤い線
+        debugGraphics.strokeRectShape(playerGridBounds);
+        this.add.text(this.gridX, this.gridY - 20, 'PLAYER GRID HERE', { color: '#ff0000' }).setDepth(999);
+        
+        // 敵グリッドのデバッグ
+        const enemyGridBounds = new Phaser.Geom.Rectangle(enemyGridX, enemyGridY, gridWidth, gridHeight);
+        debugGraphics.lineStyle(4, 0x00ff00, 1.0); // 緑の線
+        debugGraphics.strokeRectShape(enemyGridBounds);
+        this.add.text(enemyGridX, enemyGridY - 20, 'ENEMY GRID HERE', { color: '#00ff00' }).setDepth(999);
             this.titleButton.on('pointerdown', () => {
                 if (this.eventEmitted) return;
                 this.eventEmitted = true;
@@ -341,70 +344,36 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // --- createItem: あなたの元のコードのまま ---
-   // BattleScene.js に追加する createItem メソッド
-
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
-        
-        // アイテム画像を作成し、インタラクティブ（操作可能）にする
-        const itemImage = this.add.image(x, y, itemData.storage)
-            .setInteractive()
-            .setData({
-                itemId: itemId,
-                originX: x, // インベントリの元の位置を記憶
-                originY: y,
-                gridPos: null // グリッド上の位置 (最初はnull)
-            });
-
+        const itemImage = this.add.image(x, y, itemData.storage).setInteractive().setData({itemId, originX: x, originY: y, gridPos: null});
         const shape = itemData.shape;
-        itemImage.setDisplaySize(shape[0].length * this.cellSize, shape.length * this.cellSize);
-        
-        this.input.setDraggable(itemImage); // ドラッグ可能にする
-
-        // --- ドラッグイベントの処理 ---
-
-        itemImage.on('dragstart', (pointer) => {
-            this.children.bringToTop(itemImage); // ドラッグ中は最前面に表示
-            // もしグリッドから剥がすなら、先にデータを削除
-            this.removeItemFromBackpack(itemImage);
-        });
-
-        itemImage.on('drag', (pointer, dragX, dragY) => {
-            itemImage.setPosition(dragX, dragY); // マウスに追従
-        });
-
-        itemImage.on('dragend', (pointer) => {
-            const endX = pointer.x;
-            const endY = pointer.y;
-
-            // ポインターがプレイヤーグリッドの上にあるか？
-            if (endX > this.gridX && endX < this.gridX + (this.backpackGridSize * this.cellSize) &&
-                endY > this.gridY && endY < this.gridY + (this.backpackGridSize * this.cellSize))
-            {
-                // ピクセル座標をグリッド座標に変換
-                const gridCol = Math.floor((endX - this.gridX) / this.cellSize);
-                const gridRow = Math.floor((endY - this.gridY) / this.cellSize);
-
-                // 配置可能かチェック
-                if (this.canPlaceItem(itemImage, gridCol, gridRow)) {
-                    // 配置する
-                    this.placeItemInBackpack(itemImage, gridCol, gridRow);
-                } else {
-                    // 置けなければ元の場所に戻す
-                    itemImage.x = itemImage.getData('originX');
-                    itemImage.y = itemImage.getData('originY');
-                }
+        const itemHeightInCells = shape.length;
+        const itemWidthInCells = shape[0] ? shape[0].length : 1;
+        itemImage.setDisplaySize(itemWidthInCells * this.cellSize, itemHeightInCells * this.cellSize);
+        this.input.setDraggable(itemImage);
+        itemImage.on('dragstart', (pointer, dragX, dragY) => {
+            itemImage.setDepth(200);
+            if (itemImage.getData('gridPos')) {
+                this.removeItemFromBackpack(itemImage);
             }
-            // グリッド外でドロップされた場合
-            else {
-                // 元の場所に戻す
+        });
+        itemImage.on('drag', (pointer, dragX, dragY) => {
+            itemImage.setPosition(dragX, dragY);
+        });
+        itemImage.on('dragend', (pointer, dragX, dragY, dropped) => {
+            itemImage.setDepth(100);
+            const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
+            const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
+            if (this.canPlaceItem(itemImage, gridCol, gridRow)) {
+                this.placeItemInBackpack(itemImage, gridCol, gridRow);
+            } else {
                 itemImage.x = itemImage.getData('originX');
                 itemImage.y = itemImage.getData('originY');
             }
         });
-
-        return itemImage;
+        return itemImage; 
     }
 
     // --- canPlaceItem: あなたの元のコードのまま ---
@@ -441,19 +410,13 @@ export default class BattleScene extends Phaser.Scene {
         }
     }
 
-    // BattleScene.js に追加するヘルパーメソッド
-
-    /**
-     * アイテムをバックパックから論理的に削除する
-     */
+    // --- removeItemFromBackpack: あなたの元のコードのまま ---
     removeItemFromBackpack(itemImage) {
-        const gridPos = itemImage.getData('gridPos');
-        if (!gridPos) return; // グリッド上にないなら何もしない
-
         const itemId = itemImage.getData('itemId');
         const itemData = ITEM_DATA[itemId];
         const shape = itemData.shape;
-
+        const gridPos = itemImage.getData('gridPos');
+        if (!gridPos) return;
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] === 1) {
@@ -461,60 +424,7 @@ export default class BattleScene extends Phaser.Scene {
                 }
             }
         }
-        itemImage.setData('gridPos', null); // グリッド位置情報をクリア
-    }
-
-    /**
-     * 指定された位置にアイテムを配置できるかチェックする
-     */
-    canPlaceItem(itemImage, startCol, startRow) {
-        const itemId = itemImage.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
-        const shape = itemData.shape;
-
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    const checkRow = startRow + r;
-                    const checkCol = startCol + c;
-                    
-                    // グリッドの範囲外か？
-                    if (checkRow < 0 || checkRow >= this.backpackGridSize || checkCol < 0 || checkCol >= this.backpackGridSize) {
-                        return false;
-                    }
-                    // 既に他のアイテムが置かれているか？
-                    if (this.backpack[checkRow][checkCol] !== 0) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true; // 全てのチェックをパスしたら配置可能
-    }
-
-    /**
-     * アイテムをバックパックに論理的・視覚的に配置する
-     */
-    placeItemInBackpack(itemImage, startCol, startRow) {
-        const itemId = itemImage.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
-        const shape = itemData.shape;
-
-        // 1. 視覚的な位置をグリッドにスナップさせる
-        const itemWidthInCells = shape[0].length;
-        const itemHeightInCells = shape.length;
-        itemImage.x = this.gridX + (startCol * this.cellSize) + (itemWidthInCells * this.cellSize / 2);
-        itemImage.y = this.gridY + (startRow * this.cellSize) + (itemHeightInCells * this.cellSize / 2);
-
-        // 2. 論理的なデータを更新
-        itemImage.setData('gridPos', { row: startRow, col: startCol });
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    this.backpack[startRow + r][startCol + c] = itemId;
-                }
-            }
-        }
+        itemImage.setData('gridPos', null);
     }
     
   
