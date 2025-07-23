@@ -14,7 +14,8 @@ export default class BattleScene extends Phaser.Scene {
         this.gridY = 0;
         this.backpack = null;
         this.inventoryItems = [];
-        
+        this.inventoryItemImages = []; // インベントリに残っているアイテム
+        this.placedItemImages = [];  // グリッドに配置されたアイテム
         this.playerStats = { attack: 0, defense: 0, hp: 0 }; 
         this.enemyStats = { attack: 0, defense: 0, hp: 0 };  
         this.initialBattleParams = null;
@@ -160,7 +161,16 @@ export default class BattleScene extends Phaser.Scene {
         this.startBattleButton.on('pointerdown', () => {
             if (this.gameState !== 'prepare') return;
             this.gameState = 'battle';
+             // 準備UIコンテナと、「インベントリに残っているアイテム」だけを非表示にする
+            this.tweens.add({
+                targets: [this.prepareContainer, ...this.inventoryItemImages],
+                alpha: 0,
+                // ... onComplete ...
+            });
             
+            // ドラッグを無効化するのは、すべてのアイテム
+            const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
+            allPlayerItems.forEach(item => { if(item && item.input) this.input.setDraggable(item, false); });
             // 準備UIをフェードアウト
             this.tweens.add({
                 targets: [this.prepareContainer, ...this.inventoryItemImages],
@@ -373,6 +383,15 @@ export default class BattleScene extends Phaser.Scene {
                 itemImage.y = itemImage.getData('originY');
             }
         });
+        const index = this.inventoryItemImages.indexOf(itemImage);
+        if (index > -1) {
+            this.inventoryItemImages.splice(index, 1);
+        }
+        
+        // 2. 戦闘参加チームに追加する
+        this.placedItemImages.push(itemImage);
+        console.log(`アイテム[${itemImage.getData('itemId')}]をグリッドに配置。戦闘参加チームへ。`);
+    
         return itemImage; 
     }
 
@@ -424,6 +443,15 @@ export default class BattleScene extends Phaser.Scene {
                 }
             }
         }
+            // 1. もし戦闘参加チームにいたら、そこから除名する
+        const index = this.placedItemImages.indexOf(itemImage);
+        if (index > -1) {
+            this.placedItemImages.splice(index, 1);
+        }
+
+        // 2. インベントリチームに復帰させる
+        this.inventoryItemImages.push(itemImage);
+        console.log(`アイテム[${itemImage.getData('itemId')}]をグリッドから剥がした。インベントリチームへ。`);
         itemImage.setData('gridPos', null);
     }
     
