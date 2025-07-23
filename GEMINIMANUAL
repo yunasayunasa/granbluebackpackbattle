@@ -1,0 +1,99 @@
+AI向け内部仕様書 (GEMINI INTERNAL SPECIFICATION) - Odyssey Engine v2.1
+目的: このドキュメントは、Odyssey Engineの内部アーキテクチャ、データフロー、およびコンポーネント間の相互作用を、AIが最大限に理解し、将来的な機能拡張やデバッグ、特にノベル以外のゲームジャンルとのシームレスな連携を効率的に支援するためのものである。人間が読むことよりも、AIによる機械的・論理的解釈の最適化を優先する。
+バージョン: 2.1
+最終更新日: 2023-07-24
+変更ログ:
+v2.0 -> v2.1: デバッグプロセスを経て確定した最終アーキテクチャを反映。
+3.0: シーン遷移プロトコルを、scene-readyとgameScene-load-completeを待つ汎用的な_startAndMonitorSceneに更新。
+5.0: HUD管理プロトコルをUIScene司令塔方式として新規定義。
+6.0: BGM制御プロトコルを「新シーン責任制」として新規定義。
+7.0: タグハンドラ登録の動的インポート方式を新規定義。
+1.0 Core Architecture & System Lifecycle
+VIEWPORT: 1280x720, Phaser.Scale.FIT.
+GLOBAL SINGLETONS (CRITICAL): Phaser.Registryを唯一のサービスロケータとして使用。
+stateManager: (StateManager) ゲームの状態 (f, sf変数) を保持する唯一のソース。Phaser.Events.EventEmitterを継承。PreloadSceneで生成・登録。
+configManager: (ConfigManager) ゲームの設定を保持する唯一のソース。PreloadSceneで生成・登録。
+soundManager: (SoundManager) ゲーム全体のサウンドを制御する唯一のソース。PreloadSceneで生成・登録。
+SCENE LIFECYCLE MANAGEMENT (CRITICAL - CENTRALIZED VIA SystemScene):
+BOOTSTRAP SEQUENCE:
+main.js: PreloadSceneのみactive: trueで起動。他は全てactive: false。
+PreloadScene: 全アセットをロード。StateManager, ConfigManager, SoundManagerを生成し、Registryに登録。charaDefsを生成。
+PreloadScene create(): this.scene.launch('SystemScene', { initialGameData: {...} })を呼び出し、SystemSceneに初期ゲーム起動を委譲。自身はstop()する。
+SystemScene create(): UISceneをlaunchし、_startAndMonitorScene('GameScene', ...)で初期シーンを起動。
+KEY SCENE ROLES:
+PreloadScene: Bootstrap. 責務はアセットロードとグローバルサービス登録のみ。
+SystemScene: Global Mediator & Scene Traffic Controller. 全てのシーン遷移(stop/run)と、それに伴うグローバルな入力制御(game.input.enabled)を管理。他のシーンからの直接的なscene.start/stop呼び出しは禁止。
+UIScene: Persistent UI Layer & HUD Controller. SystemSceneからlaunchされ、永続的に存在する。HUDの生成・表示/非表示を一元管理する。
+GameScene: Novel Core. ノベルシナリオの実行、セーブ/ロード処理の起点。
+Custom Game Scenes (BattleScene, PuzzleScene): SystemSceneから起動される独立したゲームパート。
+SHUTDOWN PROTOCOL (CRITICAL): 全てのシーンはshutdown()メソッドを実装し、自身がcreate()で生成したPhaserオブジェクトとイベントリスナー（特にthis.time.addEventやthis.events.onで登録したもの）を完全に破棄する責務を持つ。
+2.0 State Management (StateManager.js)
+INHERITANCE: extends Phaser.Events.EventEmitter.
+PROPERTIES: this.f (ゲーム変数), this.sf (システム変数).
+KEY METHODS:
+setF(key, value): 変数を設定し、this.emit('f-variable-changed', key, value)を呼び出す。HUD更新の主要トリガー。
+eval(exp): 式を実行し、変更があったf変数に対してf-variable-changedイベントを発行する。
+getState(scenarioManager): 永続化用のスナップショットを生成。sound.bgmキーも含む。
+setState(loadedState): スナップショットからthis.fとthis.sfを復元し、全てのf変数に対してf-variable-changedを発行してUIを強制更新する。
+3.0 Scene Transition Protocol (SystemScene.js)
+MECHANISM: イベント駆動。isProcessingTransitionフラグによる二重遷移防止。
+INPUT CONTROL (CRITICAL):
+遷移開始時: this.isProcessingTransition = true; this.game.input.enabled = false;
+遷移完了時: this.isProcessingTransition = false; this.game.input.enabled = true;
+TRANSITION FLOW (GameScene -> BattleScene):
+[jump storage="BattleScene"] -> handleJump -> SystemScene.events.emit('request-scene-transition', { to: 'BattleScene', from: 'GameScene', novelBgmKey: '...' })
+SystemSceneがイベント受信 (_handleRequestSceneTransition):
+入力無効化。
+novelBgmKeyをthis.novelBgmKeyに退避。
+this.scene.stop('GameScene').
+_startAndMonitorScene('BattleScene', ...)を呼び出し。
+RETURN FLOW (BattleScene -> GameScene):
+BattleScene -> SystemScene.events.emit('return-to-novel', ...)
+SystemSceneがイベント受信 (_handleReturnToNovel):
+入力無効化。
+this.scene.stop('BattleScene').
+_startAndMonitorScene('GameScene', { ..., restoredBgmKey: this.novelBgmKey })を呼び出し。
+COMPLETION DETECTION (_startAndMonitorScene / _onTransitionComplete):
+_startAndMonitorSceneは、対象シーンが発行する完了イベントをonceで待つ。
+GameSceneの場合: 'gameScene-load-complete'
+その他のシーン (BattleSceneなど) の場合: 'scene-ready'
+完了イベント受信後、_onTransitionCompleteが呼ばれ、入力が再有効化され、UISceneにtransition-completeイベントが発行される。
+4.0 Save/Load Protocol (GameScene.js)
+MECHANISM: GameSceneがperformSave/performLoadを担当。
+performSave(slot): stateManager.getState()を呼び出し、localStorageに保存。
+performLoad(slot, returnParams):
+localStorageからロード。
+stateManager.setState()で変数を復元。
+returnParamsをstateManager.eval()で適用。
+rebuildScene(manager, state, this.restoredBgmKey)を呼び出し、視覚・論理状態を再構築。
+CRITICAL: performLoadは処理完了後、finallyブロックでthis.events.emit('gameScene-load-complete')を呼び出し、SystemSceneに遷移完了を通知する。
+5.0 HUD & UI Protocol (UIScene.js)
+ARCHITECTURE: UIScene司令塔方式。
+RESPONSIBILITY:
+UIScene.create(): 全てのHUDコンポーネント（CoinHud, HpBar等）を自身でインスタンス化する。この時stateManagerを渡す。初期状態はsetVisible(false)。
+UIScene.create(): SystemSceneの'transition-complete'イベントを購読する。
+onSceneTransition(newSceneKey): transition-completeイベント受信時に呼ばれる。newSceneKeyに応じて、各HUDのsetVisible(true/false)を呼び出し、表示を制御する。
+DATA FLOW:
+GameScene/BattleSceneはstateManager.setF('player_hp', 50)を実行するのみ。
+StateManagerが'f-variable-changed'を発行。
+UIScene上のHpBarインスタンスがイベントを直接受信し、自身の表示を更新する。
+CONCLUSION: GameScene/BattleSceneはHUDコンポーネントの存在を一切知らない。UIとゲームロジックの完全な分離が達成されている。
+6.0 BGM Control Protocol (SoundManager.js)
+ARCHITECTURE: 新シーン責任制 (New Scene Responsibility). async/awaitは使用しない。
+RESPONSIBILITY:
+SoundManager.playBgm(key):
+現在再生中のBGMがあれば、それを無条件にstop()しdestroy()する。
+その後、新しいBGMの再生を開始する。
+これにより、二重再生は構造的に発生しない。
+GameScene.rebuildScene():
+SystemSceneから渡されたrestoredBgmKeyまたはセーブデータのstate.sound.bgmを元に、soundManager.playBgm(key)またはsoundManager.stopBgm()を呼び出す。
+BattleScene.create():
+自身のBGMをsoundManager.playBgm('battle_music')で再生するだけ。
+CONCLUSION: シーンは「この曲を流せ」と命令するだけでよく、止めることを意識する必要はない。
+7.0 Tag Handler Protocol (handlers/index.js)
+ARCHITECTURE: 動的インポートによる一括登録。
+FLOW:
+src/handlers/index.js: 全てのハンドラ関数をimportし、tagHandlersオブジェクトとしてexportする。
+GameScene.create(): const { tagHandlers } = await import('../handlers/index.js');で動的に読み込む。（循環参照回避のためCRITICAL）
+forループでtagHandlersをscenarioManager.registerTag()に一括登録する。
+EXTENSION: 新規タグ追加時はhandlers/にファイルを作成し、index.jsを1行修正するだけで完了する。GameScene.jsの変更は不要。

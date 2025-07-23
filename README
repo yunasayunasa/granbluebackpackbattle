@@ -1,0 +1,84 @@
+Odyssey Engine v2.0 README (最終改訂案)
+Odyssey Engine v2.0
+Odyssey Engineは、Phaser 3の強力なグラフィック表現と柔軟性を備えつつ、ティラノスクリプトのような直感的なスクリプト記述で、ノベルゲームと他のジャンルを融合したハイブリッドゲームを制作できるエンジンです。
+幾多の困難なデバッグを経て、SystemSceneによる中央集権的なシーン管理、StateManagerによるイベント駆動の状態管理、そしてUISceneによるUIの完全な分離を実現。これにより、開発者はコアエンジンを意識することなく、ゲーム固有のロジックとアセットの制作に100%集中できます。
+🚀 主な特徴と機能
+Phaser 3の表現力: キャラクターアニメーション、パーティクル、シェーダーなど、Phaserのパワフルな機能をタグで制御。
+ティラノスクリプト風のシンプル記述: [chara_show], [p], [eval]など、直感的なタグでシナリオを記述。
+完全な状態セーブ＆ロード:
+ゲーム内変数 (f.*)、システム変数 (sf.*) の永続化と復元。
+シナリオの進行状況、背景、キャラクター、BGMの視覚・聴覚状態の完璧な復元。
+堅牢なシーン間連携 (SystemSceneによる中央集権管理):
+[jump storage="SceneKey"]による、Phaserの別シーン（バトルパート、パズルパートなど）へのシームレスな遷移。
+シーン遷移時の自動オートセーブ・ロード機能により、プレイヤー体験を損なわないスムーズな復帰。
+グローバルUIシステム (UIScene司令塔方式):
+HPバーや所持金表示などのHUDは、永続的なUISceneが一元管理。
+ゲームシーンはHUDの存在を意識する必要がなく、StateManagerの変数を更新するだけでUIが自動的に追従。
+安定したゲームループ: タグの実行順序と非同期処理を厳密に管理することで、いかなるシナリオでもフリーズすることなく安定動作。
+🛠️ セットアップ
+(このセクションは変更なしでOK)
+Phaserプロジェクトの準備: Phaser 3 (v3.60.0以降推奨) のプロジェクトをセットアップします。
+エンジンファイルの配置: src/core/, src/handlers/, src/ui/, src/scenes/ ディレクトリ配下のエンジンコアファイルを、あなたのPhaserプロジェクトの対応するパスに配置します。
+アセットの準備: assets/ フォルダに、asset_define.jsonで定義された画像、音声、動画、そして.ksシナリオファイルを配置します。
+main.jsの設定 (重要):
+Phaser.Gameのconfig.sceneリストに、Odyssey Engineの全てのシーンを直接クラス名で登録します。
+**PreloadSceneのconstructorのみactive: true**とし、他のシーンはactive: falseに設定します。
+Generated javascript
+// main.js の例
+import PreloadScene from './scenes/PreloadScene.js';
+import SystemScene from './scenes/SystemScene.js';
+import UIScene from './scenes/UIScene.js';
+import GameScene from './scenes/GameScene.js';
+// ... 他のコアシーン ...
+import BattleScene from './scenes/BattleScene.js'; // あなたが作るゲームシーン
+
+const config = {
+    // ...
+    scene: [
+        PreloadScene, SystemScene, UIScene, GameScene, 
+        /* 他コアシーン */, BattleScene // 開発するシーンを追加
+    ]
+};
+const game = new Phaser.Game(config);
+Use code with caution.
+JavaScript
+✍️ エンジンのカスタマイズと拡張
+Odyssey Engineは、**「コアエンジン」と「ゲーム固有コンテンツ」**が明確に分離されています。安定性を保ち、開発を効率化するため、以下のガイドラインに従ってください。
+✅ 安全にカスタマイズできる部分 (推奨される拡張ポイント)
+あなたが主に触るのはここだけです。
+シナリオファイル (.ks): ゲームの物語を自由に記述・変更してください。
+アセット (assets/): 画像、音声、動画、フォントなど、ゲームに必要なアセットを追加・変更してください。
+asset_define.json: 使用するアセットのパスとキーを定義してください。
+新規タグの追加:
+src/handlers/にnew_tag.jsのようなハンドラファイルを作成します。
+src/handlers/index.jsを開き、作成したファイルをimportし、tagHandlersオブジェクトに'new_tag': handleNewTagのように1行追加します。
+これだけで、エンジンは新しいタグを自動的に認識します。 GameScene.jsを触る必要はありません。
+HUDの追加・変更:
+HPバーやスコア表示など、新しいHUDコンポーネントを作成します。HpBar.jsを参考に、StateManagerを購読する形で実装するのがベストです。
+UIScene.jsのcreateメソッドで新しいHUDをインスタンス化し、onSceneTransitionメソッドで、どのシーンの時に表示するかを制御します。
+新規ゲームシーンの追加 (例: PuzzleScene.js):
+これがこのエンジンの醍醐味です。以下の**【新規ゲームシーン開発の5ヶ条】**を守るだけで、安全に新しいゲームパートを追加できます。BattleScene.jsが完璧なテンプレートになります。
+⭐【重要】新規ゲームシーン開発の5ヶ条⭐
+新しいゲームシーン（BattleSceneやPuzzleSceneなど）を作る際は、以下のルールを必ず守ってください。
+createの最後にscene-readyを発行する
+シーンの準備が全て完了した最後に、必ずthis.events.emit('scene-ready');を記述します。これが遷移完了の合図です。
+BGMはcreateで再生する
+シーンが始まったら、this.soundManager.playBgm('曲名');でBGMの再生を「命令」するだけです。SoundManagerが前の曲を賢く止めてくれます。
+ノベルシーンへの復帰はSystemSceneに依頼する
+シーンを終了する際は、必ずthis.scene.get('SystemScene').events.emit('return-to-novel', ...)を発行します。自身のstop()は絶対に呼ばないでください。
+shutdownで後片付けをする
+shutdown()メソッドを実装し、そのシーンでthis.time.addEventやthis.events.onなど、シーンに紐づくタイマーやイベントリスナーを生成した場合は、必ずここで破棄・解除してください。
+HUDは操作しない
+シーンの中からHPバーやコイン表示を直接操作しようとしないでください。代わりにthis.stateManager.setF('player_hp', 50);のように状態変数を変更します。UIの更新はUISceneとHUD自身が自動的に行います。
+⚠️ 変更には注意が必要な部分 (コアエンジン)
+原則として、以下のファイルは触らないでください。 ここのロジックは、数々のデバッグを経て現在の安定した形になっています。
+src/core/ディレクトリ以下のファイル:
+特にStateManager.jsはゲーム状態管理の心臓部です。
+src/scenes/SystemScene.js:
+シーン遷移、入力制御、グローバルイベント通知の司令塔です。ここのロジックを変更すると、ゲーム全体が容易に破綻します。
+src/scenes/PreloadScene.js:
+ゲームの起動シーケンスを担っています。マネージャーの初期化順序は非常に重要です。
+src/scenes/GameScene.js:
+ノベルパートの実行とセーブ＆ロード機能の心臓部です。タグ登録はhandlers/index.jsで行うため、このファイルを編集する必要はほとんどありません。
+src/scenes/UIScene.js:
+HUDの追加や表示ルールの変更は安全ですが、SystemSceneとのイベント連携部分を不用意に変更すると、UI全体の動作がおかしくなる可能性があります。
