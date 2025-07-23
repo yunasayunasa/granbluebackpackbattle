@@ -30,6 +30,10 @@ export default class BattleScene extends Phaser.Scene {
         this.playerPlaceholderText = null;
         this.enemyPlaceholderText = null;
         this.startBattleButton = null;
+
+         this.playerItems = []; // { item, data, nextActionTime } の配列
+        this.enemyItems = [];
+        this.gameTime = 0; // ゲーム内時間
     }
 
      init(data) {
@@ -87,41 +91,112 @@ export default class BattleScene extends Phaser.Scene {
         
        
         
+         // --- グリッド定義 ---
         this.backpackGridSize = 6;
         this.cellSize = 60;
-        this.gridWidth = this.backpackGridSize * this.cellSize;
-        this.gridHeight = this.backpackGridSize * this.cellSize;
-        this.gridX = this.scale.width / 2 - this.gridWidth / 2;
-        this.gridY = this.scale.height / 2 - this.gridHeight / 2 + 50;
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const gridHeight = this.backpackGridSize * this.cellSize;
+        
+        // --- プレイヤーグリッド (左側) ---
+        this.gridX = 100; // 画面左からのマージン
+        this.gridY = this.scale.height / 2 - gridHeight / 2;
 
-        this.backpackGridObjects.push(this.add.rectangle(this.gridX + this.gridWidth / 2, this.gridY + this.gridHeight / 2, this.gridWidth, this.gridHeight, 0x333333, 0.9).setOrigin(0.5).setDepth(10));
+        this.backpackGridObjects.push(this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setOrigin(0.5).setDepth(10));
         for (let i = 0; i <= this.backpackGridSize; i++) {
-            this.backpackGridObjects.push(this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + this.gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(11));
-            this.backpackGridObjects.push(this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + this.gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(11));
+            this.backpackGridObjects.push(this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(11));
+            this.backpackGridObjects.push(this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(11));
         }
+
+        // --- 敵グリッド (右側) ---
+        const enemyGridX = this.scale.width - 100 - gridWidth; // 画面右からのマージン
+        const enemyGridY = this.gridY; // Y座標はプレイヤーと同じ
+
+        this.backpackGridObjects.push(this.add.rectangle(enemyGridX + gridWidth / 2, enemyGridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setOrigin(0.5).setDepth(10)); // 色を少し変える
+        for (let i = 0; i <= this.backpackGridSize; i++) {
+            this.backpackGridObjects.push(this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + gridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(11));
+            this.backpackGridObjects.push(this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(11));
+        }
+
+        
 
         this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
 
+         // --- ラウンドに応じた敵のアイテムセットを定義 ---
+        const enemyLayouts = {
+            1: { 'sword': { pos: [2, 2], angle: 0 } }, // 1戦目: 中央に剣が1本
+            2: { 'sword': { pos: [2, 2], angle: 0 }, 'shield': { pos: [3, 2], angle: 0 } },
+            // 今後のラウンドのために追加していく
+        };
+        const currentRound = this.receivedParams.round || 1; // SystemSceneからラウンド数を受け取る
+        const currentLayout = enemyLayouts[currentRound] || {}; // 未定義ラウンドなら空にする
+        
+        // ★ プロパティとして敵アイテム配列を初期化
+        this.enemyItemImages = []; 
+
+        for (const itemId in currentLayout) {
+            const itemData = ITEM_DATA[itemId];
+            if (!itemData) continue;
+            
+            const pos = currentLayout[itemId].pos; // [row, col]
+            const angle = currentLayout[itemId].angle;
+            
+            const shape = itemData.shape;
+            const itemHeightInCells = shape.length;
+            const itemWidthInCells = shape[0] ? shape[0].length : 1;
+            
+            const x = enemyGridX + (pos[1] * this.cellSize) + (itemWidthInCells * this.cellSize / 2);
+            const y = enemyGridY + (pos[0] * this.cellSize) + (itemHeightInCells * this.cellSize / 2);
+
+            const itemImage = this.add.image(x, y, itemData.storage)
+                .setAngle(angle)
+                .setDepth(12); // グリッド線より手前
+            itemImage.setDisplaySize(itemWidthInCells * this.cellSize, itemHeightInCells * this.cellSize);
+            
+            this.enemyItemImages.push(itemImage);
+        }
+
+          this.gameState = 'prepare'; // シーン開始時の状態を設定
+
+        // --- 準備画面用のUIを生成 ---
+        this.prepareUIs = []; // UIグループをプロパティとして初期化
         const inventoryX = this.gridX - 180;
         const inventoryY = this.gridY;
         const inventoryWidth = 150;
         const inventoryHeight = this.gridHeight;
         this.backpackGridObjects.push(this.add.rectangle(inventoryX + inventoryWidth / 2, inventoryY + inventoryHeight / 2, inventoryWidth, inventoryHeight, 0x555555, 0.8).setOrigin(0.5).setDepth(10));
-        this.backpackGridObjects.push(this.add.text(inventoryX + inventoryWidth / 2, inventoryY + 20, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11));
+         this.prepareUIs.push(this.add.text(inventoryX + 75, inventoryY + 20, 'インベントリ', { fontSize: '24px', fill: '#fff' }));
 
+         // (既存のインベントリアイテム生成ループ)
         const initialInventory = ['sword', 'shield', 'potion'];
         let itemY = inventoryY + 70;
         initialInventory.forEach(itemId => {
-            const itemImage = this.createItem(itemId, inventoryX + inventoryWidth / 2, itemY);
-            if (itemImage) { this.inventoryItems.push(itemImage); }
+            const itemImage = this.createItem(itemId, inventoryX + 75, itemY);
+            if (itemImage) { 
+                this.inventoryItems.push(itemImage);
+                this.prepareUIs.push(itemImage); // UIグループに追加
+            }
             itemY += 80;
         });
 
         this.startBattleButton = this.add.text(this.gridX - 105, this.gridY + this.gridHeight - 30, '戦闘開始', { fontSize: '28px', fill: '#fff', backgroundColor: '#008800', padding: { x: 10, y: 5 } }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(11);
+          this.prepareUIs.push(this.startBattleButton); // UIグループに追加
+       // 戦闘開始ボタンのイベントリスナーを修正
         this.startBattleButton.on('pointerdown', () => {
-            this.startBattleButton.disableInteractive(); 
-            this.input.enabled = false;
-            this.startBattle();
+            if (this.gameState !== 'prepare') return; // 準備中のみ有効
+            this.gameState = 'battle';
+
+            // 準備UIを非表示にする
+            this.prepareUIs.forEach(ui => ui.setVisible(false));
+            
+            // アイテムのドラッグを無効にする
+            this.inventoryItems.forEach(item => {
+                if(item && item.input) this.input.setDraggable(item, false)
+            });
+            
+            // (今はまだ空の)戦闘ロジックを呼び出す
+            // this.prepareForBattle();
+            // this.startBattle();
+            console.log("★★ 戦闘開始！(UIが非表示になりました) ★★");
         });
         
         this.battleLogText = this.add.text(this.scale.width / 2, 150, '', { fontSize: '24px', fill: '#fff', backgroundColor: 'rgba(0,0,0,0.5)', padding: { x: 10, y: 10 }, align: 'center', wordWrap: { width: 400 } }).setOrigin(0.5).setDepth(200);
