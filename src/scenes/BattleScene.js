@@ -13,7 +13,10 @@ export default class BattleScene extends Phaser.Scene {
         this.gridX = 0;
         this.gridY = 0;
         this.backpack = null;
-        this.inventoryItems = [];
+        this.gridX = 0; // ★ 追加
+        this.gridY = 0; // ★ 追加
+        this.backpack = null; // ★ 追加
+        this.inventoryItemImages = []; // ★ inventoryItems からリネーム
         this.backpackGridObjects = [];
         this.playerStats = { attack: 0, defense: 0, hp: 0 }; 
         this.enemyStats = { attack: 0, defense: 0, hp: 0 };  
@@ -338,36 +341,70 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // --- createItem: あなたの元のコードのまま ---
+   // BattleScene.js に追加する createItem メソッド
+
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
-        const itemImage = this.add.image(x, y, itemData.storage).setInteractive().setData({itemId, originX: x, originY: y, gridPos: null});
+        
+        // アイテム画像を作成し、インタラクティブ（操作可能）にする
+        const itemImage = this.add.image(x, y, itemData.storage)
+            .setInteractive()
+            .setData({
+                itemId: itemId,
+                originX: x, // インベントリの元の位置を記憶
+                originY: y,
+                gridPos: null // グリッド上の位置 (最初はnull)
+            });
+
         const shape = itemData.shape;
-        const itemHeightInCells = shape.length;
-        const itemWidthInCells = shape[0] ? shape[0].length : 1;
-        itemImage.setDisplaySize(itemWidthInCells * this.cellSize, itemHeightInCells * this.cellSize);
-        this.input.setDraggable(itemImage);
-        itemImage.on('dragstart', (pointer, dragX, dragY) => {
-            itemImage.setDepth(200);
-            if (itemImage.getData('gridPos')) {
-                this.removeItemFromBackpack(itemImage);
-            }
+        itemImage.setDisplaySize(shape[0].length * this.cellSize, shape.length * this.cellSize);
+        
+        this.input.setDraggable(itemImage); // ドラッグ可能にする
+
+        // --- ドラッグイベントの処理 ---
+
+        itemImage.on('dragstart', (pointer) => {
+            this.children.bringToTop(itemImage); // ドラッグ中は最前面に表示
+            // もしグリッドから剥がすなら、先にデータを削除
+            this.removeItemFromBackpack(itemImage);
         });
+
         itemImage.on('drag', (pointer, dragX, dragY) => {
-            itemImage.setPosition(dragX, dragY);
+            itemImage.setPosition(dragX, dragY); // マウスに追従
         });
-        itemImage.on('dragend', (pointer, dragX, dragY, dropped) => {
-            itemImage.setDepth(100);
-            const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
-            const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
-            if (this.canPlaceItem(itemImage, gridCol, gridRow)) {
-                this.placeItemInBackpack(itemImage, gridCol, gridRow);
-            } else {
+
+        itemImage.on('dragend', (pointer) => {
+            const endX = pointer.x;
+            const endY = pointer.y;
+
+            // ポインターがプレイヤーグリッドの上にあるか？
+            if (endX > this.gridX && endX < this.gridX + (this.backpackGridSize * this.cellSize) &&
+                endY > this.gridY && endY < this.gridY + (this.backpackGridSize * this.cellSize))
+            {
+                // ピクセル座標をグリッド座標に変換
+                const gridCol = Math.floor((endX - this.gridX) / this.cellSize);
+                const gridRow = Math.floor((endY - this.gridY) / this.cellSize);
+
+                // 配置可能かチェック
+                if (this.canPlaceItem(itemImage, gridCol, gridRow)) {
+                    // 配置する
+                    this.placeItemInBackpack(itemImage, gridCol, gridRow);
+                } else {
+                    // 置けなければ元の場所に戻す
+                    itemImage.x = itemImage.getData('originX');
+                    itemImage.y = itemImage.getData('originY');
+                }
+            }
+            // グリッド外でドロップされた場合
+            else {
+                // 元の場所に戻す
                 itemImage.x = itemImage.getData('originX');
                 itemImage.y = itemImage.getData('originY');
             }
         });
-        return itemImage; 
+
+        return itemImage;
     }
 
     // --- canPlaceItem: あなたの元のコードのまま ---
@@ -404,13 +441,19 @@ export default class BattleScene extends Phaser.Scene {
         }
     }
 
-    // --- removeItemFromBackpack: あなたの元のコードのまま ---
+    // BattleScene.js に追加するヘルパーメソッド
+
+    /**
+     * アイテムをバックパックから論理的に削除する
+     */
     removeItemFromBackpack(itemImage) {
+        const gridPos = itemImage.getData('gridPos');
+        if (!gridPos) return; // グリッド上にないなら何もしない
+
         const itemId = itemImage.getData('itemId');
         const itemData = ITEM_DATA[itemId];
         const shape = itemData.shape;
-        const gridPos = itemImage.getData('gridPos');
-        if (!gridPos) return;
+
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] === 1) {
@@ -418,7 +461,60 @@ export default class BattleScene extends Phaser.Scene {
                 }
             }
         }
-        itemImage.setData('gridPos', null);
+        itemImage.setData('gridPos', null); // グリッド位置情報をクリア
+    }
+
+    /**
+     * 指定された位置にアイテムを配置できるかチェックする
+     */
+    canPlaceItem(itemImage, startCol, startRow) {
+        const itemId = itemImage.getData('itemId');
+        const itemData = ITEM_DATA[itemId];
+        const shape = itemData.shape;
+
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] === 1) {
+                    const checkRow = startRow + r;
+                    const checkCol = startCol + c;
+                    
+                    // グリッドの範囲外か？
+                    if (checkRow < 0 || checkRow >= this.backpackGridSize || checkCol < 0 || checkCol >= this.backpackGridSize) {
+                        return false;
+                    }
+                    // 既に他のアイテムが置かれているか？
+                    if (this.backpack[checkRow][checkCol] !== 0) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true; // 全てのチェックをパスしたら配置可能
+    }
+
+    /**
+     * アイテムをバックパックに論理的・視覚的に配置する
+     */
+    placeItemInBackpack(itemImage, startCol, startRow) {
+        const itemId = itemImage.getData('itemId');
+        const itemData = ITEM_DATA[itemId];
+        const shape = itemData.shape;
+
+        // 1. 視覚的な位置をグリッドにスナップさせる
+        const itemWidthInCells = shape[0].length;
+        const itemHeightInCells = shape.length;
+        itemImage.x = this.gridX + (startCol * this.cellSize) + (itemWidthInCells * this.cellSize / 2);
+        itemImage.y = this.gridY + (startRow * this.cellSize) + (itemHeightInCells * this.cellSize / 2);
+
+        // 2. 論理的なデータを更新
+        itemImage.setData('gridPos', { row: startRow, col: startCol });
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] === 1) {
+                    this.backpack[startRow + r][startCol + c] = itemId;
+                }
+            }
+        }
     }
     
   
