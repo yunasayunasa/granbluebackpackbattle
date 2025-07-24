@@ -28,6 +28,8 @@ export default class BattleScene extends Phaser.Scene {
         // バトルロジック用 (今はまだ使わない)
         this.playerStats = { attack: 0, defense: 0, hp: 0 }; 
         this.enemyStats = { attack: 0, defense: 0, hp: 0 };
+            this.playerBattleItems = []; // { data, nextActionTime } プレイヤーの行動アイテム
+        this.enemyBattleItems = [];  // { data, nextActionTime } 敵の行動アイテム
     }
 
     init(data) {
@@ -137,6 +139,9 @@ export default class BattleScene extends Phaser.Scene {
             if (this.gameState !== 'prepare') return;
             this.gameState = 'battle';
             
+            // ★★★ これから作るメソッドを呼び出す ★★★
+            this.prepareForBattle();
+            
             const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
             allPlayerItems.forEach(item => { if(item && item.input) this.input.setDraggable(item, false); });
             
@@ -157,6 +162,10 @@ export default class BattleScene extends Phaser.Scene {
                 duration: 300,
                 delay: 200
             });
+             // 戦闘ロジックの開始
+            this.time.delayedCall(500, () => {
+                this.startBattle(); // ★★★ これから作るメソッドを呼び出す ★★★
+            });
         });
 
         // --- 5. 準備完了を通知 ---
@@ -164,6 +173,115 @@ export default class BattleScene extends Phaser.Scene {
         console.log("BattleScene: create 完了");
     }
 
+      /**
+     * 戦闘開始前の最終準備（ステータス計算など）
+     */
+    prepareForBattle() {
+        console.log("--- 戦闘準備開始 ---");
+        
+        // 1. プレイヤーのステータスと行動アイテムを初期化
+        this.playerStats = { attack: 0, defense: 0, hp: this.stateManager.f.player_hp };
+        this.playerBattleItems = [];
+
+        for (const itemImage of this.placedItemImages) {
+            const itemId = itemImage.getData('itemId');
+            const itemData = ITEM_DATA[itemId];
+
+            // パッシブ効果を計算 (例: 盾の防御力)
+            if (itemData.passive && itemData.passive.type === 'defense') {
+                this.playerStats.defense += itemData.passive.value;
+            }
+            
+            // 行動するアイテムをリストアップ
+            if (itemData.recast > 0) {
+                this.playerBattleItems.push({
+                    data: itemData,
+                    nextActionTime: itemData.recast // 最初の行動時間
+                });
+            }
+        }
+        console.log("プレイヤー最終ステータス:", this.playerStats);
+        console.log("プレイヤー行動アイテム:", this.playerBattleItems);
+
+        // 2. 敵のステータスと行動アイテムを初期化 (今は仮)
+        this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp };
+        this.enemyBattleItems = [{
+            data: ITEM_DATA['sword'],
+            nextActionTime: ITEM_DATA['sword'].recast
+        }];
+        console.log("敵最終ステータス:", this.enemyStats);
+    }
+    
+    /**
+     * リアルタイムバトルを開始する
+     */
+    startBattle() {
+        console.log("★★ 戦闘開始！ ★★");
+        // updateループを有効化するだけ。実際の処理はupdateメソッドに記述。
+    }
+    
+    /**
+     * アイテムの行動を実行する
+     */
+    executeAction(itemData, attacker, defender) {
+        const action = itemData.action;
+        if (!action) return;
+
+        const attackerStats = this[`${attacker}Stats`];
+        const defenderStats = this[`${defender}Stats`];
+
+        if (action.type === 'attack') {
+            const damage = Math.max(1, action.value + attackerStats.attack - defenderStats.defense);
+            
+            const newHp = defenderStats.hp - damage;
+            defenderStats.hp = newHp; // メモリ上のHPを更新
+            this.stateManager.setF(`${defender}_hp`, newHp); // グローバルなHPを更新
+
+            console.log(`${attacker}の${itemData.storage}が攻撃！ ${defender}に${damage}ダメージ。残りHP: ${newHp}`);
+
+            // 勝敗判定
+            if (newHp <= 0) {
+                this.gameState = 'end'; // バトル終了状態
+                console.log(`${defender}は倒れた！`);
+                this.endBattle(attacker === 'player' ? 'win' : 'lose');
+            }
+        }
+    }
+
+    /**
+     * Phaserによって毎フレーム呼ばれるメインループ
+     */
+    update(time, delta) {
+        // 戦闘中でなければ何もしない
+        if (this.gameState !== 'battle') return;
+
+        // --- プレイヤーのアイテム行動処理 ---
+        for (const item of this.playerBattleItems) {
+            // nextActionTimeを毎フレーム減算していく
+            item.nextActionTime -= delta / 1000;
+            
+            if (item.nextActionTime <= 0) {
+                this.executeAction(item.data, 'player', 'enemy');
+                // 次の行動時間を再設定
+                item.nextActionTime += item.data.recast;
+                
+                // バトルが終了していたら、このループを抜ける
+                if (this.gameState !== 'battle') break;
+            }
+        }
+
+        // --- 敵のアイテム行動処理 ---
+        if (this.gameState === 'battle') { // プレイヤーの攻撃で戦闘が終わってないかチェック
+            for (const item of this.enemyBattleItems) {
+                item.nextActionTime -= delta / 1000;
+                if (item.nextActionTime <= 0) {
+                    this.executeAction(item.data, 'enemy', 'player');
+                    item.nextActionTime += item.data.recast;
+                    if (this.gameState !== 'battle') break;
+                }
+            }
+        }
+    }
     // --- ヘルパーメソッド群 ---
 
     createItem(itemId, x, y) {
