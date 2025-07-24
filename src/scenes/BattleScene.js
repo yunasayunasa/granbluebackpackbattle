@@ -97,7 +97,25 @@ export default class BattleScene extends Phaser.Scene {
                 itemData.storage
             ).setDepth(3).setInteractive({ draggable: false });
             itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
-              }
+              itemImage.on('pointerup', (pointer, localX, localY, event) => {
+                const itemData = ITEM_DATA[itemId];
+                if (!itemData) return;
+                
+                let tooltipText = `【${itemId}】\n\n`;
+                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+                if (itemData.passive && itemData.passive.effects) {
+                    itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
+                }
+                if (itemData.synergy) {
+                    tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`;
+                }
+                
+                this.tooltip.show(itemImage, tooltipText);
+                event.stopPropagation();
+            });
+        }
+              
 
         // 3c. インベントリ
         const inventoryAreaY = 520;
@@ -360,22 +378,26 @@ export default class BattleScene extends Phaser.Scene {
         // --- イベントリスナー ---
         let pressTimer = null;
         let isDragging = false;
-        
-        itemContainer.on('pointerdown', (pointer) => {
+         let isDown = false;
+
+         itemContainer.on('pointerdown', (pointer) => {
+            isDown = true;
             isDragging = false;
             itemContainer.setData('isLongPress', false);
-            
+
             if (pointer.rightButtonDown()) {
                 this.rotateItem(itemContainer);
                 return;
             }
             pressTimer = this.time.delayedCall(500, () => {
-                this.rotateItem(itemContainer);
-                itemContainer.setData('isLongPress', true);
+                if (isDown && !isDragging) { // ★ 押されたままで、ドラッグしていなければ長押し成立
+                    this.rotateItem(itemContainer);
+                    itemContainer.setData('isLongPress', true);
+                }
             });
         });
 
-        itemContainer.on('dragstart', () => {
+         itemContainer.on('dragstart', () => {
             isDragging = true;
             if (pressTimer) pressTimer.remove();
             this.tooltip.hide();
@@ -384,6 +406,8 @@ export default class BattleScene extends Phaser.Scene {
         });
 
         itemContainer.on('drag', (pointer, dragX, dragY) => {
+            // ドラッグ中に長押しタイマーが動いてしまうのを防ぐ
+            if (pressTimer) pressTimer.remove();
             itemContainer.setPosition(dragX, dragY);
             // (ゴースト表示ロジック)
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
@@ -400,8 +424,8 @@ export default class BattleScene extends Phaser.Scene {
             }
         });
 
-        itemContainer.on('dragend', (pointer) => {
-            isDragging = false;
+         itemContainer.on('dragend', (pointer) => {
+            // isDragging = false; // dragendの後にpointerupが来るので、ここではリセットしない
             itemContainer.setDepth(12);
             this.ghostImage.setVisible(false);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
@@ -419,9 +443,10 @@ export default class BattleScene extends Phaser.Scene {
             }
         });
 
-        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+          itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             if (pressTimer) pressTimer.remove();
             
+            // ★ タップ判定: ドラッグしておらず、長押しも成立していない場合
             if (!isDragging && !itemContainer.getData('isLongPress')) {
                 const itemData = ITEM_DATA[itemId];
                 if (!itemData) return;
@@ -447,6 +472,8 @@ export default class BattleScene extends Phaser.Scene {
                 this.tooltip.show(itemContainer, tooltipText);
                 event.stopPropagation();
             }
+             isDown = false;
+            isDragging = false;
             itemContainer.setData('isLongPress', false);
         });
         
