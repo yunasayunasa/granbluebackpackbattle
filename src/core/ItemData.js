@@ -21,7 +21,7 @@ export const ITEM_DATA = {
             effect: { type: 'add_recast', value: -0.5 } // リキャストを0.5秒短縮
         }
     },
-    'whetstone': { // 砥石
+    'potion': { // 砥石
         storage: 'item_potion',
         shape: [[2], [1]],
         tags: ['utility'],
