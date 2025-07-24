@@ -579,35 +579,56 @@ export default class BattleScene extends Phaser.Scene {
         // 3. シナジー矢印の表示を更新
         this.updateArrowVisibility(itemContainer);
     }
-         canPlaceItem(itemContainer, startCol, startRow) {
-        const itemData = ITEM_DATA[itemContainer.getData('itemId')];
-        const rotation = itemContainer.getData('rotation');
-        let shape = itemData.shape;
+      // BattleScene.js に、このメソッドをまるごと追加してください
 
-        // ★ 回転が90度か270度の場合、形状データを擬似的に回転させる
-        if (rotation === 90 || rotation === 270) {
-            const newShape = [];
-            for (let x = 0; x < shape[0].length; x++) {
-                const newRow = [];
-                for (let y = shape.length - 1; y >= 0; y--) {
-                    newRow.push(shape[y][x]);
-                }
-                newShape.push(newRow);
-            }
-            shape = newShape;
+    rotateItem(itemContainer) {
+        const itemId = itemContainer.getData('itemId');
+        const itemData = ITEM_DATA[itemId];
+        const shape = itemData.shape;
+
+        // 1. 新しい回転角度を計算・保存
+        let currentRotation = itemContainer.getData('rotation');
+        currentRotation = (currentRotation + 90) % 360;
+        itemContainer.setData('rotation', currentRotation);
+
+        // 2. コンテナ自体を回転させる
+        itemContainer.setAngle(currentRotation);
+
+        // 3. 形状の中心からのズレを補正する
+        const shapeWidth = shape[0].length;
+        const shapeHeight = shape.length;
+        const offsetX = (shapeHeight - shapeWidth) * this.cellSize / 2;
+        const offsetY = (shapeWidth - shapeHeight) * this.cellSize / 2;
+        const itemImage = itemContainer.getData('itemImage');
+        const arrowContainer = itemContainer.getData('arrowContainer');
+        
+        // 回転角度に応じて、補正値を適用
+        if (currentRotation === 90) {
+            itemImage.setPosition(offsetX, offsetY);
+            arrowContainer.setPosition(offsetX, offsetY);
+        } else if (currentRotation === 270) {
+            itemImage.setPosition(-offsetX, -offsetY);
+            arrowContainer.setPosition(-offsetX, -offsetY);
+        } else {
+            itemImage.setPosition(0, 0);
+            arrowContainer.setPosition(0, 0);
         }
-        for (let r = 0; r < itemData.shape.length; r++) {
-            for (let c = 0; c < itemData.shape[r].length; c++) {
-                if (itemData.shape[r][c] === 1) {
-                    const checkRow = startRow + r;
-                    const checkCol = startCol + c;
-                    if (checkRow < 0 || checkRow >= this.backpackGridSize || checkCol < 0 || checkCol >= this.backpackGridSize || this.backpack[checkRow][checkCol] !== 0) {
-                        return false;
-                    }
-                }
+
+        // グリッドに配置済みの場合は、再配置チェック
+        const gridPos = itemContainer.getData('gridPos');
+        if (gridPos) {
+            if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
+                // 置けなくなったらインベントリに戻す
+                this.removeItemFromBackpack(itemContainer);
+                itemContainer.x = itemContainer.getData('originX');
+                itemContainer.y = itemContainer.getData('originY');
+                itemContainer.setAngle(0);
+                itemContainer.setData('rotation', 0);
+                // ★ 矢印表示も更新する
+                this.updateArrowVisibility(itemContainer); 
             }
         }
-        return true;
+        console.log(`アイテム[${itemId}]を回転: ${currentRotation}度`);
     }
 
  // BattleScene.js の placeItemInBackpack メソッド (最終修正版)
