@@ -261,30 +261,55 @@ export default class BattleScene extends Phaser.Scene {
     }
     // --- ヘルパーメソッド群 ---
 
+  // BattleScene.js に記述する createItem メソッド (完成版)
+
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
         
+        // 1. アイテム画像を生成し、インタラクティブにする
         const itemImage = this.add.image(x, y, itemData.storage)
-            .setInteractive().setDepth(12)
-            .setData({ itemId: itemId, originX: x, originY: y, gridPos: null });
+            .setInteractive()
+            .setDepth(12)
+            .setData({
+                itemId: itemId,
+                originX: x,
+                originY: y,
+                gridPos: null
+            });
 
         itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
+        
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ ここからが修正の核心 ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        
+        // 2. このアイテムにツールチップ表示機能を追加する
+        this.addTooltipEvents(itemImage, itemId);
+
+        // 3. このアイテムをドラッグ可能にする
         this.input.setDraggable(itemImage);
 
-        // ★ ドラッグ開始時にツールチップを隠す
+        // --- 4. ドラッグイベントの処理を定義 ---
+
         itemImage.on('dragstart', () => {
+            // ドラッグ開始時にツールチップを隠す（タップと誤認された場合のため）
             this.tooltip.hide();
-            itemImage.setDepth(99);
+            
+            itemImage.setDepth(99); // ドラッグ中は最前面に
             this.removeItemFromBackpack(itemImage);
         });
+
         itemImage.on('drag', (pointer, dragX, dragY) => {
             itemImage.setPosition(dragX, dragY);
         });
+
         itemImage.on('dragend', (pointer) => {
-            itemImage.setDepth(12);
+            itemImage.setDepth(12); // ドラッグが終わったら元の深度に
+            
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
+
             if (this.canPlaceItem(itemImage, gridCol, gridRow)) {
                 this.placeItemInBackpack(itemImage, gridCol, gridRow);
             } else {
@@ -292,22 +317,44 @@ export default class BattleScene extends Phaser.Scene {
                 itemImage.y = itemImage.getData('originY');
             }
         });
+        
         return itemImage; 
     }
  // ★★★ ツールチップイベントを追加するヘルパーメソッドを新設 ★★★
+  // BattleScene.js のクラス内に、このメソッドが存在するか確認してください
+
     addTooltipEvents(itemImage, itemId) {
         itemImage.on('pointerdown', (pointer) => {
             // ドラッグ操作と競合しないように、少し待ってから判定
             this.time.delayedCall(150, () => {
+                // isDraggingプロパティはPhaserのDraggableオブジェクトにあります
+                const isDragging = itemImage.input && itemImage.input.dragState > 0;
+
                 // delayedCall実行時にまだドラッグされていなければタップとみなす
-                if (!itemImage.isDragging) { 
+                if (!isDragging) { 
                     const itemData = ITEM_DATA[itemId];
+                    if (!itemData) return;
+
+                    // ★★★ ここでツールチップに表示するテキストを生成します ★★★
                     let tooltipText = `【${itemId}】\n\n`;
-                    // ... (ツールチップに表示するテキストを生成するロジック) ...
+                    
+                    if (itemData.recast > 0) {
+                        tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                    }
+                    if (itemData.action) {
+                        tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+                    }
+                    if (itemData.passive && itemData.passive.effects) {
+                        itemData.passive.effects.forEach(e => {
+                            tooltipText += `パッシブ: ${e.type} +${e.value}\n`;
+                        });
+                    }
+                    // (今後シナジー効果などもここに追加)
+
                     this.tooltip.show(itemImage, tooltipText);
                     
                     // 背景シーンへのクリックイベントを止める
-                    pointer.stopPropagation();
+                    if(pointer) pointer.stopPropagation();
                 }
             });
         });
