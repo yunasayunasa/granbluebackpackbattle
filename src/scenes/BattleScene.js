@@ -336,30 +336,7 @@ export default class BattleScene extends Phaser.Scene {
 
     // BattleScene.js の createItem メソッド (イベントリスナー完全版)
 
-    createItem(itemId, x, y) {
-        const itemData = ITEM_DATA[itemId];
-        if (!itemData) return null;
-
-        // --- 1. オブジェクトの生成 ---
-        const containerWidth = itemData.shape[0].length * this.cellSize;
-        const containerHeight = itemData.shape.length * this.cellSize;
-        const itemContainer = this.add.container(x, y).setSize(containerWidth, containerHeight);
-        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-        const arrowContainer = this.add.container(0, 0).setVisible(false);
-        const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
-        arrowContainer.add([
-            this.add.text(0, 0, '▲', arrowStyle).setOrigin(0.5).setName('up'),
-            this.add.text(0, 0, '▼', arrowStyle).setOrigin(0.5).setName('down'),
-            this.add.text(0, 0, '◀', arrowStyle).setOrigin(0.5).setName('left'),
-            this.add.text(0, 0, '▶', arrowStyle).setOrigin(0.5).setName('right')
-        ]);
-        itemContainer.add([itemImage, arrowContainer]).setDepth(12).setInteractive();
-        itemContainer.setData({ itemId, originX: x, originY: y, gridPos: null, itemImage, arrowContainer, rotation: 0 });
-        this.input.setDraggable(itemContainer);
-
-        // --- 2. イベントリスナーの定義 ---
-       // BattleScene.js の createItem メソッド (最終確定版)
-
+    
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
@@ -474,7 +451,7 @@ export default class BattleScene extends Phaser.Scene {
         });
         
         return itemContainer;
-    }}
+    }
 
     
 
