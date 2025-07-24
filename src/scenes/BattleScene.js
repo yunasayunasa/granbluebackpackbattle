@@ -387,7 +387,7 @@ const sourceShape = sourceItem.shape;
         // 2. アイテム画像を生成
         const itemImage = this.add.image(0, 0, itemData.storage);
         itemImage.setDisplaySize(containerWidth, containerHeight);
-
+   itemImage.setOrigin(0.5);
         // ★★★ 3. 矢印を管理するための「矢印用コンテナ」を作成 ★★★
         const arrowContainer = this.add.container(0, 0);
         const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
@@ -665,50 +665,13 @@ const sourceShape = sourceItem.shape;
         const originalRotation = itemContainer.getData('rotation');
         const newRotation = (originalRotation + 90) % 360;
         
-        // --- 1. まず、回転可能かチェックする ---
-        //    一時的に回転後の角度をセットしてチェック
-        itemContainer.setData('rotation', newRotation);
-        const gridPos = itemContainer.getData('gridPos');
-        if (gridPos) { // グリッド上にいる場合のみチェック
-            if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                console.log("回転不可：スペースがありません。");
-                itemContainer.setData('rotation', originalRotation); // 失敗したので回転角度を元に戻す
-                return; // 何もせず終了
-            }
-        }
-        // チェックが終わったら、一旦角度を元に戻しておく
-        itemContainer.setData('rotation', originalRotation);
-
-        // --- 2. チェックをパスしたら、回転を実行 ---
+       // --- 回転を実行 ---
         itemContainer.setData('rotation', newRotation);
         
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ ここからが「見た目」を更新する核心部分 ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ コンテナ自体を回転させるだけでOK ★★★
+        itemContainer.setAngle(newRotation);
 
-        const itemData = ITEM_DATA[itemId];
-        const rotatedShape = this.getRotatedShape(itemId, newRotation);
-        
-        const newWidth = rotatedShape[0].length * this.cellSize;
-        const newHeight = rotatedShape.length * this.cellSize;
-
-        // a. コンテナ（パネル）のサイズを、回転後のサイズに更新
-        itemContainer.setSize(newWidth, newHeight);
-        
-        // b. 中の画像の表示サイズも、回転後のサイズに更新
-        const itemImage = itemContainer.getData('itemImage');
-        itemImage.setDisplaySize(newWidth, newHeight);
-        
-        // c. 中の画像だけを回転させる
-        itemImage.setAngle(newRotation);
-
-        // d. グリッドに配置済みの場合は、新しいサイズの中心に座標を再スナップ
-        if (gridPos) {
-            itemContainer.x = this.gridX + gridPos.col * this.cellSize + newWidth / 2;
-            itemContainer.y = this.gridY + gridPos.row * this.cellSize + newHeight / 2;
-        }
-
-        // e. 矢印の表示も更新
+        // ★★★ 矢印の表示だけを更新 ★★★
         this.updateArrowVisibility(itemContainer);
 
         console.log(`アイテム[${itemId}]を回転: ${newRotation}度`);
@@ -722,7 +685,8 @@ const sourceShape = sourceItem.shape;
         const itemId = itemContainer.getData('itemId');
         const rotation = itemContainer.getData('rotation') || 0;
         let shape = this.getRotatedShape(itemId, rotation);
-
+  itemContainer.x = this.gridX + startCol * this.cellSize;
+        itemContainer.y = this.gridY + startRow * this.cellSize;
         // 論理データを更新
         itemContainer.setData('gridPos', { row: startRow, col: startCol });
         for (let r = 0; r < shape.length; r++) {
