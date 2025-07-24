@@ -32,7 +32,7 @@ export const ITEM_DATA = {
         action: null,
         // ★★★ シナジー効果を追加 ★★★
         synergy: {
-            direction: 'adjacent',  // 上下左右に隣接
+            direction: 'down',  // 上下左右に隣接
             targetTag: 'blade',     // 「blade」タグを持つアイテムに効果
             effect: { type: 'add_attack', value: 2 } // 攻撃力を+2
         }
