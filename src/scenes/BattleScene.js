@@ -325,32 +325,40 @@ export default class BattleScene extends Phaser.Scene {
 
    // BattleScene.js の createItem メソッド (最終修正版)
 
+    // BattleScene.js の createItem メソッド (四方矢印対応版)
+
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
         
-        // 1. コンテナを作成
+        // 1. メインのコンテナを作成
         const itemContainer = this.add.container(x, y);
-
-        // ★★★ 2. これから使う「幅」と「高さ」を変数として定義 ★★★
         const containerWidth = itemData.shape[0].length * this.cellSize;
         const containerHeight = itemData.shape.length * this.cellSize;
-        
-        // コンテナのインタラクション範囲を設定
         itemContainer.setSize(containerWidth, containerHeight);
         
-        // 3. アイテム画像を生成し、正しいサイズに設定
+        // 2. アイテム画像を生成
         const itemImage = this.add.image(0, 0, itemData.storage);
-        itemImage.setDisplaySize(containerWidth, containerHeight); // ★ 定義した変数を使う
+        itemImage.setDisplaySize(containerWidth, containerHeight);
 
-        // 4. 矢印テキストを生成
-        const arrow = this.add.text(0, 0, '', { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5);
-        arrow.setVisible(false);
+        // ★★★ 3. 矢印を管理するための「矢印用コンテナ」を作成 ★★★
+        const arrowContainer = this.add.container(0, 0);
+        const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
+
+        // 上下左右の矢印テキストを生成し、名前を付けておく
+        const arrowUp = this.add.text(0, 0, '▲', arrowStyle).setOrigin(0.5).setName('up');
+        const arrowDown = this.add.text(0, 0, '▼', arrowStyle).setOrigin(0.5).setName('down');
+        const arrowLeft = this.add.text(0, 0, '◀', arrowStyle).setOrigin(0.5).setName('left');
+        const arrowRight = this.add.text(0, 0, '▶', arrowStyle).setOrigin(0.5).setName('right');
         
-        // 5. 全ての部品をコンテナに追加
-        itemContainer.add([itemImage, arrow]);
+        // 矢印コンテナに全て追加
+        arrowContainer.add([arrowUp, arrowDown, arrowLeft, arrowRight]);
+        arrowContainer.setVisible(false); // コンテナごと非表示に
         
-        // 6. コンテナにデータとインタラクションを設定
+        // 4. 全ての部品をメインのコンテナに追加
+        itemContainer.add([itemImage, arrowContainer]);
+        
+        // 5. コンテナにデータとインタラクションを設定
         itemContainer.setDepth(12);
         itemContainer.setInteractive();
         itemContainer.setData({
@@ -359,12 +367,13 @@ export default class BattleScene extends Phaser.Scene {
             originY: y,
             gridPos: null,
             itemImage: itemImage,
-            arrow: arrow
+            arrowContainer: arrowContainer // ★ arrowContainerへの参照
         });
-        this.input.setDraggable(itemContainer);
         
-        // 7. ツールチップとドラッグイベントを設定
-        this.addTooltipEvents(itemContainer, itemId);
+        this.input.setDraggable(itemContainer);
+        this.addTooltipEvents(itemContainer, itemId); // ツールチップは変更なし
+
+      
 
         itemContainer.on('dragstart', () => {
             this.tooltip.hide();
@@ -536,32 +545,36 @@ export default class BattleScene extends Phaser.Scene {
      */
    // BattleScene.js に記述する updateArrowVisibility メソッド
 
+   // BattleScene.js に追加する updateArrowVisibility メソッド
+
     updateArrowVisibility(itemContainer) {
         const itemId = itemContainer.getData('itemId');
         const itemData = ITEM_DATA[itemId];
-        const arrow = itemContainer.getData('arrow');
-        const itemImage = itemContainer.getData('itemImage');
+        const arrowContainer = itemContainer.getData('arrowContainer');
 
-        if (!arrow || !itemImage) return;
+        if (!arrowContainer) return;
         
         if (itemData.synergy) {
-            arrow.setVisible(true);
-            
-            // ★ 矢印の位置はコンテナ内の相対位置で指定
-            arrow.x = 0;
-            arrow.y = 0;
-            
+            arrowContainer.setVisible(true);
             const direction = itemData.synergy.direction;
-            const offset = this.cellSize / 2 + 10; // アイテムの外側に少しだけ出す
+            const offset = this.cellSize / 2 + 10;
+            
+            // 最初に全ての矢印を隠す
+            arrowContainer.each(arrow => arrow.setVisible(false));
 
-            if (direction === 'adjacent') arrow.setText('✜'); // 十字
-            else if (direction === 'down') { arrow.setText('▼'); arrow.y += offset; }
-            else if (direction === 'up') { arrow.setText('▲'); arrow.y -= offset; }
-            else if (direction === 'right') { arrow.setText('▶'); arrow.x += offset; }
-            else if (direction === 'left') { arrow.setText('◀'); arrow.x -= offset; }
+            if (direction === 'adjacent') {
+                arrowContainer.getByName('up').setVisible(true).setY(-offset);
+                arrowContainer.getByName('down').setVisible(true).setY(offset);
+                arrowContainer.getByName('left').setVisible(true).setX(-offset);
+                arrowContainer.getByName('right').setVisible(true).setX(offset);
+            }
+            else if (direction === 'down')  arrowContainer.getByName('down').setVisible(true).setY(offset);
+            else if (direction === 'up')    arrowContainer.getByName('up').setVisible(true).setY(-offset);
+            else if (direction === 'right') arrowContainer.getByName('right').setVisible(true).setX(offset);
+            else if (direction === 'left')  arrowContainer.getByName('left').setVisible(true).setX(-offset);
             
         } else {
-            arrow.setVisible(false);
+            arrowContainer.setVisible(false);
         }
     }
     async endBattle(result) {
