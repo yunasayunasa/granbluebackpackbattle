@@ -51,5 +51,35 @@ export const ITEM_DATA = {
                 { type: 'defense', value: 1 }
             ]
         }
+    },
+     'leather_armor': { // 革鎧
+        storage: 'item_sword', // ★ 新しい画像アセットキー
+        shape: [[1, 1], [1, 1]], // 2x2マス
+        tags: ['armor'],
+        recast: 0,
+        action: null,
+        passive: {
+            effects: [
+                { type: 'defense', value: 1 },
+                { type: 'max_hp', value: 25 } // ★ 最大HPを25増やす
+            ]
+        }
+    },
+    
+    'berserker_axe': { // バーサーカーアックス
+        storage: 'item_sword', // ★ 新しい画像アセットキー
+        shape: [[1], [1], [1]], // 3x1マス
+        tags: ['weapon', 'blade'],
+        recast: 2.5,
+        action: {
+            type: 'attack',
+            value: 15 // 基本攻撃力が高い
+        },
+        passive: {
+            effects: [
+                { type: 'max_hp', value: -20 } // ★ 最大HPを20減らす
+            ]
+        }
     }
+
 };

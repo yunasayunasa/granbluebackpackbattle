@@ -203,7 +203,38 @@ export default class BattleScene extends Phaser.Scene {
             itemInstance.rotation = itemContainer.getData('rotation') || 0;
             playerFinalItems.push(itemInstance);
         }
+  let finalMaxHp = this.initialBattleParams.playerMaxHp;
+        let finalDefense = 0;
 
+        for (const item of playerFinalItems) {
+            if (item.passive && item.passive.effects) {
+                for(const effect of item.passive.effects){
+                    if (effect.type === 'defense') {
+                        finalDefense += effect.value;
+                    }
+                    if (effect.type === 'max_hp') {
+                        finalMaxHp += effect.value;
+                    }
+                }
+            }
+        }
+        
+        // ★ HPが1未満にならないように下限を設ける
+        finalMaxHp = Math.max(1, finalMaxHp);
+
+        // ★ 2. 確定したステータスでplayerStatsオブジェクトを作成
+        this.playerStats = { 
+            attack: 0, // 攻撃力はシナジーで決まるので最初は0
+            defense: finalDefense, 
+            hp: finalMaxHp, // HPは常に最大値でスタート
+            block: 0 
+        };
+
+        // ★ 3. StateManagerを更新して、UIScene上のHPバーに反映させる
+        this.stateManager.setF('player_max_hp', finalMaxHp);
+        this.stateManager.setF('player_hp', finalMaxHp);
+        
+      
         // 2. シナジー効果を計算
         console.log("シナジー計算を開始...");
         for (const sourceItem of playerFinalItems) {
@@ -238,20 +269,17 @@ export default class BattleScene extends Phaser.Scene {
             }
         }
         console.log("シナジー計算完了。");
-        
-        // 3. 最終ステータスを計算
-        this.playerStats = { attack: 0, defense: 0, hp: this.initialBattleParams.playerHp, block: 0 };
+           // ★ 5. 行動アイテムをリストアップ
         this.playerBattleItems = [];
         for (const item of playerFinalItems) {
-            if (item.passive && item.passive.effects) {
-                for(const effect of item.passive.effects) {
-                    if (effect.type === 'defense') this.playerStats.defense += effect.value;
-                }
-            }
             if (item.recast > 0) {
-                this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
+                this.playerBattleItems.push({
+                    data: item,
+                    nextActionTime: item.recast
+                });
             }
         }
+        
         console.log("プレイヤー最終ステータス:", this.playerStats);
         
         // 4. 敵のステータスを初期化
