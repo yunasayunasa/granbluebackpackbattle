@@ -23,7 +23,7 @@ export const ITEM_DATA = {
     },
     'whetstone': { // 砥石
         storage: 'item_potion',
-        shape: [[1]],
+        shape: [[2]],
         tags: ['utility'],
         recast: 0,
         action: null,
