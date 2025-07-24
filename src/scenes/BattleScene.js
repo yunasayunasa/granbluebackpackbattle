@@ -333,6 +333,7 @@ export default class BattleScene extends Phaser.Scene {
         
         // 2. アイテム画像をコンテナの「中」に追加 (座標は0,0でOK)
         const itemImage = this.add.image(0, 0, itemData.storage);
+        itemImage.setDisplaySize(containerWidth, containerHeight);
         itemContainer.add(itemImage);
 
         // 3. 矢印テキストもコンテナの「中」に追加
