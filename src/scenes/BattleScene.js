@@ -60,7 +60,7 @@ export default class BattleScene extends Phaser.Scene {
         this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
         this.prepareContainer = this.add.container(0, 0);
         this.battleContainer = this.add.container(0, 0).setVisible(false);
-
+ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
         // --- 2. 状態の初期化：BGMとHP ---
         this.soundManager.playBgm('ronpa_bgm');
         this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp); 
