@@ -23,9 +23,9 @@ export const ITEM_DATA = {
     },
     'whetstone': { // 砥石
         storage: 'item_potion',
-        shape: [[2]],
+        shape: [[2], [1]],
         tags: ['utility'],
-        recast: 0,
+        recast: 1,
         action: null,
         // ★★★ シナジー効果を追加 ★★★
         synergy: {
