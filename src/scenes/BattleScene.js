@@ -85,15 +85,15 @@ export default class BattleScene extends Phaser.Scene {
             this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2);
         }
 
-        // 3b. 敵グリッド (戦闘中のみ)
+        // 5b. 敵グリッド (常に表示)
         const enemyGridX = gameWidth - 100 - gridWidth;
         const enemyGridY = this.gridY;
-        const enemyGridBg = this.add.rectangle(enemyGridX + gridWidth / 2, enemyGridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-        this.battleContainer.add(enemyGridBg);
-        this.battleContainer.add(enemyGridBg);
+        
+        // ★ battleContainer.add(...) を this.add に変更
+        this.add.rectangle(enemyGridX + gridWidth / 2, enemyGridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
         for (let i = 0; i <= this.backpackGridSize; i++) {
-            this.battleContainer.add(this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + gridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2));
-            this.battleContainer.add(this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2));
+            this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + gridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2);
+            this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2);
         }
         
         const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
@@ -109,27 +109,14 @@ export default class BattleScene extends Phaser.Scene {
                 itemData.storage
             ).setDepth(3);
             itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
-            this.battleContainer.add(itemImage);
+            
+            // ★ battleContainer.add(...) を削除。シーン直下に描画したままにする。
         }
-        
-          // 3c. インベントリ (準備中のみ)
-        const inventoryAreaY = 520;
-        const inventoryAreaHeight = gameHeight - inventoryAreaY;
-        const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
-        const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
-        this.prepareContainer.add([invBg, invText]);
 
-        // 3d. ドラッグ可能なアイテム (準備中のみ)
-        const initialInventory = ['sword', 'shield', 'potion'];
-        const itemStartX = 200;
-        const itemSpacing = 150;
-        initialInventory.forEach((itemId, index) => {
-            const itemImage = this.createItem(itemId, itemStartX + (index * itemSpacing), inventoryAreaY + inventoryAreaHeight / 2 + 20);
-            if (itemImage) {
-                this.inventoryItemImages.push(itemImage);
-            }
-        });
-        
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ 修正箇所はここまで ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+     
         // 3e. 戦闘開始ボタン (準備中のみ)
         this.startBattleButton = this.add.text(gameWidth - 150, gameHeight - 50, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:10, y:5} }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
