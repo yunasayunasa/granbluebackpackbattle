@@ -221,58 +221,79 @@ export default class BattleScene extends Phaser.Scene {
         this.stateManager.setF('player_max_hp', finalMaxHp);
         this.stateManager.setF('player_hp', finalMaxHp);
         
-        // 3. シナジー効果を計算
+       // --- 3. シナジー効果を計算 ---
         console.log("シナジー計算を開始...");
         for (const sourceItem of playerFinalItems) {
             if (!sourceItem.synergy) continue;
             
             const rotation = sourceItem.rotation;
             const direction = sourceItem.synergy.direction;
-            let targetPositions = [];
+            const sourceShape = this.getRotatedShape(sourceItem.id, rotation);
             
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-            // ★★★ ここからが回転を考慮した方向判定ロジック ★★★
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-            if (direction === 'adjacent') {
-                // (占有セル全体から隣接セルを探すロジックはここに統合するのがベスト)
-                targetPositions = [
-                    {r: sourceItem.row - 1, c: sourceItem.col}, {r: sourceItem.row + 1, c: sourceItem.col},
-                    {r: sourceItem.row, c: sourceItem.col - 1}, {r: sourceItem.row, c: sourceItem.col + 1}
-                ];
-            } else { // down, up, left, right の場合
-                let targetDir = {r: 0, c: 0};
-                if (direction === 'down')  targetDir = {r: 1, c: 0};
-                else if (direction === 'up')    targetDir = {r: -1, c: 0};
-                else if (direction === 'left')  targetDir = {r: 0, c: -1};
-                else if (direction === 'right') targetDir = {r: 0, c: 1};
-
-                // 回転に応じて方向ベクトルを回転させる
-                if (rotation === 90)  targetDir = {r: -targetDir.c, c: targetDir.r};
-                else if (rotation === 180) targetDir = {r: -targetDir.r, c: -targetDir.c};
-                else if (rotation === 270) targetDir = {r: targetDir.c, c: -targetDir.r};
-                
-                targetPositions.push({ r: sourceItem.row + targetDir.r, c: sourceItem.col + targetDir.c });
+            // sourceItemが占めているセルのリスト
+            const sourceCells = [];
+            for (let r = 0; r < sourceShape.length; r++) {
+                for (let c = 0; c < sourceShape[r].length; c++) {
+                    if (sourceShape[r][c] === 1) sourceCells.push({ r: sourceItem.row + r, c: sourceItem.col + c });
+                }
             }
 
-            // ターゲット位置にあるアイテムに効果を適用
-            for (const pos of targetPositions) {
-                const targetItem = playerFinalItems.find(item => item.row === pos.r && item.col === pos.c);
-                if (targetItem && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
-                    if (targetItem.id === sourceItem.id) continue;
-                    const effect = sourceItem.synergy.effect;
-                    if (effect.type === 'add_attack' && targetItem.action) {
-                        targetItem.action.value += effect.value;
-                        console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
-                    }
-                    if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                        targetItem.recast += effect.value;
-                        console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
+            const checkedTargets = new Set(); // 重複バフ防止
+
+            // ★★★ sourceItemの各セルからターゲットを探す ★★★
+            for (const cell of sourceCells) {
+                let targetPositions = [];
+                
+                // どの方向をチェックするか決める
+                if (direction === 'adjacent') {
+                    targetPositions = [
+                        {r: cell.r - 1, c: cell.c}, {r: cell.r + 1, c: cell.c},
+                        {r: cell.r, c: cell.c - 1}, {r: cell.r, c: cell.c + 1}
+                    ];
+                } else {
+                    let targetDir = {r: 0, c: 0};
+                    if (direction === 'down')  targetDir = {r: 1, c: 0};
+                    else if (direction === 'up')    targetDir = {r: -1, c: 0};
+                    else if (direction === 'left')  targetDir = {r: 0, c: -1};
+                    else if (direction === 'right') targetDir = {r: 0, c: 1};
+                    
+                    if (rotation === 90)  targetDir = {r: -targetDir.c, c: targetDir.r};
+                    else if (rotation === 180) targetDir = {r: -targetDir.r, c: -targetDir.c};
+                    else if (rotation === 270) targetDir = {r: targetDir.c, c: -targetDir.r};
+                    
+                    targetPositions.push({ r: cell.r + targetDir.r, c: cell.c + targetDir.c });
+                }
+                
+                // ターゲット位置にあるアイテムに効果を適用
+                for (const pos of targetPositions) {
+                    // ★ ターゲットセルの上に「左上」があるアイテムを探す
+                    const targetItem = playerFinalItems.find(item => {
+                        const targetShape = this.getRotatedShape(item.id, item.rotation);
+                        for (let r = 0; r < targetShape.length; r++) {
+                            for (let c = 0; c < targetShape[r].length; c++) {
+                                if (targetShape[r][c] === 1 && (item.row + r) === pos.r && (item.col + c) === pos.c) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    });
+
+                    if (targetItem && !checkedTargets.has(targetItem.id) && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                        if (targetItem.id === sourceItem.id) continue;
+                        const effect = sourceItem.synergy.effect;
+                        if (effect.type === 'add_attack' && targetItem.action) {
+                            targetItem.action.value += effect.value;
+                            console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
+                            checkedTargets.add(targetItem.id);
+                        }
+                        // (他の効果もここに追加)
                     }
                 }
             }
         }
         console.log("シナジー計算完了。");
-        
+        // (以降の最終ステータス計算は変更なし)
         // 4. 最終的なステータスと行動アイテムリストを作成
         this.playerStats = { attack: 0, defense: finalDefense, hp: finalMaxHp, block: 0 };
         this.playerBattleItems = [];
