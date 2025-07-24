@@ -446,8 +446,9 @@ export default class BattleScene extends Phaser.Scene {
             itemImage.setData('moved', false);
         });
     }
-    removeItemFromBackpack(itemImage) {
-        const gridPos = itemImage.getData('gridPos');
+    removeItemFromBackpack(itemContainer) {
+        const gridPos = itemContainer.getData('gridPos');
+        
         if (!gridPos) return;
         const itemId = itemImage.getData('itemId');
         const itemData = ITEM_DATA[itemId];
@@ -466,8 +467,9 @@ export default class BattleScene extends Phaser.Scene {
          this.updateArrowVisibility(itemContainer); // ★ この行を追加
     }
 
-    canPlaceItem(itemImage, startCol, startRow) {
-        const itemData = ITEM_DATA[itemImage.getData('itemId')];
+     canPlaceItem(itemContainer, startCol, startRow) {
+        const itemId = itemContainer.getData('itemId');
+        const itemData = ITEM_DATA[itemId];
         for (let r = 0; r < itemData.shape.length; r++) {
             for (let c = 0; c < itemData.shape[r].length; c++) {
                 if (itemData.shape[r][c] === 1) {
@@ -482,13 +484,13 @@ export default class BattleScene extends Phaser.Scene {
         return true;
     }
 
-    placeItemInBackpack(itemImage, startCol, startRow) {
-        const itemId = itemImage.getData('itemId');
+    placeItemInBackpack(itemContainer, startCol, startRow) {
+        const itemId = itemContainer.getData('itemId');
         const itemData = ITEM_DATA[itemId];
         
-        itemImage.x = this.gridX + startCol * this.cellSize + (itemData.shape[0].length * this.cellSize / 2);
-        itemImage.y = this.gridY + startRow * this.cellSize + (itemData.shape.length * this.cellSize / 2);
-        itemImage.setData('gridPos', { row: startRow, col: startCol });
+        itemContainer.x = this.gridX + startCol * this.cellSize + (itemData.shape[0].length * this.cellSize / 2);
+        itemContainer.y = this.gridY + startRow * this.cellSize + (itemData.shape.length * this.cellSize / 2);
+        itemContainer.setData('gridPos', { row: startRow, col: startCol });
         for (let r = 0; r < itemData.shape.length; r++) {
             for (let c = 0; c < itemData.shape[r].length; c++) {
                 if (itemData.shape[r][c] === 1) {

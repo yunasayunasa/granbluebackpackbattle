@@ -23,7 +23,10 @@ export const ITEM_DATA = {
     },
     'potion': { // 砥石
         storage: 'item_potion',
-        shape: [[2], [2]],
+         shape: [
+        [1, 1],  // これが1行目 (横に2マス)
+        [1, 1]   // これが2行目 (横に2マス)
+    ],   
         tags: ['utility'],
         recast: 1,
         action: null,
