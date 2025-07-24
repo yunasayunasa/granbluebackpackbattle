@@ -446,27 +446,38 @@ export default class BattleScene extends Phaser.Scene {
             itemImage.setData('moved', false);
         });
     }
+   // BattleScene.js の removeItemFromBackpack メソッド (最終修正版)
+
     removeItemFromBackpack(itemContainer) {
         const gridPos = itemContainer.getData('gridPos');
-        
         if (!gridPos) return;
-        const itemId = itemImage.getData('itemId');
+
+        const itemId = itemContainer.getData('itemId');
         const itemData = ITEM_DATA[itemId];
-        for (let r = 0; r < itemData.shape.length; r++) {
-            for (let c = 0; c < itemData.shape[r].length; c++) {
-                if (itemData.shape[r][c] === 1) {
+        const shape = itemData.shape;
+
+        // 1. 論理データをクリア
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] === 1) {
                     this.backpack[gridPos.row + r][gridPos.col + c] = 0;
                 }
             }
         }
-        itemImage.setData('gridPos', null);
-        
-        const index = this.placedItemImages.indexOf(itemImage);
-        if (index > -1) this.placedItemImages.splice(index, 1);
-        this.inventoryItemImages.push(itemImage);
-         this.updateArrowVisibility(itemContainer); // ★ この行を追加
-    }
+        itemContainer.setData('gridPos', null);
 
+        // ★★★ ここからが修正箇所 ★★★
+        // 2. 所属チームを移動させる
+        //    (itemImage ではなく itemContainer を探す)
+        const index = this.placedItemImages.indexOf(itemContainer);
+        if (index > -1) {
+            this.placedItemImages.splice(index, 1);
+        }
+        this.inventoryItemImages.push(itemContainer);
+
+        // 3. シナジー矢印の表示を更新
+        this.updateArrowVisibility(itemContainer);
+    }
      canPlaceItem(itemContainer, startCol, startRow) {
         const itemId = itemContainer.getData('itemId');
         const itemData = ITEM_DATA[itemId];
@@ -484,26 +495,40 @@ export default class BattleScene extends Phaser.Scene {
         return true;
     }
 
+ // BattleScene.js の placeItemInBackpack メソッド (最終修正版)
+
     placeItemInBackpack(itemContainer, startCol, startRow) {
         const itemId = itemContainer.getData('itemId');
         const itemData = ITEM_DATA[itemId];
-        
-        itemContainer.x = this.gridX + startCol * this.cellSize + (itemData.shape[0].length * this.cellSize / 2);
-        itemContainer.y = this.gridY + startRow * this.cellSize + (itemData.shape.length * this.cellSize / 2);
+        const shape = itemData.shape;
+
+        // 1. 視覚的な位置をグリッドにスナップさせる
+        const itemWidthInCells = shape[0].length;
+        const itemHeightInCells = shape.length;
+        itemContainer.x = this.gridX + (startCol * this.cellSize) + (itemWidthInCells * this.cellSize / 2);
+        itemContainer.y = this.gridY + (startRow * this.cellSize) + (itemHeightInCells * this.cellSize / 2);
+
+        // 2. 論理的なデータを更新
         itemContainer.setData('gridPos', { row: startRow, col: startCol });
-        for (let r = 0; r < itemData.shape.length; r++) {
-            for (let c = 0; c < itemData.shape[r].length; c++) {
-                if (itemData.shape[r][c] === 1) {
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] === 1) {
                     this.backpack[startRow + r][startCol + c] = itemId;
                 }
             }
         }
 
-        const index = this.inventoryItemImages.indexOf(itemImage);
-        if (index > -1) this.inventoryItemImages.splice(index, 1);
-        this.placedItemImages.push(itemImage);
-        this.updateArrowVisibility(itemImage);
-         this.updateArrowVisibility(itemContainer); // ★ この行を追加
+        // ★★★ ここからが修正箇所 ★★★
+        // 3. 所属チームを移動させる
+        //    (itemImage ではなく itemContainer を探す)
+        const index = this.inventoryItemImages.indexOf(itemContainer);
+        if (index > -1) {
+            this.inventoryItemImages.splice(index, 1);
+        }
+        this.placedItemImages.push(itemContainer);
+        
+        // 4. シナジー矢印の表示を更新
+        this.updateArrowVisibility(itemContainer);
     }
     // BattleScene.js に追加する endBattle メソッド
  /**
