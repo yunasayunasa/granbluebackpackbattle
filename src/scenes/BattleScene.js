@@ -458,7 +458,37 @@ export default class BattleScene extends Phaser.Scene {
         return itemContainer;
     }
 
-   
+     addTooltipEvents(targetObject, itemId) {
+        let isDown = false;
+        let moved = false;
+        
+        targetObject.on('pointerdown', () => {
+            isDown = true;
+            moved = false;
+        });
+
+        targetObject.on('pointermove', () => {
+            if (isDown) moved = true;
+        });
+        
+        targetObject.on('pointerup', (pointer, localX, localY, event) => {
+            if (isDown && !moved) { // タップ成功
+                const itemData = ITEM_DATA[itemId];
+                if (!itemData) return;
+                let tooltipText = `【${itemId}】\n\n`;
+                if(itemData.recast > 0)  tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+                if (itemData.passive && itemData.passive.effects) {
+                    itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
+                }
+                 this.tooltip.show(targetObject, tooltipText);
+                event.stopPropagation();
+            }
+            isDown = false;
+            moved = false;
+        });
+    }
+
     rotateItem(itemContainer) {
         const originalRotation = itemContainer.getData('rotation');
         const newRotation = (originalRotation + 90) % 360;
