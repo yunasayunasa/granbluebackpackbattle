@@ -154,35 +154,92 @@ export default class BattleScene extends Phaser.Scene {
       /**
      * 戦闘開始前の最終準備（ステータス計算など）
      */
+   // BattleScene.js の prepareForBattle メソッド (シナジー計算機能付き)
+
     prepareForBattle() {
         console.log("--- 戦闘準備開始 ---");
         
-        // 1. プレイヤーのステータスと行動アイテムを初期化
-        this.playerStats = { attack: 0, defense: 0, hp: this.stateManager.f.player_hp };
+        // --- 1. 全ての配置済みアイテムの「戦闘用コピー」を作成 ---
+        // これからシナジーで性能を書き換えるため、元のITEM_DATAを汚さないようにする
+        const playerFinalItems = [];
+        for (const itemImage of this.placedItemImages) {
+            const gridPos = itemImage.getData('gridPos');
+            const itemId = itemImage.getData('itemId');
+            
+            // JSONを使って元のデータをディープコピー（深い複製）する
+            const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemId]));
+            
+            // 戦闘に必要な情報を追加
+            itemInstance.id = itemId;
+            itemInstance.row = gridPos.row;
+            itemInstance.col = gridPos.col;
+            
+            playerFinalItems.push(itemInstance);
+        }
+
+        // --- 2. シナジー効果を計算し、「戦闘用コピー」の性能を書き換える ---
+        console.log("シナジー計算を開始...");
+        // まず、シナジーを与える側のアイテムをループ
+        for (const sourceItem of playerFinalItems) {
+            if (!sourceItem.synergy) continue; // シナジーを持たないアイテムはスキップ
+
+            // 「隣接(adjacent)」シナジーの処理
+            if (sourceItem.synergy.direction === 'adjacent') {
+                const neighbors = [
+                    {r: sourceItem.row - 1, c: sourceItem.col}, // 上
+                    {r: sourceItem.row + 1, c: sourceItem.col}, // 下
+                    {r: sourceItem.row, c: sourceItem.col - 1}, // 左
+                    {r: sourceItem.row, c: sourceItem.col + 1}  // 右
+                ];
+
+                for (const pos of neighbors) {
+                    // 隣接セルにいるアイテムを、戦闘用コピーのリストから探す
+                    const targetItem = playerFinalItems.find(item => item.row === pos.r && item.col === pos.c);
+                    
+                    // 条件に合うアイテムが見つかったら、効果を適用
+                    if (targetItem && targetItem.tags && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                        
+                        if (sourceItem.synergy.effect.type === 'add_attack' && targetItem.action) {
+                            targetItem.action.value += sourceItem.synergy.effect.value;
+                            console.log(`★ シナジー発動: [${sourceItem.id}] -> [${targetItem.id}] の攻撃力が ${sourceItem.synergy.effect.value} アップ！`);
+                        }
+                        // (ここに add_defense や add_recast などの効果も追加していく)
+                    }
+                }
+            }
+            // (ここに 'down' や 'right' などの他の方向のシナジー処理も追加していく)
+        }
+        console.log("シナジー計算完了。");
+        
+        // --- 3. 性能が確定した「戦闘用コピー」を元に、最終ステータスを計算 ---
+        this.playerStats = { attack: 0, defense: 0, hp: this.stateManager.f.player_hp, block: 0 };
         this.playerBattleItems = [];
 
-        for (const itemImage of this.placedItemImages) {
-            const itemId = itemImage.getData('itemId');
-            const itemData = ITEM_DATA[itemId];
-
-            // パッシブ効果を計算 (例: 盾の防御力)
-            if (itemData.passive && itemData.passive.type === 'defense') {
-                this.playerStats.defense += itemData.passive.value;
+        for (const item of playerFinalItems) {
+            // パッシブ効果を計算
+            if (item.passive && item.passive.effects) {
+                for(const effect of item.passive.effects){
+                    if (effect.type === 'defense') {
+                        this.playerStats.defense += effect.value;
+                    }
+                    // (ここに max_hp などの効果も追加していく)
+                }
             }
             
             // 行動するアイテムをリストアップ
-            if (itemData.recast > 0) {
+            if (item.recast > 0) {
                 this.playerBattleItems.push({
-                    data: itemData,
-                    nextActionTime: itemData.recast // 最初の行動時間
+                    data: item, // ★ シナジーで強化された後のデータを格納
+                    nextActionTime: item.recast
                 });
             }
         }
         console.log("プレイヤー最終ステータス:", this.playerStats);
         console.log("プレイヤー行動アイテム:", this.playerBattleItems);
 
-        // 2. 敵のステータスと行動アイテムを初期化 (今は仮)
-        this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp };
+
+        // --- 4. 敵のステータスと行動アイテムを初期化 (今は仮のまま) ---
+        this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
         this.enemyBattleItems = [{
             data: ITEM_DATA['sword'],
             nextActionTime: ITEM_DATA['sword'].recast

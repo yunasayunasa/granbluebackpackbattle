@@ -1,53 +1,38 @@
-// src/core/ItemData.js (戦闘ロジック用の拡張)
+// src/core/ItemData.js
 
 export const ITEM_DATA = {
     'sword': {
         storage: 'item_sword',
         shape: [[1]],
-        // ★★★ 以下を追加 ★★★
-        recast: 2.0, // 2秒に1回行動する
-        action: {
-            type: 'attack', // 行動の種類
-            value: 5        // 基本攻撃力
-        }
+        tags: ['weapon', 'blade'], // ★ 'blade'タグを追加
+        recast: 2.0,
+        action: { type: 'attack', value: 5 }
     },
     'shield': {
         storage: 'item_shield',
-        shape: [[1, 1]],
-        // ★★★ 以下を追加 ★★★
-        recast: 0, // 0なら行動しない（パッシブアイテム）
-        action: null,
-        passive: {
-            type: 'defense',
-            value: 3
-        }
-    },
-    'potion': {
-        storage: 'item_potion',
-        shape: [[1]],
-        recast: 10.0, // 10秒に1回「使える」
-        action: {
-            type: 'heal',
-            value: 15,
-            // いつ発動するかのトリガー（後で実装）
-            // trigger: { type: 'hp_less_than_percent', value: 50 } 
-        }
-    },
-    'magic_wand': {
-        storage: 'item_wand',
         shape: [[1], [1]],
+        tags: ['weapon', 'magic'], // ★ 'magic'タグを追加
         recast: 3.0,
-        action: {
-            type: 'attack',
-            value: 8
+        action: { type: 'attack', value: 8 },
+        // ★★★ シナジー効果を追加 ★★★
+        synergy: {
+            direction: 'down',      // 矢印の方向（下向き）
+            targetTag: 'magic',     // 「magic」タグを持つアイテムに効果
+            effect: { type: 'add_recast', value: -0.5 } // リキャストを0.5秒短縮
         }
     },
     'whetstone': { // 砥石
-        storage: 'item_whetstone',
+        storage: 'item_potion',
         shape: [[1]],
+        tags: ['utility'],
         recast: 0,
         action: null,
-        // シナジー効果（後で実装）
-        // synergy: { ... }
-    }
+        // ★★★ シナジー効果を追加 ★★★
+        synergy: {
+            direction: 'adjacent',  // 上下左右に隣接
+            targetTag: 'blade',     // 「blade」タグを持つアイテムに効果
+            effect: { type: 'add_attack', value: 2 } // 攻撃力を+2
+        }
+    },
+    // ... 他のアイテム（shield, potionなど） ...
 };
