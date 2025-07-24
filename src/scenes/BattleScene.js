@@ -126,8 +126,7 @@ export default class BattleScene extends Phaser.Scene {
 
           // 3d. ドラッグ可能なアイテム (準備中のみ)
         this.inventoryItemImages = [];
-        const initialInventory = ['sword', 'shield', 'potion', 'spiky_shield']; // ★ 4つ目のアイテムを追加
-        
+          const initialInventory = ['sword', 'shield', 'potion', 'leather_armor', 'berserker_axe'];
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         // ★★★ ここからが動的レイアウトのロジック ★★★
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
