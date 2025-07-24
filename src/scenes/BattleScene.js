@@ -452,12 +452,14 @@ export default class BattleScene extends Phaser.Scene {
 
     // BattleScene.js の canPlaceItem メソッド (回転対応版)
 
+   // BattleScene.js の既存の canPlaceItem を、これに置き換えてください
+
     canPlaceItem(itemContainer, startCol, startRow) {
         const itemData = ITEM_DATA[itemContainer.getData('itemId')];
-        const rotation = itemContainer.getData('rotation');
+        const rotation = itemContainer.getData('rotation') || 0;
         let shape = itemData.shape;
 
-        // ★ 回転が90度か270度の場合、形状データを擬似的に回転させる
+        // 回転が90度か270度の場合、形状データを擬似的に回転させる
         if (rotation === 90 || rotation === 270) {
             const newShape = [];
             for (let x = 0; x < shape[0].length; x++) {
@@ -473,7 +475,13 @@ export default class BattleScene extends Phaser.Scene {
         // (以降の配置チェックロジックは変更なし)
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) { /* ... */ }
+                if (shape[r][c] === 1) {
+                    const checkRow = startRow + r;
+                    const checkCol = startCol + c;
+                    if (checkRow < 0 || checkRow >= this.backpackGridSize || checkCol < 0 || checkCol >= this.backpackGridSize || this.backpack[checkRow][checkCol] !== 0) {
+                        return false;
+                    }
+                }
             }
         }
         return true;
