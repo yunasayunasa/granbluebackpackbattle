@@ -335,7 +335,12 @@ export default class BattleScene extends Phaser.Scene {
                 originY: y,
                 gridPos: null
             });
-
+   // ★ アイテムにシナジー用の矢印グラフィックを追加しておく
+        const arrow = this.add.text(0, 0, '→', { fontSize: '32px', color: '#ff0' });
+        arrow.setVisible(false); // 最初は非表示
+        
+        // itemImageにarrowをデータとして持たせる
+        itemImage.setData('arrow', arrow);
         itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
         
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
@@ -414,6 +419,15 @@ export default class BattleScene extends Phaser.Scene {
                     itemData.passive.effects.forEach(e => {
                         tooltipText += `パッシブ: ${e.type} +${e.value}\n`;
                     });
+                if (itemData.synergy) {
+                    tooltipText += `\nシナジー:\n`;
+                    const dir = itemData.synergy.direction; // 'adjacent', 'down', etc.
+                    const tag = itemData.synergy.targetTag;
+                    const effect = itemData.synergy.effect;
+                    
+                    tooltipText += `  - ${dir}の[${tag}]アイテムに\n`;
+                    tooltipText += `    効果: ${effect.type} +${effect.value}\n`;
+                }
                 }
                 
                 this.tooltip.show(itemImage, tooltipText);
@@ -479,9 +493,41 @@ export default class BattleScene extends Phaser.Scene {
         const index = this.inventoryItemImages.indexOf(itemImage);
         if (index > -1) this.inventoryItemImages.splice(index, 1);
         this.placedItemImages.push(itemImage);
+        this.updateArrowVisibility(itemImage);
     }
     // BattleScene.js に追加する endBattle メソッド
-
+ /**
+     * アイテムのシナジー矢印の表示・非表示と向きを更新する
+     */
+    updateArrowVisibility(itemImage) {
+        const itemId = itemImage.getData('itemId');
+        const itemData = ITEM_DATA[itemId];
+        const arrow = itemImage.getData('arrow');
+        
+        if (itemData.synergy && arrow) {
+            arrow.setVisible(true);
+            
+            // アイテム画像に追従させる
+            arrow.x = itemImage.x;
+            arrow.y = itemImage.y;
+            
+            // シナジーの方向に応じて矢印の向きと位置を調整
+            // (これは暫定的なものです。回転機能に合わせて後で改良します)
+            const direction = itemData.synergy.direction;
+            if (direction === 'adjacent') {
+                arrow.setText('＋'); // 十字で表現
+            } else if (direction === 'down') {
+                arrow.setText('↓');
+                arrow.y += this.cellSize / 2;
+            } else if (direction === 'up') {
+                arrow.setText('↑');
+                arrow.y -= this.cellSize / 2;
+            } // ... right, left も同様
+            
+        } else if (arrow) {
+            arrow.setVisible(false);
+        }
+    }
     async endBattle(result) {
         // 二重呼び出しを防止
         if (this.battleEnded) return;
