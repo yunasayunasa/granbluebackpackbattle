@@ -17,7 +17,7 @@ export const ITEM_DATA = {
         // ★★★ シナジー効果を追加 ★★★
         synergy: {
             direction: 'down',      // 矢印の方向（下向き）
-            targetTag: 'magic',     // 「magic」タグを持つアイテムに効果
+            targetTag: 'blade',     // 「magic」タグを持つアイテムに効果
             effect: { type: 'add_recast', value: -0.5 } // リキャストを0.5秒短縮
         }
     },
