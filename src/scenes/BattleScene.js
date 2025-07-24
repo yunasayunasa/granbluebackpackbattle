@@ -181,6 +181,48 @@ export default class BattleScene extends Phaser.Scene {
             if (!sourceItem.synergy) continue;
 
             const rotation = sourceItem.rotation;
+             const sourceCells = [];
+            for (let r = 0; r < sourceShape.length; r++) {
+                for (let c = 0; c < sourceShape[r].length; c++) {
+                    if (sourceShape[r][c] === 1) {
+                        sourceCells.push({ r: sourceItem.row + r, c: sourceItem.col + c });
+                    }
+                }
+            }
+
+            // 「隣接(adjacent)」シナジーの処理
+            if (sourceItem.synergy.direction === 'adjacent') {
+                const checkedTargets = new Set(); // 同じアイテムを複数回強化しないためのセット
+
+                // 自身が占める各セルから、隣接セルを調べる
+                for (const cell of sourceCells) {
+                    const neighbors = [
+                        {r: cell.r - 1, c: cell.c}, // 上
+                        {r: cell.r + 1, c: cell.c}, // 下
+                        {r: cell.r, c: cell.c - 1}, // 左
+                        {r: cell.r, c: cell.c + 1}  // 右
+                    ];
+
+                    for (const pos of neighbors) {
+                        // 隣接セルに「左上」があるアイテムを探す
+                        const targetItem = playerFinalItems.find(item => item.row === pos.r && item.col === pos.c);
+                        
+                        if (targetItem && !checkedTargets.has(targetItem.id) && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                            // ★ 自分自身にシナジーをかけないようにチェック
+                            if (targetItem.id === sourceItem.id) continue;
+
+                            const effect = sourceItem.synergy.effect;
+                            if (effect.type === 'add_attack' && targetItem.action) {
+                                targetItem.action.value += effect.value;
+                                console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
+                                checkedTargets.add(targetItem.id); // 処理済みとして記録
+                            }
+                        }
+                    }
+                }
+            }
+            // (他の方向のシナジー処理も同様に、占有セル全体を基準に考える)
+        
             let targetPositions = [];
 
             if (sourceItem.synergy.direction === 'adjacent') {
