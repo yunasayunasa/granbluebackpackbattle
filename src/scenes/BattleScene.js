@@ -444,7 +444,7 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
             }
             itemContainer.setData('isLongPress', false);
         });
-        
+         this.addTooltipEvents(itemContainer, itemId);
         return itemContainer;
     }
 
