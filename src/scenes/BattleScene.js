@@ -364,14 +364,14 @@ export default class BattleScene extends Phaser.Scene {
         let isDragging = false; // ドラッグ中かどうかのフラグ
 
         // ▼ ボタンが押された時の処理
-        itemContainer.on('pointerdown', (pointer) => {
-            // PC: 右クリックなら即座に回転
+       itemContainer.on('pointerdown', (pointer) => {
             if (pointer.rightButtonDown()) {
+                if (pressTimer) pressTimer.remove();
                 this.rotateItem(itemContainer);
                 return;
             }
-            // スマホ/PC: 長押しタイマースタート
             itemContainer.setData('isLongPress', false);
+            isDragging = false; // ★ downの時点ではドラッグしていない
             pressTimer = this.time.delayedCall(500, () => {
                 this.rotateItem(itemContainer);
                 itemContainer.setData('isLongPress', true);
@@ -379,9 +379,12 @@ export default class BattleScene extends Phaser.Scene {
         });
 
         // ▼ ドラッグが始まった時の処理
-        itemContainer.on('dragstart', () => {
-            isDragging = true;
-            if (pressTimer) pressTimer.remove(); // 長押しタイマーをキャンセル
+          itemContainer.on('dragstart', () => {
+            isDragging = true; // ★ ここで初めてドラッグ開始とみなす
+            if (pressTimer) {
+                pressTimer.remove();
+                pressTimer = null;
+            }
             this.tooltip.hide();
             itemContainer.setDepth(99);
             this.removeItemFromBackpack(itemContainer);
@@ -431,7 +434,7 @@ export default class BattleScene extends Phaser.Scene {
         });
 
         // ▼ ボタンが離された時の処理
-        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+          itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             if (pressTimer) pressTimer.remove();
 
             // ★ タップ判定: ドラッグしておらず、長押しも成立していない場合

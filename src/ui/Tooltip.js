@@ -4,13 +4,16 @@ export default class Tooltip extends Phaser.GameObjects.Container {
     constructor(scene) {
         super(scene, 0, 0);
         
-        this.background = scene.add.rectangle(0, 0, 250, 150, 0x000000, 0.9).setOrigin(0);
-        this.itemText = scene.add.text(10, 10, '', { fontSize: '18px', fill: '#fff', wordWrap: { width: 230 } });
+       // ★★★ 背景のサイズを大きくする ★★★
+        this.background = scene.add.rectangle(0, 0, 300, 200, 0x000000, 0.9).setOrigin(0);
+        
+        // ★★★ テキストのwordWrapの幅を広げる ★★★
+        this.itemText = scene.add.text(10, 10, '', { fontSize: '18px', fill: '#fff', wordWrap: { width: 280 } }); // 左右マージン20px
         
         this.add([this.background, this.itemText]);
         this.setDepth(999);
         this.setVisible(false);
-        this.currentTarget = null; // ★ どのアイテムを表示中か記憶する
+        this.currentTarget = null;
         
         scene.add.existing(this);
     }
