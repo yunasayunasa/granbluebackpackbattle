@@ -628,15 +628,16 @@ const sourceShape = sourceItem.shape;
     }
    // BattleScene.js の removeItemFromBackpack メソッド (最終修正版)
 
+   // BattleScene.js
     removeItemFromBackpack(itemContainer) {
         const gridPos = itemContainer.getData('gridPos');
         if (!gridPos) return;
 
         const itemId = itemContainer.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
-        const shape = itemData.shape;
+        const rotation = itemContainer.getData('rotation') || 0;
+        let shape = this.getRotatedShape(itemId, rotation);
 
-        // 1. 論理データをクリア
+        // 論理データをクリア
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] === 1) {
@@ -646,105 +647,48 @@ const sourceShape = sourceItem.shape;
         }
         itemContainer.setData('gridPos', null);
 
-        // ★★★ ここからが修正箇所 ★★★
-        // 2. 所属チームを移動させる
-        //    (itemImage ではなく itemContainer を探す)
+        // 所属チームを移動
         const index = this.placedItemImages.indexOf(itemContainer);
-        if (index > -1) {
-            this.placedItemImages.splice(index, 1);
-        }
+        if (index > -1) this.placedItemImages.splice(index, 1);
         this.inventoryItemImages.push(itemContainer);
 
-        // 3. シナジー矢印の表示を更新
-        this.updateArrowVisibility(itemContainer);
+        // 見た目を更新
+        this.updateItemVisualsAndData(itemContainer);
     }
       // BattleScene.js に、このメソッドをまるごと追加してください
 
+   // BattleScene.js
     rotateItem(itemContainer) {
-        const itemId = itemContainer.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
-        const shape = itemData.shape;
+        const originalRotation = itemContainer.getData('rotation');
+        const newRotation = (originalRotation + 90) % 360;
+        itemContainer.setData('rotation', newRotation);
 
-        // 1. 新しい回転角度を計算・保存
-        let currentRotation = itemContainer.getData('rotation');
-        currentRotation = (currentRotation + 90) % 360;
-        itemContainer.setData('rotation', currentRotation);
-
-        // 2. コンテナ自体を回転させる
-        itemContainer.setAngle(currentRotation);
-
-        // 3. 形状の中心からのズレを補正する
-        const shapeWidth = shape[0].length;
-        const shapeHeight = shape.length;
-        const offsetX = (shapeHeight - shapeWidth) * this.cellSize / 2;
-        const offsetY = (shapeWidth - shapeHeight) * this.cellSize / 2;
-        const itemImage = itemContainer.getData('itemImage');
-        const arrowContainer = itemContainer.getData('arrowContainer');
-        
-        // 回転角度に応じて、補正値を適用
-        if (currentRotation === 90) {
-            itemImage.setPosition(offsetX, offsetY);
-            arrowContainer.setPosition(offsetX, offsetY);
-        } else if (currentRotation === 270) {
-            itemImage.setPosition(-offsetX, -offsetY);
-            arrowContainer.setPosition(-offsetX, -offsetY);
-        } else {
-            itemImage.setPosition(0, 0);
-            arrowContainer.setPosition(0, 0);
-        }
-
-        // グリッドに配置済みの場合は、再配置チェック
         const gridPos = itemContainer.getData('gridPos');
         if (gridPos) {
             if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                // 置けなくなったらインベントリに戻す
+                console.log("回転不可：インベントリに戻します。");
+                itemContainer.setData('rotation', originalRotation); // 回転を元に戻す
                 this.removeItemFromBackpack(itemContainer);
                 itemContainer.x = itemContainer.getData('originX');
                 itemContainer.y = itemContainer.getData('originY');
-                itemContainer.setAngle(0);
-                itemContainer.setData('rotation', 0);
-                // ★ 矢印表示も更新する
-                this.updateArrowVisibility(itemContainer); 
             }
         }
-        console.log(`アイテム[${itemId}]を回転: ${currentRotation}度`);
+        
+        // 見た目と論理データを更新
+        this.updateItemVisualsAndData(itemContainer);
     }
-
  // BattleScene.js の placeItemInBackpack メソッド (最終修正版)
 
    // BattleScene.js の placeItemInBackpack メソッド (回転対応版)
 
+    // BattleScene.js
     placeItemInBackpack(itemContainer, startCol, startRow) {
         const itemId = itemContainer.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
         const rotation = itemContainer.getData('rotation') || 0;
-        let shape = itemData.shape;
+        let shape = this.getRotatedShape(itemId, rotation);
 
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ canPlaceItem と同じ回転ロジックを追加 ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        if (rotation === 90 || rotation === 270) {
-            const newShape = [];
-            for (let x = 0; x < shape[0].length; x++) {
-                const newRow = [];
-                for (let y = shape.length - 1; y >= 0; y--) {
-                    newRow.push(shape[y][x]);
-                }
-                newShape.push(newRow);
-            }
-            shape = newShape;
-        }
-
-        // 1. 視覚的な位置をグリッドにスナップさせる
-        const itemWidthInCells = shape[0].length;
-        const itemHeightInCells = shape.length;
-        itemContainer.x = this.gridX + (startCol * this.cellSize) + (itemWidthInCells * this.cellSize / 2);
-        itemContainer.y = this.gridY + (startRow * this.cellSize) + (itemHeightInCells * this.cellSize / 2);
-
-        // 2. 論理的なデータを更新
+        // 論理データを更新
         itemContainer.setData('gridPos', { row: startRow, col: startCol });
-        
-        // ★ 回転後の形状でバックパック配列を埋める
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] === 1) {
@@ -753,15 +697,13 @@ const sourceShape = sourceItem.shape;
             }
         }
 
-        // 3. 所属チームを移動させる
+        // 所属チームを移動
         const index = this.inventoryItemImages.indexOf(itemContainer);
-        if (index > -1) {
-            this.inventoryItemImages.splice(index, 1);
-        }
+        if (index > -1) this.inventoryItemImages.splice(index, 1);
         this.placedItemImages.push(itemContainer);
         
-        // 4. シナジー矢印の表示を更新
-        this.updateArrowVisibility(itemContainer);
+        // 見た目を更新
+        this.updateItemVisualsAndData(itemContainer);
     }
     // BattleScene.js に追加する endBattle メソッド
  /**
@@ -851,7 +793,79 @@ const sourceShape = sourceItem.shape;
             });
         }
     }
-    
+    // BattleScene.js に、以下の3つのメソッドを追加（canPlaceItemは上書き）
+
+    /**
+     * 回転後の形状データを返す
+     */
+    getRotatedShape(itemId, rotation) {
+        let shape = ITEM_DATA[itemId].shape;
+        if (rotation === 90 || rotation === 270) {
+            const newShape = [];
+            for (let x = 0; x < shape[0].length; x++) {
+                const newRow = [];
+                for (let y = shape.length - 1; y >= 0; y--) {
+                    newRow.push(shape[y][x]);
+                }
+                newShape.push(newRow);
+            }
+            return newShape;
+        }
+        return shape;
+    }
+
+    /**
+     * 指定位置に配置可能かチェックする
+     */
+    canPlaceItem(itemContainer, startCol, startRow) {
+        const itemId = itemContainer.getData('itemId');
+        const rotation = itemContainer.getData('rotation') || 0;
+        const shape = this.getRotatedShape(itemId, rotation);
+
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] === 1) {
+                    const checkRow = startRow + r;
+                    const checkCol = startCol + c;
+                    if (checkRow < 0 || checkRow >= this.backpackGridSize || 
+                        checkCol < 0 || checkCol >= this.backpackGridSize || 
+                        this.backpack[checkRow][checkCol] !== 0) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * アイテムの見た目（位置、回転、矢印）と論理データを一括で更新する
+     */
+    updateItemVisualsAndData(itemContainer) {
+        const rotation = itemContainer.getData('rotation') || 0;
+        const gridPos = itemContainer.getData('gridPos');
+        const itemId = itemContainer.getData('itemId');
+        
+        const shape = this.getRotatedShape(itemId, rotation);
+        const containerWidth = shape[0].length * this.cellSize;
+        const containerHeight = shape.length * this.cellSize;
+        
+        // 見た目を更新
+        itemContainer.setSize(containerWidth, containerHeight);
+        itemContainer.setAngle(0); // ★コンテナ自体は回転させない
+        
+        const itemImage = itemContainer.getData('itemImage');
+        itemImage.setDisplaySize(containerWidth, containerHeight);
+        itemImage.setAngle(rotation); // ★中身の画像だけを回転させる
+
+        // グリッド上にいれば、位置をスナップ
+        if (gridPos) {
+            itemContainer.x = this.gridX + gridPos.col * this.cellSize + containerWidth / 2;
+            itemContainer.y = this.gridY + gridPos.row * this.cellSize + containerHeight / 2;
+        }
+        
+        this.updateArrowVisibility(itemContainer); // 矢印表示を更新
+    }
     // shutdown, endBattle, etc. はまだ実装しないので、空かコメントアウトでOK
     shutdown() {
         console.log("BattleScene: shutdown されました。");
