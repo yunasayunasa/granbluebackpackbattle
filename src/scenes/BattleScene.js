@@ -712,28 +712,10 @@ const sourceShape = sourceItem.shape;
 
  // BattleScene.js の placeItemInBackpack メソッド (最終修正版)
 
-   // BattleScene.js の placeItemInBackpack メソッド (回転対応版)
-
     placeItemInBackpack(itemContainer, startCol, startRow) {
         const itemId = itemContainer.getData('itemId');
         const itemData = ITEM_DATA[itemId];
-        const rotation = itemContainer.getData('rotation') || 0;
-        let shape = itemData.shape;
-
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ canPlaceItem と同じ回転ロジックを追加 ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        if (rotation === 90 || rotation === 270) {
-            const newShape = [];
-            for (let x = 0; x < shape[0].length; x++) {
-                const newRow = [];
-                for (let y = shape.length - 1; y >= 0; y--) {
-                    newRow.push(shape[y][x]);
-                }
-                newShape.push(newRow);
-            }
-            shape = newShape;
-        }
+        const shape = itemData.shape;
 
         // 1. 視覚的な位置をグリッドにスナップさせる
         const itemWidthInCells = shape[0].length;
@@ -743,8 +725,6 @@ const sourceShape = sourceItem.shape;
 
         // 2. 論理的なデータを更新
         itemContainer.setData('gridPos', { row: startRow, col: startCol });
-        
-        // ★ 回転後の形状でバックパック配列を埋める
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] === 1) {
@@ -753,7 +733,9 @@ const sourceShape = sourceItem.shape;
             }
         }
 
+        // ★★★ ここからが修正箇所 ★★★
         // 3. 所属チームを移動させる
+        //    (itemImage ではなく itemContainer を探す)
         const index = this.inventoryItemImages.indexOf(itemContainer);
         if (index > -1) {
             this.inventoryItemImages.splice(index, 1);
