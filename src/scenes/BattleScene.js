@@ -215,7 +215,7 @@ export default class BattleScene extends Phaser.Scene {
         this.playerStats = { attack: 0, defense: 0, hp: this.stateManager.f.player_hp, block: 0 };
         this.playerBattleItems = [];
 
-        for (const item of playerFinalItems) {
+         for (const sourceItem of playerFinalItems) {
             // パッシブ効果を計算
             if (item.passive && item.passive.effects) {
                 for(const effect of item.passive.effects){
@@ -225,7 +225,18 @@ export default class BattleScene extends Phaser.Scene {
                     // (ここに max_hp などの効果も追加していく)
                 }
             }
+             const rotation = sourceItem.rotation;
             
+            // 例: 'down' シナジーの場合
+            if (sourceItem.synergy.direction === 'down') {
+                let targetPos = {};
+                if (rotation === 0)   targetPos = { r: sourceItem.row + 1, c: sourceItem.col };     // 下
+                else if (rotation === 90)  targetPos = { r: sourceItem.row, c: sourceItem.col - 1 }; // 左
+                else if (rotation === 180) targetPos = { r: sourceItem.row - 1, c: sourceItem.col }; // 上
+                else if (rotation === 270) targetPos = { r: sourceItem.row, c: sourceItem.col + 1 }; // 右
+
+                // targetPosにあるアイテムを探して効果を適用する...
+            }
             // 行動するアイテムをリストアップ
             if (item.recast > 0) {
                 this.playerBattleItems.push({
@@ -358,18 +369,18 @@ export default class BattleScene extends Phaser.Scene {
         // 4. 全ての部品をメインのコンテナに追加
         itemContainer.add([itemImage, arrowContainer]);
         
-        // 5. コンテナにデータとインタラクションを設定
+        // ★★★ 5. コンテナにデータとインタラクションを設定 ★★★
         itemContainer.setDepth(12);
-        itemContainer.setInteractive();
+        itemContainer.setInteractive(); // ← setInteractiveは必須
         itemContainer.setData({
             itemId: itemId,
-            originX: x,
-            originY: y,
+            originX: x, originY: y,
             gridPos: null,
             itemImage: itemImage,
-            arrowContainer: arrowContainer // ★ arrowContainerへの参照
+            arrowContainer: arrowContainer,
+            rotation: 0 // ★★★ 回転角度をデータとして初期化 (0度) ★★★
         });
-        
+
         this.input.setDraggable(itemContainer);
         this.addTooltipEvents(itemContainer, itemId); // ツールチップは変更なし
 
@@ -394,10 +405,47 @@ export default class BattleScene extends Phaser.Scene {
                 itemContainer.y = itemContainer.getData('originY');
             }
         });
-        
-        return itemContainer; 
+         // ★★★ 7. 右クリック（回転）イベントを追加 ★★★
+        itemContainer.on('pointerdown', (pointer) => {
+            // pointer.rightButtonDown() で右クリックを判定
+            if (pointer.rightButtonDown()) {
+                this.rotateItem(itemContainer);
+            }
+        });
+
+        return itemContainer;
     }
+
+
+// BattleScene.js に追加する新しいヘルパーメソッド
+
+    /**
+     * アイテムコンテナを90度回転させる
+     * @param {Phaser.GameObjects.Container} itemContainer
+     */
+    rotateItem(itemContainer) {
+        // 1. 現在の回転角度を取得し、90度加算する
+        let currentRotation = itemContainer.getData('rotation');
+        currentRotation = (currentRotation + 90) % 360; // 360度を超えたら0に戻す
+        itemContainer.setData('rotation', currentRotation);
+
+        // 2. 見た目を更新
+        const itemImage = itemContainer.getData('itemImage');
+        const arrowContainer = itemContainer.getData('arrowContainer');
+        
+        // アイテム画像と矢印コンテナの両方を回転させる
+        itemImage.setAngle(currentRotation);
+        arrowContainer.setAngle(currentRotation);
+        
+        console.log(`アイテム[${itemContainer.getData('itemId')}]を回転: ${currentRotation}度`);
+
+        // ★ TODO: グリッドに配置済みの場合は、回転後の形状で再配置チェックが必要
+        // (これは次のステップでやりましょう)
+    }
+
 // BattleScene.js に記述する addTooltipEvents メソッド (最終確定版)
+
+
 
     addTooltipEvents(itemImage, itemId) {
         // pointerdown: マウスボタンが押された「瞬間」のイベント
