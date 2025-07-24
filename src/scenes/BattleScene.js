@@ -399,38 +399,64 @@ export default class BattleScene extends Phaser.Scene {
                 itemContainer.y = itemContainer.getData('originY');
             }
         });
-          // ★★★ 7. 回転とタップのイベントを pointerup に集約 ★★★
-        let pressTimer = null; // 長押し判定用のタイマー
+         // ★★★ 7. 回転とタップのイベントを再設計 ★★★
+        let pressTimer = null;
         
         itemContainer.on('pointerdown', (pointer) => {
-            // ボタンが押されたら、長押しタイマースタート
-            pressTimer = this.time.delayedCall(500, () => { // 500ms押し続けたら長押しと判定
+            // 右クリックは即時回転
+            if (pointer.rightButtonDown()) {
                 this.rotateItem(itemContainer);
-                itemContainer.setData('isLongPress', true); // 長押しフラグ
+                return; // 右クリック時は他の処理をしない
+            }
+
+            // 長押しタイマースタート
+            itemContainer.setData('isLongPress', false);
+            pressTimer = this.time.delayedCall(500, () => {
+                this.rotateItem(itemContainer);
+                itemContainer.setData('isLongPress', true);
             });
         });
 
+        // ★★★ ドラッグ中のイベントを追加 ★★★
+        itemContainer.on('drag', () => {
+            // 少しでもドラッグされたら、長押しタイマーを即座にキャンセルする
+            if (pressTimer) {
+                pressTimer.remove();
+                pressTimer = null;
+            }
+        });
+        
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             // ボタンが離されたら、まずタイマーを止める
-            if (pressTimer) pressTimer.remove();
+            if (pressTimer) {
+                pressTimer.remove();
+                pressTimer = null;
+            }
 
-            // もし長押しが発動「していなければ」タップとみなす
-            if (!itemContainer.getData('isLongPress')) {
-                // (ここにツールチップ表示のロジックを移動させても良いが、
-                //  addTooltipEventsに任せた方がクリーン)
+            // 長押しが「発動した後」や、ドラッグ中だった場合は、タップ処理をしない
+            if (itemContainer.getData('isLongPress') || (itemContainer.input && itemContainer.input.dragState > 0)) {
+                // 何もしない
+            } else {
+                // タップと判定し、ツールチップを表示
+                // (addTooltipEventsは不要になる)
+                const itemData = ITEM_DATA[itemId];
+                if (!itemData) return;
+                let tooltipText = `【${itemId}】\n\n`;
+                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+                if (itemData.passive && itemData.passive.effects) {
+                    itemData.passive.effects.forEach(e => {
+                        tooltipText += `パッシブ: ${e.type} +${e.value}\n`;
+                    });
+                }
+                this.tooltip.show(itemContainer, tooltipText);
+                event.stopPropagation();
             }
             
             // フラグをリセット
             itemContainer.setData('isLongPress', false);
         });
 
-        // 右クリックは別途判定
-        itemContainer.on('pointerdown', (pointer) => {
-            if (pointer.rightButtonDown()) {
-                if (pressTimer) pressTimer.remove(); // 長押しタイマーをキャンセル
-                this.rotateItem(itemContainer);
-            }
-        });
         
         return itemContainer;
     }
