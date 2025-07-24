@@ -1,5 +1,5 @@
 import { ITEM_DATA } from '../core/ItemData.js';
-
+import Tooltip from '../ui/Tooltip.js'; // ★ インポート
 export default class BattleScene extends Phaser.Scene {
     constructor() {
         super('BattleScene');
@@ -69,7 +69,7 @@ export default class BattleScene extends Phaser.Scene {
 
         // UIコンテナ (準備画面用UIのみ格納)
         this.prepareContainer = this.add.container(0, 0);
-        
+        this.tooltip = new Tooltip(this);
         // --- 2. 状態の初期化：BGMとHP ---
         this.soundManager.playBgm('ronpa_bgm');
         this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp); 
@@ -109,7 +109,10 @@ export default class BattleScene extends Phaser.Scene {
             ).setDepth(3);
             itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
         }
+ // ★ 敵アイテムにタップイベントを追加
+            this.addTooltipEvents(itemImage, itemId);
 
+            this.battleContainer.add(itemImage);
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         // ★★★ ここからが復活したインベントリのコード ★★★
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
@@ -132,7 +135,15 @@ export default class BattleScene extends Phaser.Scene {
                 this.inventoryItemImages.push(itemImage);
             }
         });
-        
+          // ★★★ シーン全体をクリックしたらツールチップを隠すイベント ★★★
+        this.input.on('pointerdown', (pointer) => {
+            // もしクリックされたのがUI要素でなければツールチップを隠す
+            // isOverプロパティはPhaser3.50+で使えます
+            if (pointer.isOver === false && this.tooltip.visible) {
+                 this.tooltip.hide();
+            }
+        }, this);
+
         // 3e. 戦闘開始ボタン (準備中のみ)
         this.startBattleButton = this.add.text(gameWidth - 150, gameHeight - 50, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:10, y:5} }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
@@ -290,7 +301,9 @@ export default class BattleScene extends Phaser.Scene {
         itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
         this.input.setDraggable(itemImage);
 
+        // ★ ドラッグ開始時にツールチップを隠す
         itemImage.on('dragstart', () => {
+            this.tooltip.hide();
             itemImage.setDepth(99);
             this.removeItemFromBackpack(itemImage);
         });
@@ -310,7 +323,24 @@ export default class BattleScene extends Phaser.Scene {
         });
         return itemImage; 
     }
-
+ // ★★★ ツールチップイベントを追加するヘルパーメソッドを新設 ★★★
+    addTooltipEvents(itemImage, itemId) {
+        itemImage.on('pointerdown', (pointer) => {
+            // ドラッグ操作と競合しないように、少し待ってから判定
+            this.time.delayedCall(150, () => {
+                // delayedCall実行時にまだドラッグされていなければタップとみなす
+                if (!itemImage.isDragging) { 
+                    const itemData = ITEM_DATA[itemId];
+                    let tooltipText = `【${itemId}】\n\n`;
+                    // ... (ツールチップに表示するテキストを生成するロジック) ...
+                    this.tooltip.show(itemImage, tooltipText);
+                    
+                    // 背景シーンへのクリックイベントを止める
+                    pointer.stopPropagation();
+                }
+            });
+        });
+    }
     removeItemFromBackpack(itemImage) {
         const gridPos = itemImage.getData('gridPos');
         if (!gridPos) return;
