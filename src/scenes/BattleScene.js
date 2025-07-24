@@ -131,10 +131,15 @@ export default class BattleScene extends Phaser.Scene {
             }
         });
 
-        // 3e. 戦闘開始ボタン
-        this.startBattleButton = this.add.text(gameWidth - 150, gameHeight - 50, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:10, y:5} }).setOrigin(0.5).setInteractive().setDepth(11);
-        this.prepareContainer.add(this.startBattleButton);
-this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
+       // 3e. 戦闘開始ボタン (準備中のみ)
+        // ★★★ 座標を画面中央下部に変更 ★★★
+        this.startBattleButton = this.add.text(
+            gameWidth / 2, // X座標を中央に
+            inventoryAreaY - 40, // Y座標をインベントリ領域の少し上に
+            '戦闘開始', 
+            { fontSize: '28px', backgroundColor: '#080', padding: {x:20, y:10} }
+        ).setOrigin(0.5).setInteractive().setDepth(11);
+        this.prepareContainer.add(this.startBattleButton); 
         // --- 4. イベントリスナーの設定 ---
         this.startBattleButton.on('pointerdown', () => {
             if (this.gameState !== 'prepare') return;
@@ -330,10 +335,13 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
 
+    // BattleScene.js の createItem メソッド (イベントリスナー完全版)
+
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
 
+        // --- 1. オブジェクトの生成 ---
         const containerWidth = itemData.shape[0].length * this.cellSize;
         const containerHeight = itemData.shape.length * this.cellSize;
         const itemContainer = this.add.container(x, y).setSize(containerWidth, containerHeight);
@@ -349,17 +357,20 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
         itemContainer.add([itemImage, arrowContainer]).setDepth(12).setInteractive();
         itemContainer.setData({ itemId, originX: x, originY: y, gridPos: null, itemImage, arrowContainer, rotation: 0 });
         this.input.setDraggable(itemContainer);
-   this.addTooltipEvents(itemContainer, itemId);
-        
-        // --- イベントリスナー (ここからが本題) ---
-        let pressTimer = null;
 
+        // --- 2. イベントリスナーの定義 ---
+        
+        let pressTimer = null;
+        let isDragging = false; // ドラッグ中かどうかのフラグ
+
+        // ▼ ボタンが押された時の処理
         itemContainer.on('pointerdown', (pointer) => {
+            // PC: 右クリックなら即座に回転
             if (pointer.rightButtonDown()) {
-                if (pressTimer) pressTimer.remove();
                 this.rotateItem(itemContainer);
                 return;
             }
+            // スマホ/PC: 長押しタイマースタート
             itemContainer.setData('isLongPress', false);
             pressTimer = this.time.delayedCall(500, () => {
                 this.rotateItem(itemContainer);
@@ -367,26 +378,20 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
             });
         });
 
+        // ▼ ドラッグが始まった時の処理
         itemContainer.on('dragstart', () => {
+            isDragging = true;
+            if (pressTimer) pressTimer.remove(); // 長押しタイマーをキャンセル
             this.tooltip.hide();
             itemContainer.setDepth(99);
             this.removeItemFromBackpack(itemContainer);
         });
 
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ 2つのdrag処理をここに統合！ ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ▼ ドラッグ中の処理
         itemContainer.on('drag', (pointer, dragX, dragY) => {
-            // 1. ポインターに追従させる (最重要)
+            // ポインターに追従
             itemContainer.setPosition(dragX, dragY);
-            
-            // 2. 長押しタイマーをキャンセルする
-            if (pressTimer) {
-                pressTimer.remove();
-                pressTimer = null;
-            }
-            
-            // 3. ゴーストを表示する
+            // ゴーストを表示
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
@@ -405,80 +410,55 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
             }
         });
 
+        // ▼ ドラッグが終わった時の処理
         itemContainer.on('dragend', (pointer) => {
+            isDragging = false;
             itemContainer.setDepth(12);
             this.ghostImage.setVisible(false);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
-                // ドロップ時の座標はTweenのアニメーション用に保存
                 const dropX = itemContainer.x;
                 const dropY = itemContainer.y;
-                
-                // まず論理データと最終座標を確定
                 this.placeItemInBackpack(itemContainer, gridCol, gridRow);
                 const targetX = itemContainer.x;
                 const targetY = itemContainer.y;
-                
-                // アニメーションのために、一旦ドロップ座標に戻す
                 itemContainer.setPosition(dropX, dropY);
-
-                // Tweenで最終座標までアニメーション
                 this.tweens.add({ targets: itemContainer, x: targetX, y: targetY, duration: 150, ease: 'Power1' });
             } else {
                 this.tweens.add({ targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'), duration: 200, ease: 'Power2' });
             }
         });
 
+        // ▼ ボタンが離された時の処理
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-            if (pressTimer) {
-                pressTimer.remove();
-                pressTimer = null;
-            }
-            if (!itemContainer.getData('isLongPress') && (!itemContainer.input || itemContainer.input.dragState === 0)) {
-                const itemData = ITEM_DATA[itemId];
-                if (!itemData) return;
-                let tooltipText = `【${itemId}】`; // (ツールチップテキスト生成)
-                this.tooltip.show(itemContainer, tooltipText);
-                event.stopPropagation();
-            }
-            itemContainer.setData('isLongPress', false);
-        });
-         this.addTooltipEvents(itemContainer, itemId);
-        return itemContainer;
-    }
+            if (pressTimer) pressTimer.remove();
 
-     addTooltipEvents(targetObject, itemId) {
-        let isDown = false;
-        let moved = false;
-        
-        targetObject.on('pointerdown', () => {
-            isDown = true;
-            moved = false;
-        });
-
-        targetObject.on('pointermove', () => {
-            if (isDown) moved = true;
-        });
-        
-        targetObject.on('pointerup', (pointer, localX, localY, event) => {
-            if (isDown && !moved) { // タップ成功
+            // ★ タップ判定: ドラッグしておらず、長押しも成立していない場合
+            if (!isDragging && !itemContainer.getData('isLongPress')) {
                 const itemData = ITEM_DATA[itemId];
                 if (!itemData) return;
                 let tooltipText = `【${itemId}】\n\n`;
-                if(itemData.recast > 0)  tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
                 if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
                 if (itemData.passive && itemData.passive.effects) {
                     itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
                 }
-                 this.tooltip.show(targetObject, tooltipText);
+                if (itemData.synergy) {
+                    tooltipText += `\nシナジー: ...`; // シナジー情報も表示
+                }
+                this.tooltip.show(itemContainer, tooltipText);
                 event.stopPropagation();
             }
-            isDown = false;
-            moved = false;
+            
+            // フラグをリセット
+            itemContainer.setData('isLongPress', false);
         });
+        
+        return itemContainer;
     }
 
+   
     rotateItem(itemContainer) {
         const originalRotation = itemContainer.getData('rotation');
         const newRotation = (originalRotation + 90) % 360;
