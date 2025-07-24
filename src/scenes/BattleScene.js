@@ -107,13 +107,28 @@ export default class BattleScene extends Phaser.Scene {
         const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
         this.prepareContainer.add([invBg, invText]);
 
-        // 3d. ドラッグ可能なアイテム
-        const initialInventory = ['sword', 'shield', 'potion'];
-        const itemStartX = 200;
-        const itemSpacing = 150;
+          // 3d. ドラッグ可能なアイテム (準備中のみ)
+        this.inventoryItemImages = [];
+        const initialInventory = ['sword', 'shield', 'potion', 'spiky_shield']; // ★ 4つ目のアイテムを追加
+        
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ ここからが動的レイアウトのロジック ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        const inventoryContentWidth = gameWidth - 200; // インベントリの左右マージン
+        const itemCount = initialInventory.length;
+        
+        // アイテム数に応じて、最適な間隔を自動計算
+        const itemSpacing = inventoryContentWidth / itemCount;
+        // 最初のアイテムの開始位置を計算
+        const itemStartX = 100 + (itemSpacing / 2);
+
         initialInventory.forEach((itemId, index) => {
-            const itemImage = this.createItem(itemId, itemStartX + (index * itemSpacing), inventoryAreaY + inventoryAreaHeight / 2 + 20);
-            if (itemImage) this.inventoryItemImages.push(itemImage);
+            const x = itemStartX + (index * itemSpacing);
+            const y = inventoryAreaY + inventoryAreaHeight / 2 + 20;
+            const itemImage = this.createItem(itemId, x, y);
+            if (itemImage) {
+                this.inventoryItemImages.push(itemImage);
+            }
         });
 
         // 3e. 戦闘開始ボタン
@@ -334,7 +349,8 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
         itemContainer.add([itemImage, arrowContainer]).setDepth(12).setInteractive();
         itemContainer.setData({ itemId, originX: x, originY: y, gridPos: null, itemImage, arrowContainer, rotation: 0 });
         this.input.setDraggable(itemContainer);
-
+   this.addTooltipEvents(itemContainer, itemId);
+        
         // --- イベントリスナー (ここからが本題) ---
         let pressTimer = null;
 
@@ -432,21 +448,34 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
         return itemContainer;
     }
 
-    addTooltipEvents(itemContainer, itemId) {
-        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-            if (!itemContainer.getData('isLongPress') && (!itemContainer.input || itemContainer.input.dragState === 0)) {
+     addTooltipEvents(targetObject, itemId) {
+        let isDown = false;
+        let moved = false;
+        
+        targetObject.on('pointerdown', () => {
+            isDown = true;
+            moved = false;
+        });
+
+        targetObject.on('pointermove', () => {
+            if (isDown) moved = true;
+        });
+        
+        targetObject.on('pointerup', (pointer, localX, localY, event) => {
+            if (isDown && !moved) { // タップ成功
                 const itemData = ITEM_DATA[itemId];
                 if (!itemData) return;
                 let tooltipText = `【${itemId}】\n\n`;
-                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                if(itemData.recast > 0)  tooltipText += `リキャスト: ${itemData.recast}秒\n`;
                 if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
                 if (itemData.passive && itemData.passive.effects) {
                     itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
                 }
-                this.tooltip.show(itemContainer, tooltipText);
+                 this.tooltip.show(targetObject, tooltipText);
                 event.stopPropagation();
             }
-            itemContainer.setData('isLongPress', false);
+            isDown = false;
+            moved = false;
         });
     }
 
