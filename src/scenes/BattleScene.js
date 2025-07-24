@@ -280,9 +280,12 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
         }
     }
 
+    // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
+
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
+
         const containerWidth = itemData.shape[0].length * this.cellSize;
         const containerHeight = itemData.shape.length * this.cellSize;
         const itemContainer = this.add.container(x, y).setSize(containerWidth, containerHeight);
@@ -298,8 +301,10 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
         itemContainer.add([itemImage, arrowContainer]).setDepth(12).setInteractive();
         itemContainer.setData({ itemId, originX: x, originY: y, gridPos: null, itemImage, arrowContainer, rotation: 0 });
         this.input.setDraggable(itemContainer);
-        this.addTooltipEvents(itemContainer, itemId);
+
+        // --- イベントリスナー (ここからが本題) ---
         let pressTimer = null;
+
         itemContainer.on('pointerdown', (pointer) => {
             if (pointer.rightButtonDown()) {
                 if (pressTimer) pressTimer.remove();
@@ -312,54 +317,85 @@ this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xfffff
                 itemContainer.setData('isLongPress', true);
             });
         });
-        itemContainer.on('drag', () => { if (pressTimer) { pressTimer.remove(); pressTimer = null; } });
+
         itemContainer.on('dragstart', () => {
             this.tooltip.hide();
             itemContainer.setDepth(99);
             this.removeItemFromBackpack(itemContainer);
         });
-        itemContainer.on('dragend', (pointer) => {
-            itemContainer.setDepth(12);
-             // ★★★ ゴースト表示ロジック ★★★
+
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ 2つのdrag処理をここに統合！ ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        itemContainer.on('drag', (pointer, dragX, dragY) => {
+            // 1. ポインターに追従させる (最重要)
+            itemContainer.setPosition(dragX, dragY);
+            
+            // 2. 長押しタイマーをキャンセルする
+            if (pressTimer) {
+                pressTimer.remove();
+                pressTimer = null;
+            }
+            
+            // 3. ゴーストを表示する
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
-            
-            // グリッドの内側か？
             if (gridCol >= 0 && gridCol < this.backpackGridSize && gridRow >= 0 && gridRow < this.backpackGridSize) {
                 this.ghostImage.setVisible(true);
                 this.ghostImage.width = shape[0].length * this.cellSize;
                 this.ghostImage.height = shape.length * this.cellSize;
-                // ゴーストをグリッドにスナップ
-                this.ghostImage.setPosition(
-                    this.gridX + gridCol * this.cellSize,
-                    this.gridY + gridRow * this.cellSize
-                ).setOrigin(0);
-
-                // 配置可能かチェックして色を変える
+                this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + gridRow * this.cellSize).setOrigin(0);
                 if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
-                    this.ghostImage.setFillStyle(0x00ff00, 0.5); // 緑
+                    this.ghostImage.setFillStyle(0x00ff00, 0.5);
                 } else {
-                    this.ghostImage.setFillStyle(0xff0000, 0.5); // 赤
+                    this.ghostImage.setFillStyle(0xff0000, 0.5);
                 }
             } else {
                 this.ghostImage.setVisible(false);
             }
         });
-        
+
         itemContainer.on('dragend', (pointer) => {
             itemContainer.setDepth(12);
-            this.ghostImage.setVisible(false); // ★ ドラッグ終了時にゴーストを隠す
-
+            this.ghostImage.setVisible(false);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+                // ドロップ時の座標はTweenのアニメーション用に保存
+                const dropX = itemContainer.x;
+                const dropY = itemContainer.y;
+                
+                // まず論理データと最終座標を確定
                 this.placeItemInBackpack(itemContainer, gridCol, gridRow);
+                const targetX = itemContainer.x;
+                const targetY = itemContainer.y;
+                
+                // アニメーションのために、一旦ドロップ座標に戻す
+                itemContainer.setPosition(dropX, dropY);
+
+                // Tweenで最終座標までアニメーション
+                this.tweens.add({ targets: itemContainer, x: targetX, y: targetY, duration: 150, ease: 'Power1' });
             } else {
-                itemContainer.x = itemContainer.getData('originX');
-                itemContainer.y = itemContainer.getData('originY');
+                this.tweens.add({ targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'), duration: 200, ease: 'Power2' });
             }
         });
+
+        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+            if (pressTimer) {
+                pressTimer.remove();
+                pressTimer = null;
+            }
+            if (!itemContainer.getData('isLongPress') && (!itemContainer.input || itemContainer.input.dragState === 0)) {
+                const itemData = ITEM_DATA[itemId];
+                if (!itemData) return;
+                let tooltipText = `【${itemId}】`; // (ツールチップテキスト生成)
+                this.tooltip.show(itemContainer, tooltipText);
+                event.stopPropagation();
+            }
+            itemContainer.setData('isLongPress', false);
+        });
+        
         return itemContainer;
     }
 
