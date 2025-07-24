@@ -97,8 +97,7 @@ export default class BattleScene extends Phaser.Scene {
                 itemData.storage
             ).setDepth(3).setInteractive({ draggable: false });
             itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
-            this.addTooltipEvents(itemImage, itemId);
-        }
+              }
 
         // 3c. インベントリ
         const inventoryAreaY = 520;
@@ -359,42 +358,57 @@ export default class BattleScene extends Phaser.Scene {
         this.input.setDraggable(itemContainer);
 
         // --- 2. イベントリスナーの定義 ---
-        
-        let pressTimer = null;
-        let isDragging = false; // ドラッグ中かどうかのフラグ
+       // BattleScene.js の createItem メソッド (最終確定版)
 
-        // ▼ ボタンが押された時の処理
-       itemContainer.on('pointerdown', (pointer) => {
+    createItem(itemId, x, y) {
+        const itemData = ITEM_DATA[itemId];
+        if (!itemData) return null;
+
+        const containerWidth = itemData.shape[0].length * this.cellSize;
+        const containerHeight = itemData.shape.length * this.cellSize;
+        const itemContainer = this.add.container(x, y).setSize(containerWidth, containerHeight);
+        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+        const arrowContainer = this.add.container(0, 0).setVisible(false);
+        const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
+        arrowContainer.add([
+            this.add.text(0, 0, '▲', arrowStyle).setOrigin(0.5).setName('up'),
+            this.add.text(0, 0, '▼', arrowStyle).setOrigin(0.5).setName('down'),
+            this.add.text(0, 0, '◀', arrowStyle).setOrigin(0.5).setName('left'),
+            this.add.text(0, 0, '▶', arrowStyle).setOrigin(0.5).setName('right')
+        ]);
+        itemContainer.add([itemImage, arrowContainer]).setDepth(12).setInteractive();
+        itemContainer.setData({ itemId, originX: x, originY: y, gridPos: null, itemImage, arrowContainer, rotation: 0 });
+        this.input.setDraggable(itemContainer);
+
+        // --- イベントリスナー ---
+        let pressTimer = null;
+        let isDragging = false;
+        
+        itemContainer.on('pointerdown', (pointer) => {
+            isDragging = false;
+            itemContainer.setData('isLongPress', false);
+            
             if (pointer.rightButtonDown()) {
-                if (pressTimer) pressTimer.remove();
                 this.rotateItem(itemContainer);
                 return;
             }
-            itemContainer.setData('isLongPress', false);
-            isDragging = false; // ★ downの時点ではドラッグしていない
             pressTimer = this.time.delayedCall(500, () => {
                 this.rotateItem(itemContainer);
                 itemContainer.setData('isLongPress', true);
             });
         });
 
-        // ▼ ドラッグが始まった時の処理
-          itemContainer.on('dragstart', () => {
-            isDragging = true; // ★ ここで初めてドラッグ開始とみなす
-            if (pressTimer) {
-                pressTimer.remove();
-                pressTimer = null;
-            }
+        itemContainer.on('dragstart', () => {
+            isDragging = true;
+            if (pressTimer) pressTimer.remove();
             this.tooltip.hide();
             itemContainer.setDepth(99);
             this.removeItemFromBackpack(itemContainer);
         });
 
-        // ▼ ドラッグ中の処理
         itemContainer.on('drag', (pointer, dragX, dragY) => {
-            // ポインターに追従
             itemContainer.setPosition(dragX, dragY);
-            // ゴーストを表示
+            // (ゴースト表示ロジック)
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
@@ -403,17 +417,12 @@ export default class BattleScene extends Phaser.Scene {
                 this.ghostImage.width = shape[0].length * this.cellSize;
                 this.ghostImage.height = shape.length * this.cellSize;
                 this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + gridRow * this.cellSize).setOrigin(0);
-                if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
-                    this.ghostImage.setFillStyle(0x00ff00, 0.5);
-                } else {
-                    this.ghostImage.setFillStyle(0xff0000, 0.5);
-                }
+                this.ghostImage.setFillStyle(this.canPlaceItem(itemContainer, gridCol, gridRow) ? 0x00ff00 : 0xff0000, 0.5);
             } else {
                 this.ghostImage.setVisible(false);
             }
         });
 
-        // ▼ ドラッグが終わった時の処理
         itemContainer.on('dragend', (pointer) => {
             isDragging = false;
             itemContainer.setDepth(12);
@@ -433,14 +442,16 @@ export default class BattleScene extends Phaser.Scene {
             }
         });
 
-        // ▼ ボタンが離された時の処理
-          itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             if (pressTimer) pressTimer.remove();
-
-            // ★ タップ判定: ドラッグしておらず、長押しも成立していない場合
+            
             if (!isDragging && !itemContainer.getData('isLongPress')) {
                 const itemData = ITEM_DATA[itemId];
                 if (!itemData) return;
+                
+                // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                // ★★★ シナジー情報を正しく表示するコード ★★★
+                // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
                 let tooltipText = `【${itemId}】\n\n`;
                 if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
                 if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
@@ -448,49 +459,24 @@ export default class BattleScene extends Phaser.Scene {
                     itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
                 }
                 if (itemData.synergy) {
-                    tooltipText += `\nシナジー: ...`; // シナジー情報も表示
+                    tooltipText += `\nシナジー:\n`;
+                    const dir = itemData.synergy.direction;
+                    const tag = itemData.synergy.targetTag;
+                    const effect = itemData.synergy.effect;
+                    tooltipText += `  - ${dir}の[${tag}]に\n`;
+                    tooltipText += `    効果: ${effect.type} +${effect.value}\n`;
                 }
+                
                 this.tooltip.show(itemContainer, tooltipText);
                 event.stopPropagation();
             }
-            
-            // フラグをリセット
             itemContainer.setData('isLongPress', false);
         });
         
         return itemContainer;
-    }
+    }}
 
-     addTooltipEvents(targetObject, itemId) {
-        let isDown = false;
-        let moved = false;
-        
-        targetObject.on('pointerdown', () => {
-            isDown = true;
-            moved = false;
-        });
-
-        targetObject.on('pointermove', () => {
-            if (isDown) moved = true;
-        });
-        
-        targetObject.on('pointerup', (pointer, localX, localY, event) => {
-            if (isDown && !moved) { // タップ成功
-                const itemData = ITEM_DATA[itemId];
-                if (!itemData) return;
-                let tooltipText = `【${itemId}】\n\n`;
-                if(itemData.recast > 0)  tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
-                if (itemData.passive && itemData.passive.effects) {
-                    itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
-                }
-                 this.tooltip.show(targetObject, tooltipText);
-                event.stopPropagation();
-            }
-            isDown = false;
-            moved = false;
-        });
-    }
+    
 
     rotateItem(itemContainer) {
         const originalRotation = itemContainer.getData('rotation');
