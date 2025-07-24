@@ -93,7 +93,8 @@ export default class BattleScene extends Phaser.Scene {
                 enemyGridX + (pos[1] * this.cellSize) + (itemData.shape[0].length * this.cellSize / 2),
                 enemyGridY + (pos[0] * this.cellSize) + (itemData.shape.length * this.cellSize / 2),
                 itemData.storage
-            ).setDepth(3);
+            ).setDepth(3)   .setInteractive({ draggable: false }); // ← オブジェクトでオプションを指定;
+            
             itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
             this.addTooltipEvents(itemImage, itemId);
         }
