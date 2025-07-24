@@ -5,7 +5,7 @@ export default class Tooltip extends Phaser.GameObjects.Container {
         super(scene, 0, 0);
         
        // ★★★ 背景のサイズを大きくする ★★★
-        this.background = scene.add.rectangle(0, 0, 300, 200, 0x000000, 0.9).setOrigin(0);
+        this.background = scene.add.rectangle(0, 0, 500, 400, 0x000000, 0.9).setOrigin(0);
         
         // ★★★ テキストのwordWrapの幅を広げる ★★★
         this.itemText = scene.add.text(10, 10, '', { fontSize: '18px', fill: '#fff', wordWrap: { width: 280 } }); // 左右マージン20px
