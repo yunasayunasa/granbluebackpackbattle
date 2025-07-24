@@ -323,26 +323,34 @@ export default class BattleScene extends Phaser.Scene {
 
    // BattleScene.js の createItem メソッド (改訂版)
 
+   // BattleScene.js の createItem メソッド (最終修正版)
+
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
         
-        // 1. 画像とテキストを入れるための「コンテナ」を作成
+        // 1. コンテナを作成
         const itemContainer = this.add.container(x, y);
-        itemContainer.setSize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
-        
-        // 2. アイテム画像をコンテナの「中」に追加 (座標は0,0でOK)
-        const itemImage = this.add.image(0, 0, itemData.storage);
-        itemImage.setDisplaySize(containerWidth, containerHeight);
-        itemContainer.add(itemImage);
 
-        // 3. 矢印テキストもコンテナの「中」に追加
-        //    (Phaserの矢印フォントがうまく表示されない場合があるので、'v'などで代用)
+        // ★★★ 2. これから使う「幅」と「高さ」を変数として定義 ★★★
+        const containerWidth = itemData.shape[0].length * this.cellSize;
+        const containerHeight = itemData.shape.length * this.cellSize;
+        
+        // コンテナのインタラクション範囲を設定
+        itemContainer.setSize(containerWidth, containerHeight);
+        
+        // 3. アイテム画像を生成し、正しいサイズに設定
+        const itemImage = this.add.image(0, 0, itemData.storage);
+        itemImage.setDisplaySize(containerWidth, containerHeight); // ★ 定義した変数を使う
+
+        // 4. 矢印テキストを生成
         const arrow = this.add.text(0, 0, '', { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5);
         arrow.setVisible(false);
-        itemContainer.add(arrow);
         
-        // 4. コンテナ自体にデータとインタラクションを設定
+        // 5. 全ての部品をコンテナに追加
+        itemContainer.add([itemImage, arrow]);
+        
+        // 6. コンテナにデータとインタラクションを設定
         itemContainer.setDepth(12);
         itemContainer.setInteractive();
         itemContainer.setData({
@@ -350,16 +358,14 @@ export default class BattleScene extends Phaser.Scene {
             originX: x,
             originY: y,
             gridPos: null,
-            itemImage: itemImage, // 画像への参照
-            arrow: arrow      // 矢印への参照
+            itemImage: itemImage,
+            arrow: arrow
         });
-
-        this.input.setDraggable(itemContainer); // ★ コンテナ自体をドラッグ可能にする
+        this.input.setDraggable(itemContainer);
         
-        // 5. ツールチップイベントをコンテナに追加
+        // 7. ツールチップとドラッグイベントを設定
         this.addTooltipEvents(itemContainer, itemId);
 
-        // --- 6. ドラッグイベントの処理をコンテナに設定 ---
         itemContainer.on('dragstart', () => {
             this.tooltip.hide();
             itemContainer.setDepth(99);
