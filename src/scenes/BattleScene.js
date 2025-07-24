@@ -179,7 +179,7 @@ export default class BattleScene extends Phaser.Scene {
         console.log("シナジー計算を開始...");
         for (const sourceItem of playerFinalItems) {
             if (!sourceItem.synergy) continue;
-
+const sourceShape = sourceItem.shape; 
             const rotation = sourceItem.rotation;
              const sourceCells = [];
             for (let r = 0; r < sourceShape.length; r++) {
