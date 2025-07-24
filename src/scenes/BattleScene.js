@@ -321,67 +321,65 @@ export default class BattleScene extends Phaser.Scene {
 
   // BattleScene.js に記述する createItem メソッド (完成版)
 
+   // BattleScene.js の createItem メソッド (改訂版)
+
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
         
-        // 1. アイテム画像を生成し、インタラクティブにする
-        const itemImage = this.add.image(x, y, itemData.storage)
-            .setInteractive()
-            .setDepth(12)
-            .setData({
-                itemId: itemId,
-                originX: x,
-                originY: y,
-                gridPos: null
-            });
-   // ★ アイテムにシナジー用の矢印グラフィックを追加しておく
-        const arrow = this.add.text(0, 0, '→', { fontSize: '32px', color: '#ff0' });
-        arrow.setVisible(false); // 最初は非表示
+        // 1. 画像とテキストを入れるための「コンテナ」を作成
+        const itemContainer = this.add.container(x, y);
+        itemContainer.setSize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
         
-        // itemImageにarrowをデータとして持たせる
-        itemImage.setData('arrow', arrow);
-        itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
+        // 2. アイテム画像をコンテナの「中」に追加 (座標は0,0でOK)
+        const itemImage = this.add.image(0, 0, itemData.storage);
+        itemContainer.add(itemImage);
+
+        // 3. 矢印テキストもコンテナの「中」に追加
+        //    (Phaserの矢印フォントがうまく表示されない場合があるので、'v'などで代用)
+        const arrow = this.add.text(0, 0, '', { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5);
+        arrow.setVisible(false);
+        itemContainer.add(arrow);
         
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ ここからが修正の核心 ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // 4. コンテナ自体にデータとインタラクションを設定
+        itemContainer.setDepth(12);
+        itemContainer.setInteractive();
+        itemContainer.setData({
+            itemId: itemId,
+            originX: x,
+            originY: y,
+            gridPos: null,
+            itemImage: itemImage, // 画像への参照
+            arrow: arrow      // 矢印への参照
+        });
+
+        this.input.setDraggable(itemContainer); // ★ コンテナ自体をドラッグ可能にする
         
-        // 2. このアイテムにツールチップ表示機能を追加する
-        this.addTooltipEvents(itemImage, itemId);
+        // 5. ツールチップイベントをコンテナに追加
+        this.addTooltipEvents(itemContainer, itemId);
 
-        // 3. このアイテムをドラッグ可能にする
-        this.input.setDraggable(itemImage);
-
-        // --- 4. ドラッグイベントの処理を定義 ---
-
-        itemImage.on('dragstart', () => {
-            // ドラッグ開始時にツールチップを隠す（タップと誤認された場合のため）
+        // --- 6. ドラッグイベントの処理をコンテナに設定 ---
+        itemContainer.on('dragstart', () => {
             this.tooltip.hide();
-            
-            itemImage.setDepth(99); // ドラッグ中は最前面に
-            this.removeItemFromBackpack(itemImage);
+            itemContainer.setDepth(99);
+            this.removeItemFromBackpack(itemContainer);
         });
-
-        itemImage.on('drag', (pointer, dragX, dragY) => {
-            itemImage.setPosition(dragX, dragY);
+        itemContainer.on('drag', (pointer, dragX, dragY) => {
+            itemContainer.setPosition(dragX, dragY);
         });
-
-        itemImage.on('dragend', (pointer) => {
-            itemImage.setDepth(12); // ドラッグが終わったら元の深度に
-            
+        itemContainer.on('dragend', (pointer) => {
+            itemContainer.setDepth(12);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
-
-            if (this.canPlaceItem(itemImage, gridCol, gridRow)) {
-                this.placeItemInBackpack(itemImage, gridCol, gridRow);
+            if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+                this.placeItemInBackpack(itemContainer, gridCol, gridRow);
             } else {
-                itemImage.x = itemImage.getData('originX');
-                itemImage.y = itemImage.getData('originY');
+                itemContainer.x = itemContainer.getData('originX');
+                itemContainer.y = itemContainer.getData('originY');
             }
         });
         
-        return itemImage; 
+        return itemContainer; 
     }
 // BattleScene.js に記述する addTooltipEvents メソッド (最終確定版)
 
@@ -458,6 +456,7 @@ export default class BattleScene extends Phaser.Scene {
         const index = this.placedItemImages.indexOf(itemImage);
         if (index > -1) this.placedItemImages.splice(index, 1);
         this.inventoryItemImages.push(itemImage);
+         this.updateArrowVisibility(itemContainer); // ★ この行を追加
     }
 
     canPlaceItem(itemImage, startCol, startRow) {
@@ -479,6 +478,7 @@ export default class BattleScene extends Phaser.Scene {
     placeItemInBackpack(itemImage, startCol, startRow) {
         const itemId = itemImage.getData('itemId');
         const itemData = ITEM_DATA[itemId];
+        
         itemImage.x = this.gridX + startCol * this.cellSize + (itemData.shape[0].length * this.cellSize / 2);
         itemImage.y = this.gridY + startRow * this.cellSize + (itemData.shape.length * this.cellSize / 2);
         itemImage.setData('gridPos', { row: startRow, col: startCol });
@@ -494,37 +494,39 @@ export default class BattleScene extends Phaser.Scene {
         if (index > -1) this.inventoryItemImages.splice(index, 1);
         this.placedItemImages.push(itemImage);
         this.updateArrowVisibility(itemImage);
+         this.updateArrowVisibility(itemContainer); // ★ この行を追加
     }
     // BattleScene.js に追加する endBattle メソッド
  /**
      * アイテムのシナジー矢印の表示・非表示と向きを更新する
      */
-    updateArrowVisibility(itemImage) {
-        const itemId = itemImage.getData('itemId');
+   // BattleScene.js に記述する updateArrowVisibility メソッド
+
+    updateArrowVisibility(itemContainer) {
+        const itemId = itemContainer.getData('itemId');
         const itemData = ITEM_DATA[itemId];
-        const arrow = itemImage.getData('arrow');
+        const arrow = itemContainer.getData('arrow');
+        const itemImage = itemContainer.getData('itemImage');
+
+        if (!arrow || !itemImage) return;
         
-        if (itemData.synergy && arrow) {
+        if (itemData.synergy) {
             arrow.setVisible(true);
             
-            // アイテム画像に追従させる
-            arrow.x = itemImage.x;
-            arrow.y = itemImage.y;
+            // ★ 矢印の位置はコンテナ内の相対位置で指定
+            arrow.x = 0;
+            arrow.y = 0;
             
-            // シナジーの方向に応じて矢印の向きと位置を調整
-            // (これは暫定的なものです。回転機能に合わせて後で改良します)
             const direction = itemData.synergy.direction;
-            if (direction === 'adjacent') {
-                arrow.setText('＋'); // 十字で表現
-            } else if (direction === 'down') {
-                arrow.setText('↓');
-                arrow.y += this.cellSize / 2;
-            } else if (direction === 'up') {
-                arrow.setText('↑');
-                arrow.y -= this.cellSize / 2;
-            } // ... right, left も同様
+            const offset = this.cellSize / 2 + 10; // アイテムの外側に少しだけ出す
+
+            if (direction === 'adjacent') arrow.setText('✜'); // 十字
+            else if (direction === 'down') { arrow.setText('▼'); arrow.y += offset; }
+            else if (direction === 'up') { arrow.setText('▲'); arrow.y -= offset; }
+            else if (direction === 'right') { arrow.setText('▶'); arrow.x += offset; }
+            else if (direction === 'left') { arrow.setText('◀'); arrow.x -= offset; }
             
-        } else if (arrow) {
+        } else {
             arrow.setVisible(false);
         }
     }
