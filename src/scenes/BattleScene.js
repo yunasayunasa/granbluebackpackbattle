@@ -516,14 +516,12 @@ const sourceShape = sourceItem.shape;
 
    // BattleScene.js の既存の canPlaceItem を、これに置き換えてください
 
-   // BattleScene.js の canPlaceItem メソッド (シンタックス修正・完成版)
-
     canPlaceItem(itemContainer, startCol, startRow) {
         const itemData = ITEM_DATA[itemContainer.getData('itemId')];
         const rotation = itemContainer.getData('rotation') || 0;
         let shape = itemData.shape;
 
-        // --- 1. 回転が90度か270度の場合、形状データをその場で回転させる ---
+        // 回転が90度か270度の場合、形状データを擬似的に回転させる
         if (rotation === 90 || rotation === 270) {
             const newShape = [];
             for (let x = 0; x < shape[0].length; x++) {
@@ -536,36 +534,21 @@ const sourceShape = sourceItem.shape;
             shape = newShape;
         }
         
-        // --- 2. 回転後の形状で、全てのセルをチェックする ---
-        
-        // ★★★ ネストされた正しい for ループ ★★★
+        // (以降の配置チェックロジックは変更なし)
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
-                
-                // 形状データが1の部分だけをチェック
                 if (shape[r][c] === 1) {
                     const checkRow = startRow + r;
                     const checkCol = startCol + c;
-                    
-                    // --- 2a. 境界チェック ---
-                    // チェックするセルが、グリッドの範囲外(0未満またはサイズ以上)か？
-                    if (checkRow < 0 || checkRow >= this.backpackGridSize || 
-                        checkCol < 0 || checkCol >= this.backpackGridSize) {
-                        return false; // はみ出しているので配置不可
-                    }
-                    
-                    // --- 2b. 重複チェック ---
-                    // チェックするセルに、既に他のアイテムが置かれているか？
-                    if (this.backpack[checkRow][checkCol] !== 0) {
-                        return false; // 重なっているので配置不可
+                    if (checkRow < 0 || checkRow >= this.backpackGridSize || checkCol < 0 || checkCol >= this.backpackGridSize || this.backpack[checkRow][checkCol] !== 0) {
+                        return false;
                     }
                 }
-            } // ← 内側の for ループの閉じ括弧
-        } // ← 外側の for ループの閉じ括弧
-        
-        // 全てのチェックをパスしたら配置可能
+            }
+        }
         return true;
     }
+
 // BattleScene.js に記述する addTooltipEvents メソッド (最終確定版)
 
 
