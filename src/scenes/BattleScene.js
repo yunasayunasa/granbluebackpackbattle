@@ -156,91 +156,85 @@ export default class BattleScene extends Phaser.Scene {
      */
    // BattleScene.js の prepareForBattle メソッド (シナジー計算機能付き)
 
+    // BattleScene.js の prepareForBattle メソッド (完全版)
+
     prepareForBattle() {
         console.log("--- 戦闘準備開始 ---");
         
         // --- 1. 全ての配置済みアイテムの「戦闘用コピー」を作成 ---
-        // これからシナジーで性能を書き換えるため、元のITEM_DATAを汚さないようにする
         const playerFinalItems = [];
         for (const itemImage of this.placedItemImages) {
             const gridPos = itemImage.getData('gridPos');
             const itemId = itemImage.getData('itemId');
-            
-            // JSONを使って元のデータをディープコピー（深い複製）する
             const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemId]));
-            
-            // 戦闘に必要な情報を追加
             itemInstance.id = itemId;
             itemInstance.row = gridPos.row;
             itemInstance.col = gridPos.col;
-            
+            // ★ 回転情報をコピーに含める
+            itemInstance.rotation = itemImage.getData('rotation') || 0;
             playerFinalItems.push(itemInstance);
         }
 
-        // --- 2. シナジー効果を計算し、「戦闘用コピー」の性能を書き換える ---
+        // --- 2. シナジー効果を計算し、コピーの性能を書き換える ---
         console.log("シナジー計算を開始...");
-        // まず、シナジーを与える側のアイテムをループ
         for (const sourceItem of playerFinalItems) {
-            if (!sourceItem.synergy) continue; // シナジーを持たないアイテムはスキップ
+            if (!sourceItem.synergy) continue;
 
-            // 「隣接(adjacent)」シナジーの処理
+            const rotation = sourceItem.rotation;
+            let targetPositions = [];
+
             if (sourceItem.synergy.direction === 'adjacent') {
-                const neighbors = [
-                    {r: sourceItem.row - 1, c: sourceItem.col}, // 上
-                    {r: sourceItem.row + 1, c: sourceItem.col}, // 下
-                    {r: sourceItem.row, c: sourceItem.col - 1}, // 左
-                    {r: sourceItem.row, c: sourceItem.col + 1}  // 右
+                targetPositions = [
+                    {r: sourceItem.row - 1, c: sourceItem.col}, {r: sourceItem.row + 1, c: sourceItem.col},
+                    {r: sourceItem.row, c: sourceItem.col - 1}, {r: sourceItem.row, c: sourceItem.col + 1}
                 ];
+            }
+            // (ここに 'down' などの方向と回転を考慮したロジックを追加)
 
-                for (const pos of neighbors) {
-                    // 隣接セルにいるアイテムを、戦闘用コピーのリストから探す
-                    const targetItem = playerFinalItems.find(item => item.row === pos.r && item.col === pos.c);
-                    
-                    // 条件に合うアイテムが見つかったら、効果を適用
-                    if (targetItem && targetItem.tags && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
-                        
-                        if (sourceItem.synergy.effect.type === 'add_attack' && targetItem.action) {
-                            targetItem.action.value += sourceItem.synergy.effect.value;
-                            console.log(`★ シナジー発動: [${sourceItem.id}] -> [${targetItem.id}] の攻撃力が ${sourceItem.synergy.effect.value} アップ！`);
-                        }
-                        // (ここに add_defense や add_recast などの効果も追加していく)
+            for (const pos of targetPositions) {
+                const targetItem = playerFinalItems.find(item => item.row === pos.r && item.col === pos.c);
+                if (targetItem && targetItem.tags && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                    const effect = sourceItem.synergy.effect;
+                    if (effect.type === 'add_attack' && targetItem.action) {
+                        targetItem.action.value += effect.value;
+                        console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
                     }
                 }
             }
-            // (ここに 'down' や 'right' などの他の方向のシナジー処理も追加していく)
         }
         console.log("シナジー計算完了。");
         
-        // --- 3. 性能が確定した「戦闘用コピー」を元に、最終ステータスを計算 ---
-        this.playerStats = { attack: 0, defense: 0, hp: this.stateManager.f.player_hp, block: 0 };
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ ここがエラーの出ていた部分の修正版です ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        
+        // --- 3. 性能が確定したコピーを元に、最終ステータスを計算 ---
+        this.playerStats = { 
+            attack: 0, 
+            defense: 0, 
+            hp: this.initialBattleParams.playerHp, // HPは初期値から
+            block: 0 
+        };
         this.playerBattleItems = [];
 
-         for (const sourceItem of playerFinalItems) {
+        // ★ ループ変数を `item` に統一
+        for (const item of playerFinalItems) {
             // パッシブ効果を計算
             if (item.passive && item.passive.effects) {
                 for(const effect of item.passive.effects){
                     if (effect.type === 'defense') {
                         this.playerStats.defense += effect.value;
                     }
-                    // (ここに max_hp などの効果も追加していく)
+                    if (effect.type === 'max_hp') {
+                        // 最大HPは直接加算せず、現在のHPと比較する形が良い（後で調整）
+                    }
                 }
             }
-             const rotation = sourceItem.rotation;
             
-            // 例: 'down' シナジーの場合
-            if (sourceItem.synergy.direction === 'down') {
-                let targetPos = {};
-                if (rotation === 0)   targetPos = { r: sourceItem.row + 1, c: sourceItem.col };     // 下
-                else if (rotation === 90)  targetPos = { r: sourceItem.row, c: sourceItem.col - 1 }; // 左
-                else if (rotation === 180) targetPos = { r: sourceItem.row - 1, c: sourceItem.col }; // 上
-                else if (rotation === 270) targetPos = { r: sourceItem.row, c: sourceItem.col + 1 }; // 右
-
-                // targetPosにあるアイテムを探して効果を適用する...
-            }
             // 行動するアイテムをリストアップ
             if (item.recast > 0) {
                 this.playerBattleItems.push({
-                    data: item, // ★ シナジーで強化された後のデータを格納
+                    data: item, // シナジーで強化された後のデータ
                     nextActionTime: item.recast
                 });
             }
@@ -249,7 +243,7 @@ export default class BattleScene extends Phaser.Scene {
         console.log("プレイヤー行動アイテム:", this.playerBattleItems);
 
 
-        // --- 4. 敵のステータスと行動アイテムを初期化 (今は仮のまま) ---
+        // --- 4. 敵のステータスと行動アイテムを初期化 (仮) ---
         this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
         this.enemyBattleItems = [{
             data: ITEM_DATA['sword'],
