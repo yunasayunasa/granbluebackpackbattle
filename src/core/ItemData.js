@@ -38,8 +38,8 @@ export const ITEM_DATA = {
         }
     },
     'spiky_shield': { // トゲの盾
-        storage: 'item_shield', // ★ 新しい画像アセットキー
-        shape: [[1]],
+        storage: 'item_spiky_shield', // ★ 新しい画像アセットキー
+        shape: [[1,1]],
         tags: ['armor', 'utility'],
         recast: 5.0, // 5秒に1回発動
         action: {
