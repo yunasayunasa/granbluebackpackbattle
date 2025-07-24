@@ -369,6 +369,58 @@ export default class BattleScene extends Phaser.Scene {
         if (index > -1) this.inventoryItemImages.splice(index, 1);
         this.placedItemImages.push(itemImage);
     }
+    // BattleScene.js に追加する endBattle メソッド
+
+    async endBattle(result) {
+        // 二重呼び出しを防止
+        if (this.battleEnded) return;
+        this.battleEnded = true;
+
+        console.log(`BattleScene: バトル終了。結果: ${result}`);
+        
+        // --- 勝利した場合 ---
+        if (result === 'win') {
+            // (ここに勝利演出などを追加)
+            
+            // ★ TODO: リワード画面への遷移ロジックを後で追加
+            
+            // とりあえず今はノベルパートに戻る
+            this.scene.get('SystemScene').events.emit('return-to-novel', {
+                from: this.scene.key,
+                params: { 
+                    'f.battle_result': '"win"', // 文字列は""で囲む
+                    'f.player_hp': this.playerStats.hp,
+                }
+            });
+            
+        } 
+        // --- 敗北した場合 ---
+        else { // result === 'lose'
+            console.log("BattleScene: ゲームオーバー処理を開始します。");
+            
+            // ゲームオーバーUIを表示
+            this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, 'GAME OVER', { fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 5 }).setOrigin(0.5).setDepth(999);
+            const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 50, 'もう一度挑戦', { fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(999);
+            const titleButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 120, 'タイトルに戻る', { fontSize: '32px', fill: '#fff', backgroundColor: '#444444', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(999);
+            
+            // リトライボタンの処理
+            retryButton.on('pointerdown', () => {
+                this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                    to: this.scene.key,
+                    from: this.scene.key,
+                    params: this.receivedParams // 最初のinitで受け取ったパラメータで再挑戦
+                });
+            });
+
+            // タイトルへ戻るボタンの処理
+            titleButton.on('pointerdown', () => {
+                this.scene.get('SystemScene').events.emit('return-to-novel', {
+                    from: this.scene.key, 
+                    params: { 'f.battle_result': '"lose"' }
+                });
+            });
+        }
+    }
     
     // shutdown, endBattle, etc. はまだ実装しないので、空かコメントアウトでOK
     shutdown() {
