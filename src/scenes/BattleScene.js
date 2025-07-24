@@ -26,6 +26,7 @@ export default class BattleScene extends Phaser.Scene {
         this.playerBattleItems = [];
         this.enemyBattleItems = [];
         this.battleEnded = false;
+         this.ghostImage = null;
     }
 
     init(data) {
@@ -118,7 +119,7 @@ export default class BattleScene extends Phaser.Scene {
         // 3e. 戦闘開始ボタン
         this.startBattleButton = this.add.text(gameWidth - 150, gameHeight - 50, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:10, y:5} }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
-
+this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
         // --- 4. イベントリスナーの設定 ---
         this.startBattleButton.on('pointerdown', () => {
             if (this.gameState !== 'prepare') return;
@@ -150,8 +151,12 @@ export default class BattleScene extends Phaser.Scene {
     
     // --- ヘルパーメソッド群 (ここから下はすべて完成版) ---
 
+    // BattleScene.js の prepareForBattle メソッド (完成版)
+
     prepareForBattle() {
         console.log("--- 戦闘準備開始 ---");
+        
+        // 1. 戦闘用のアイテム情報リストを作成
         const playerFinalItems = [];
         for (const itemContainer of this.placedItemImages) {
             const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
@@ -161,9 +166,43 @@ export default class BattleScene extends Phaser.Scene {
             itemInstance.rotation = itemContainer.getData('rotation') || 0;
             playerFinalItems.push(itemInstance);
         }
+
+        // 2. シナジー効果を計算
         console.log("シナジー計算を開始...");
-        for (const sourceItem of playerFinalItems) { /* ... シナジー計算ロジック ... */ }
+        for (const sourceItem of playerFinalItems) {
+            if (!sourceItem.synergy) continue;
+            
+            const rotation = sourceItem.rotation;
+            const sourceShape = this.getRotatedShape(sourceItem.id, rotation);
+            const sourceCells = [];
+            for (let r = 0; r < sourceShape.length; r++) {
+                for (let c = 0; c < sourceShape[r].length; c++) {
+                    if (sourceShape[r][c] === 1) sourceCells.push({ r: sourceItem.row + r, c: sourceItem.col + c });
+                }
+            }
+
+            if (sourceItem.synergy.direction === 'adjacent') {
+                const checkedTargets = new Set();
+                for (const cell of sourceCells) {
+                    const neighbors = [{r: cell.r - 1, c: cell.c}, {r: cell.r + 1, c: cell.c}, {r: cell.r, c: cell.c - 1}, {r: cell.r, c: cell.c + 1}];
+                    for (const pos of neighbors) {
+                        const targetItem = playerFinalItems.find(item => item.row === pos.r && item.col === pos.c);
+                        if (targetItem && !checkedTargets.has(targetItem.id) && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                            if (targetItem.id === sourceItem.id) continue;
+                            const effect = sourceItem.synergy.effect;
+                            if (effect.type === 'add_attack' && targetItem.action) {
+                                targetItem.action.value += effect.value;
+                                console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
+                                checkedTargets.add(targetItem.id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         console.log("シナジー計算完了。");
+        
+        // 3. 最終ステータスを計算
         this.playerStats = { attack: 0, defense: 0, hp: this.initialBattleParams.playerHp, block: 0 };
         this.playerBattleItems = [];
         for (const item of playerFinalItems) {
@@ -177,6 +216,8 @@ export default class BattleScene extends Phaser.Scene {
             }
         }
         console.log("プレイヤー最終ステータス:", this.playerStats);
+        
+        // 4. 敵のステータスを初期化
         this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
         this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
         console.log("敵最終ステータス:", this.enemyStats);
@@ -279,6 +320,37 @@ export default class BattleScene extends Phaser.Scene {
         });
         itemContainer.on('dragend', (pointer) => {
             itemContainer.setDepth(12);
+             // ★★★ ゴースト表示ロジック ★★★
+            const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
+            const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
+            const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
+            
+            // グリッドの内側か？
+            if (gridCol >= 0 && gridCol < this.backpackGridSize && gridRow >= 0 && gridRow < this.backpackGridSize) {
+                this.ghostImage.setVisible(true);
+                this.ghostImage.width = shape[0].length * this.cellSize;
+                this.ghostImage.height = shape.length * this.cellSize;
+                // ゴーストをグリッドにスナップ
+                this.ghostImage.setPosition(
+                    this.gridX + gridCol * this.cellSize,
+                    this.gridY + gridRow * this.cellSize
+                ).setOrigin(0);
+
+                // 配置可能かチェックして色を変える
+                if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+                    this.ghostImage.setFillStyle(0x00ff00, 0.5); // 緑
+                } else {
+                    this.ghostImage.setFillStyle(0xff0000, 0.5); // 赤
+                }
+            } else {
+                this.ghostImage.setVisible(false);
+            }
+        });
+        
+        itemContainer.on('dragend', (pointer) => {
+            itemContainer.setDepth(12);
+            this.ghostImage.setVisible(false); // ★ ドラッグ終了時にゴーストを隠す
+
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
