@@ -53,10 +53,10 @@ export const ITEM_DATA = {
         }
     },
      'leather_armor': { // 革鎧
-        storage: 'item_sword', // ★ 新しい画像アセットキー
+        storage: 'item_potion', // ★ 新しい画像アセットキー
         shape: [[1, 1], [1, 1]], // 2x2マス
         tags: ['armor'],
-        recast: 0,
+        recast: 1,
         action: null,
         passive: {
             effects: [
