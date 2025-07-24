@@ -405,14 +405,39 @@ export default class BattleScene extends Phaser.Scene {
                 itemContainer.y = itemContainer.getData('originY');
             }
         });
-         // ★★★ 7. 右クリック（回転）イベントを追加 ★★★
+          // ★★★ 7. 回転とタップのイベントを pointerup に集約 ★★★
+        let pressTimer = null; // 長押し判定用のタイマー
+        
         itemContainer.on('pointerdown', (pointer) => {
-            // pointer.rightButtonDown() で右クリックを判定
+            // ボタンが押されたら、長押しタイマースタート
+            pressTimer = this.time.delayedCall(500, () => { // 500ms押し続けたら長押しと判定
+                this.rotateItem(itemContainer);
+                itemContainer.setData('isLongPress', true); // 長押しフラグ
+            });
+        });
+
+        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+            // ボタンが離されたら、まずタイマーを止める
+            if (pressTimer) pressTimer.remove();
+
+            // もし長押しが発動「していなければ」タップとみなす
+            if (!itemContainer.getData('isLongPress')) {
+                // (ここにツールチップ表示のロジックを移動させても良いが、
+                //  addTooltipEventsに任せた方がクリーン)
+            }
+            
+            // フラグをリセット
+            itemContainer.setData('isLongPress', false);
+        });
+
+        // 右クリックは別途判定
+        itemContainer.on('pointerdown', (pointer) => {
             if (pointer.rightButtonDown()) {
+                if (pressTimer) pressTimer.remove(); // 長押しタイマーをキャンセル
                 this.rotateItem(itemContainer);
             }
         });
-
+        
         return itemContainer;
     }
 
@@ -423,24 +448,58 @@ export default class BattleScene extends Phaser.Scene {
      * アイテムコンテナを90度回転させる
      * @param {Phaser.GameObjects.Container} itemContainer
      */
+    // BattleScene.js の rotateItem メソッド (回転補正・スマホ対応版)
+
     rotateItem(itemContainer) {
-        // 1. 現在の回転角度を取得し、90度加算する
+        const itemId = itemContainer.getData('itemId');
+        const itemData = ITEM_DATA[itemId];
+        const shape = itemData.shape;
+
+        // 1. 新しい回転角度を計算
         let currentRotation = itemContainer.getData('rotation');
-        currentRotation = (currentRotation + 90) % 360; // 360度を超えたら0に戻す
+        currentRotation = (currentRotation + 90) % 360;
         itemContainer.setData('rotation', currentRotation);
 
         // 2. 見た目を更新
         const itemImage = itemContainer.getData('itemImage');
         const arrowContainer = itemContainer.getData('arrowContainer');
         
-        // アイテム画像と矢印コンテナの両方を回転させる
+        // ★★★ コンテナ自体は回転させない！ ★★★
+        
+        // 画像と矢印コンテナだけを回転
         itemImage.setAngle(currentRotation);
         arrowContainer.setAngle(currentRotation);
-        
-        console.log(`アイテム[${itemContainer.getData('itemId')}]を回転: ${currentRotation}度`);
 
-        // ★ TODO: グリッドに配置済みの場合は、回転後の形状で再配置チェックが必要
-        // (これは次のステップでやりましょう)
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ これが核心：形状に合わせてコンテナの大きさと画像の位置を調整 ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        let containerWidth, containerHeight;
+        
+        // 回転が0度か180度（縦向き or 逆さ縦向き）の場合
+        if (currentRotation === 0 || currentRotation === 180) {
+            containerWidth = shape[0].length * this.cellSize;
+            containerHeight = shape.length * this.cellSize;
+        } 
+        // 回転が90度か270度（横向き）の場合
+        else {
+            // 幅と高さを入れ替える
+            containerWidth = shape.length * this.cellSize;
+            containerHeight = shape[0].length * this.cellSize;
+        }
+
+        // コンテナのインタラクション範囲を更新
+        itemContainer.setSize(containerWidth, containerHeight);
+        // 画像の表示サイズも更新
+        itemImage.setDisplaySize(containerWidth, containerHeight);
+
+        // ★ グリッドに配置済みなら、位置を再計算してスナップさせる
+        const gridPos = itemContainer.getData('gridPos');
+        if (gridPos) {
+            itemContainer.x = this.gridX + gridPos.col * this.cellSize + containerWidth / 2;
+            itemContainer.y = this.gridY + gridPos.row * this.cellSize + containerHeight / 2;
+        }
+
+        console.log(`アイテム[${itemId}]を回転: ${currentRotation}度`);
     }
 
 // BattleScene.js に記述する addTooltipEvents メソッド (最終確定版)
