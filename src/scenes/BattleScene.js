@@ -320,43 +320,53 @@ export default class BattleScene extends Phaser.Scene {
         
         return itemImage; 
     }
- // ★★★ ツールチップイベントを追加するヘルパーメソッドを新設 ★★★
-  // BattleScene.js のクラス内に、このメソッドが存在するか確認してください
+// BattleScene.js に記述する addTooltipEvents メソッド (最終確定版)
 
     addTooltipEvents(itemImage, itemId) {
+        // pointerdown: マウスボタンが押された「瞬間」のイベント
         itemImage.on('pointerdown', (pointer) => {
-            // ドラッグ操作と競合しないように、少し待ってから判定
-            this.time.delayedCall(150, () => {
-                // isDraggingプロパティはPhaserのDraggableオブジェクトにあります
-                const isDragging = itemImage.input && itemImage.input.dragState > 0;
+            // タップかドラッグかを判定するためのフラグをセット
+            itemImage.setData('isDown', true);
+            itemImage.setData('moved', false);
+        });
 
-                // delayedCall実行時にまだドラッグされていなければタップとみなす
-                if (!isDragging) { 
-                    const itemData = ITEM_DATA[itemId];
-                    if (!itemData) return;
+        // pointermove: マウスが動いた時のイベント
+        itemImage.on('pointermove', (pointer) => {
+            // ボタンが押された状態で少しでも動いたら「ドラッグ」とみなす
+            if (itemImage.getData('isDown')) {
+                itemImage.setData('moved', true);
+            }
+        });
+        
+        // pointerup: マウスボタンが離された「瞬間」のイベント
+        itemImage.on('pointerup', (pointer, localX, localY, event) => {
+            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+            // ★★★ これが核心：タップ判定ロジック ★★★
+            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
-                    // ★★★ ここでツールチップに表示するテキストを生成します ★★★
-                    let tooltipText = `【${itemId}】\n\n`;
-                    
-                    if (itemData.recast > 0) {
-                        tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-                    }
-                    if (itemData.action) {
-                        tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
-                    }
-                    if (itemData.passive && itemData.passive.effects) {
-                        itemData.passive.effects.forEach(e => {
-                            tooltipText += `パッシブ: ${e.type} +${e.value}\n`;
-                        });
-                    }
-                    // (今後シナジー効果などもここに追加)
+            // ボタンが押された後、一度も動いていなければ「タップ」と判定
+            if (itemImage.getData('isDown') && !itemImage.getData('moved')) {
+                const itemData = ITEM_DATA[itemId];
+                if (!itemData) return;
 
-                    this.tooltip.show(itemImage, tooltipText);
-                    
-                    // 背景シーンへのクリックイベントを止める
-                    if(pointer) pointer.stopPropagation();
+                let tooltipText = `【${itemId}】\n\n`;
+                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+                if (itemData.passive && itemData.passive.effects) {
+                    itemData.passive.effects.forEach(e => {
+                        tooltipText += `パッシブ: ${e.type} +${e.value}\n`;
+                    });
                 }
-            });
+                
+                this.tooltip.show(itemImage, tooltipText);
+                
+                // ★★★ 正しいイベント伝播の停止方法 ★★★
+                event.stopPropagation();
+            }
+            
+            // フラグをリセット
+            itemImage.setData('isDown', false);
+            itemImage.setData('moved', false);
         });
     }
     removeItemFromBackpack(itemImage) {
