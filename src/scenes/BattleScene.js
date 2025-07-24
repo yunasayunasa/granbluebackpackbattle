@@ -658,24 +658,60 @@ const sourceShape = sourceItem.shape;
       // BattleScene.js に、このメソッドをまるごと追加してください
 
    // BattleScene.js
+    // BattleScene.js の rotateItem メソッド (最終回答)
+
     rotateItem(itemContainer) {
+        const itemId = itemContainer.getData('itemId');
         const originalRotation = itemContainer.getData('rotation');
         const newRotation = (originalRotation + 90) % 360;
+        
+        // --- 1. まず、回転可能かチェックする ---
+        //    一時的に回転後の角度をセットしてチェック
         itemContainer.setData('rotation', newRotation);
-
         const gridPos = itemContainer.getData('gridPos');
-        if (gridPos) {
+        if (gridPos) { // グリッド上にいる場合のみチェック
             if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                console.log("回転不可：インベントリに戻します。");
-                itemContainer.setData('rotation', originalRotation); // 回転を元に戻す
-                this.removeItemFromBackpack(itemContainer);
-                itemContainer.x = itemContainer.getData('originX');
-                itemContainer.y = itemContainer.getData('originY');
+                console.log("回転不可：スペースがありません。");
+                itemContainer.setData('rotation', originalRotation); // 失敗したので回転角度を元に戻す
+                return; // 何もせず終了
             }
         }
+        // チェックが終わったら、一旦角度を元に戻しておく
+        itemContainer.setData('rotation', originalRotation);
+
+        // --- 2. チェックをパスしたら、回転を実行 ---
+        itemContainer.setData('rotation', newRotation);
         
-        // 見た目と論理データを更新
-        this.updateItemVisualsAndData(itemContainer);
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ ここからが「見た目」を更新する核心部分 ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+        const itemData = ITEM_DATA[itemId];
+        const rotatedShape = this.getRotatedShape(itemId, newRotation);
+        
+        const newWidth = rotatedShape[0].length * this.cellSize;
+        const newHeight = rotatedShape.length * this.cellSize;
+
+        // a. コンテナ（パネル）のサイズを、回転後のサイズに更新
+        itemContainer.setSize(newWidth, newHeight);
+        
+        // b. 中の画像の表示サイズも、回転後のサイズに更新
+        const itemImage = itemContainer.getData('itemImage');
+        itemImage.setDisplaySize(newWidth, newHeight);
+        
+        // c. 中の画像だけを回転させる
+        itemImage.setAngle(newRotation);
+
+        // d. グリッドに配置済みの場合は、新しいサイズの中心に座標を再スナップ
+        if (gridPos) {
+            itemContainer.x = this.gridX + gridPos.col * this.cellSize + newWidth / 2;
+            itemContainer.y = this.gridY + gridPos.row * this.cellSize + newHeight / 2;
+        }
+
+        // e. 矢印の表示も更新
+        this.updateArrowVisibility(itemContainer);
+
+        console.log(`アイテム[${itemId}]を回転: ${newRotation}度`);
     }
  // BattleScene.js の placeItemInBackpack メソッド (最終修正版)
 
