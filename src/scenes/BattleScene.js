@@ -450,56 +450,33 @@ export default class BattleScene extends Phaser.Scene {
      */
     // BattleScene.js の rotateItem メソッド (回転補正・スマホ対応版)
 
-    rotateItem(itemContainer) {
-        const itemId = itemContainer.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
-        const shape = itemData.shape;
+    // BattleScene.js の canPlaceItem メソッド (回転対応版)
 
-        // 1. 新しい回転角度を計算
-        let currentRotation = itemContainer.getData('rotation');
-        currentRotation = (currentRotation + 90) % 360;
-        itemContainer.setData('rotation', currentRotation);
+    canPlaceItem(itemContainer, startCol, startRow) {
+        const itemData = ITEM_DATA[itemContainer.getData('itemId')];
+        const rotation = itemContainer.getData('rotation');
+        let shape = itemData.shape;
 
-        // 2. 見た目を更新
-        const itemImage = itemContainer.getData('itemImage');
-        const arrowContainer = itemContainer.getData('arrowContainer');
-        
-        // ★★★ コンテナ自体は回転させない！ ★★★
-        
-        // 画像と矢印コンテナだけを回転
-        itemImage.setAngle(currentRotation);
-        arrowContainer.setAngle(currentRotation);
-
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ これが核心：形状に合わせてコンテナの大きさと画像の位置を調整 ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        let containerWidth, containerHeight;
-        
-        // 回転が0度か180度（縦向き or 逆さ縦向き）の場合
-        if (currentRotation === 0 || currentRotation === 180) {
-            containerWidth = shape[0].length * this.cellSize;
-            containerHeight = shape.length * this.cellSize;
-        } 
-        // 回転が90度か270度（横向き）の場合
-        else {
-            // 幅と高さを入れ替える
-            containerWidth = shape.length * this.cellSize;
-            containerHeight = shape[0].length * this.cellSize;
+        // ★ 回転が90度か270度の場合、形状データを擬似的に回転させる
+        if (rotation === 90 || rotation === 270) {
+            const newShape = [];
+            for (let x = 0; x < shape[0].length; x++) {
+                const newRow = [];
+                for (let y = shape.length - 1; y >= 0; y--) {
+                    newRow.push(shape[y][x]);
+                }
+                newShape.push(newRow);
+            }
+            shape = newShape;
         }
-
-        // コンテナのインタラクション範囲を更新
-        itemContainer.setSize(containerWidth, containerHeight);
-        // 画像の表示サイズも更新
-        itemImage.setDisplaySize(containerWidth, containerHeight);
-
-        // ★ グリッドに配置済みなら、位置を再計算してスナップさせる
-        const gridPos = itemContainer.getData('gridPos');
-        if (gridPos) {
-            itemContainer.x = this.gridX + gridPos.col * this.cellSize + containerWidth / 2;
-            itemContainer.y = this.gridY + gridPos.row * this.cellSize + containerHeight / 2;
+        
+        // (以降の配置チェックロジックは変更なし)
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] === 1) { /* ... */ }
+            }
         }
-
-        console.log(`アイテム[${itemId}]を回転: ${currentRotation}度`);
+        return true;
     }
 
 // BattleScene.js に記述する addTooltipEvents メソッド (最終確定版)
@@ -594,9 +571,23 @@ export default class BattleScene extends Phaser.Scene {
         // 3. シナジー矢印の表示を更新
         this.updateArrowVisibility(itemContainer);
     }
-     canPlaceItem(itemContainer, startCol, startRow) {
-        const itemId = itemContainer.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
+         canPlaceItem(itemContainer, startCol, startRow) {
+        const itemData = ITEM_DATA[itemContainer.getData('itemId')];
+        const rotation = itemContainer.getData('rotation');
+        let shape = itemData.shape;
+
+        // ★ 回転が90度か270度の場合、形状データを擬似的に回転させる
+        if (rotation === 90 || rotation === 270) {
+            const newShape = [];
+            for (let x = 0; x < shape[0].length; x++) {
+                const newRow = [];
+                for (let y = shape.length - 1; y >= 0; y--) {
+                    newRow.push(shape[y][x]);
+                }
+                newShape.push(newRow);
+            }
+            shape = newShape;
+        }
         for (let r = 0; r < itemData.shape.length; r++) {
             for (let c = 0; c < itemData.shape[r].length; c++) {
                 if (itemData.shape[r][c] === 1) {
