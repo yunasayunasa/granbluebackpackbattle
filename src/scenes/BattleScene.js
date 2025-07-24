@@ -95,7 +95,7 @@ export default class BattleScene extends Phaser.Scene {
                 itemData.storage
             ).setDepth(3);
             itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
-            this.addTooltipEvents(itemImage, itemId); // ★ ここでイベント追加
+            this.addTooltipEvents(itemImage, itemId);
         }
 
         // 3c. インベントリ
