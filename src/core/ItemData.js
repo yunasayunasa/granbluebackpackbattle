@@ -37,5 +37,19 @@ export const ITEM_DATA = {
             effect: { type: 'add_attack', value: 2 } // 攻撃力を+2
         }
     },
-    // ... 他のアイテム（shield, potionなど） ...
+    'spiky_shield': { // トゲの盾
+        storage: 'item_shield', // ★ 新しい画像アセットキー
+        shape: [[1]],
+        tags: ['armor', 'utility'],
+        recast: 5.0, // 5秒に1回発動
+        action: {
+            type: 'block',
+            value: 8 // 8ポイントのブロックを得る
+        },
+        passive: {
+            effects: [
+                { type: 'defense', value: 1 }
+            ]
+        }
+    }
 };
