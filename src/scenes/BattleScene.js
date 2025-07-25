@@ -139,12 +139,11 @@ for (const itemId in currentLayout) {
         .setVisible(false);
 
     // 3. マスク
-     // ★★★ ここからが修正箇所 ★★★
-    const maskGraphics = this.add.graphics();
-    itemContainer.add(maskGraphics);
-    maskGraphics.setVisible(false);
-    recastOverlay.setMask(maskGraphics.createGeometryMask());
-    // ★★★ 修正箇所ここまで ★★★
+    // ★★★ ここからが修正箇所 ★★★
+const maskGraphics = this.add.graphics();
+maskGraphics.setVisible(false);
+recastOverlay.setMask(maskGraphics.createGeometryMask());
+// ★★★ 修正箇所ここまで ★★★
     // コンテナに追加
    itemContainer.add([itemImage, recastOverlay, maskGraphics]);
     // データをコンテナに持たせる
@@ -441,16 +440,31 @@ update(time, delta) {
         
         const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
         const charObject = item.data.gameObject;
-        if (charObject && charObject.getData('recastMask')) {
+
+        if (charObject && charObject.active && charObject.getData('recastMask')) {
             const maskGraphics = charObject.getData('recastMask');
             maskGraphics.clear();
             if (progress > 0) {
-                const w = charObject.width;
-                const h = charObject.height;
+                const w = charObject.width * charObject.scaleX; // 回転も考慮した表示サイズ
+                const h = charObject.height * charObject.scaleY;
+                
+                // ★★★ ここが最重要修正箇所 ★★★
+                // コンテナの現在のグローバル座標を取得
+                const matrix = charObject.getWorldTransformMatrix();
+                const x = matrix.tx;
+                const y = matrix.ty;
+                const rotation = charObject.rotation;
+
+                // マスク用の矩形を描画
                 const fillHeight = h * progress;
-                // ★★★ 座標をローカル座標に修正 ★★★
-                // (x, y) は矩形の左上の座標
+                maskGraphics.fillStyle(0xffffff); // 色は何でも良いが、指定が必要
+
+                // 回転を考慮して矩形を描画
+                maskGraphics.save();
+                maskGraphics.translate(x, y);
+                maskGraphics.rotate(rotation);
                 maskGraphics.fillRect(-w / 2, h / 2 - fillHeight, w, fillHeight);
+                maskGraphics.restore();
             }
         }
         
@@ -467,17 +481,26 @@ update(time, delta) {
     this.enemyBattleItems.forEach((item, index) => {
         item.nextActionTime -= delta / 1000;
 
-        const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
+         const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
         const charObject = this.enemyItemImages[index];
-        if (charObject && charObject.getData('recastMask')) {
+
+        if (charObject && charObject.active && charObject.getData('recastMask')) {
             const maskGraphics = charObject.getData('recastMask');
             maskGraphics.clear();
             if (progress > 0) {
-                const w = charObject.width;
-                const h = charObject.height;
+                const w = charObject.width * charObject.scaleX;
+                const h = charObject.height * charObject.scaleY;
+                const matrix = charObject.getWorldTransformMatrix();
+                const x = matrix.tx;
+                const y = matrix.ty;
+                const rotation = charObject.rotation;
                 const fillHeight = h * progress;
-                // ★★★ 座標をローカル座標に修正 ★★★
+                maskGraphics.fillStyle(0xffffff);
+                maskGraphics.save();
+                maskGraphics.translate(x, y);
+                maskGraphics.rotate(rotation);
                 maskGraphics.fillRect(-w / 2, h / 2 - fillHeight, w, fillHeight);
+                maskGraphics.restore();
             }
         }
 
@@ -589,19 +612,15 @@ createItem(itemId, x, y) {
 
     // 3. マスクとして機能するGraphicsオブジェクト
     // 1. マスク用のGraphicsを「コンテナの子として」追加する
+       // 1. マスク用のGraphicsを「シーンに直接」追加する
     const maskGraphics = this.add.graphics();
-    itemContainer.add(maskGraphics); // これで座標系がコンテナ基準になる
-    maskGraphics.setVisible(false);  // ただし、マスク自体は見えないようにする
+    maskGraphics.setVisible(false); // このオブジェクト自体は見えないようにする
 
     // 2. マスクを生成して適用
-    const mask = maskGraphics.createGeometryMask();
-    recastOverlay.setMask(mask);
-    
-    // ★★★ 修正箇所ここまで ★★★
+    recastOverlay.setMask(maskGraphics.createGeometryMask());
 
-
-    // ★★★ 追加/変更箇所ここまで ★★★
-    const arrowContainer = this.add.container(0, 0).setVisible(false);
+    // 3. コンテナに追加するのはオーバーレイまで
+    const arrowContainer = this.add.container(0, 0).setVisible(false);  
     const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
     arrowContainer.add([
         this.add.text(0, 0, '▲', arrowStyle).setOrigin(0.5).setName('up'),
