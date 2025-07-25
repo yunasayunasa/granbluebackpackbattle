@@ -431,84 +431,83 @@ for (const element in ELEMENT_RESONANCE_RULES) {
         console.log("★★ 戦闘開始！ ★★");
     }
 // BattleScene.js の update をこれに置き換え
+// BattleScene.js の update をこれに置き換え
 update(time, delta) {
     if (this.gameState !== 'battle') return;
-    
-    // Player's items
+
+    const updateRecastMask = (charObject, progress) => {
+        if (!charObject || !charObject.active || !charObject.getData('recastMask')) {
+            return;
+        }
+
+        const maskGraphics = charObject.getData('recastMask');
+        maskGraphics.clear();
+
+        if (progress > 0.01) { // わずかな誤差を無視
+            const w = charObject.width;
+            const h = charObject.height;
+            const fillHeight = h * progress;
+
+            // 回転した矩形の4つの頂点座標を計算
+            const corners = [
+                { x: -w / 2, y: h / 2 - fillHeight }, // 左下
+                { x: w / 2,  y: h / 2 - fillHeight }, // 右下
+                { x: w / 2,  y: h / 2 },              // 右上
+                { x: -w / 2, y: h / 2 }               // 左上
+            ];
+
+            // 各頂点をキャラクターの回転に合わせて回転させる
+            const rotation = charObject.rotation;
+            const sin = Math.sin(rotation);
+            const cos = Math.cos(rotation);
+
+            const rotatedCorners = corners.map(p => ({
+                x: p.x * cos - p.y * sin,
+                y: p.x * sin + p.y * cos
+            }));
+            
+            // キャラクターのグローバル座標を取得
+            const matrix = charObject.getWorldTransformMatrix();
+            const gx = matrix.tx;
+            const gy = matrix.ty;
+
+            // グローバル座標に頂点を移動
+            const finalPoints = rotatedCorners.map(p => ({
+                x: gx + p.x,
+                y: gy + p.y
+            }));
+
+            // 計算した頂点を使って多角形を描画
+            maskGraphics.fillStyle(0xffffff);
+            maskGraphics.fillPoints(finalPoints, true);
+        }
+    };
+
+    // --- Player's items ---
     this.playerBattleItems.forEach(item => {
         item.nextActionTime -= delta / 1000;
-        
         const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
-        const charObject = item.data.gameObject;
-
-        if (charObject && charObject.active && charObject.getData('recastMask')) {
-            const maskGraphics = charObject.getData('recastMask');
-            maskGraphics.clear();
-            if (progress > 0) {
-                const w = charObject.width * charObject.scaleX; // 回転も考慮した表示サイズ
-                const h = charObject.height * charObject.scaleY;
-                
-                // ★★★ ここが最重要修正箇所 ★★★
-                // コンテナの現在のグローバル座標を取得
-                const matrix = charObject.getWorldTransformMatrix();
-                const x = matrix.tx;
-                const y = matrix.ty;
-                const rotation = charObject.rotation;
-
-                // マスク用の矩形を描画
-                const fillHeight = h * progress;
-                maskGraphics.fillStyle(0xffffff); // 色は何でも良いが、指定が必要
-
-                // 回転を考慮して矩形を描画
-                maskGraphics.save();
-                maskGraphics.translate(x, y);
-                maskGraphics.rotate(rotation);
-                maskGraphics.fillRect(-w / 2, h / 2 - fillHeight, w, fillHeight);
-                maskGraphics.restore();
-            }
-        }
+        updateRecastMask(item.data.gameObject, progress);
         
         if (item.nextActionTime <= 0) {
-            this.executeAction(item.data, 'player', 'enemy', charObject);
+            this.executeAction(item.data, 'player', 'enemy', item.data.gameObject);
             item.nextActionTime += item.data.recast;
+            // アクション実行後、次のフレームで progress が 0 に近くなり、マスクがクリアされる
         }
-        if (this.gameState !== 'battle') return;
     });
 
     if (this.gameState !== 'battle') return;
 
-    // Enemy's items
+    // --- Enemy's items ---
     this.enemyBattleItems.forEach((item, index) => {
         item.nextActionTime -= delta / 1000;
-
-         const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
-        const charObject = this.enemyItemImages[index];
-
-        if (charObject && charObject.active && charObject.getData('recastMask')) {
-            const maskGraphics = charObject.getData('recastMask');
-            maskGraphics.clear();
-            if (progress > 0) {
-                const w = charObject.width * charObject.scaleX;
-                const h = charObject.height * charObject.scaleY;
-                const matrix = charObject.getWorldTransformMatrix();
-                const x = matrix.tx;
-                const y = matrix.ty;
-                const rotation = charObject.rotation;
-                const fillHeight = h * progress;
-                maskGraphics.fillStyle(0xffffff);
-                maskGraphics.save();
-                maskGraphics.translate(x, y);
-                maskGraphics.rotate(rotation);
-                maskGraphics.fillRect(-w / 2, h / 2 - fillHeight, w, fillHeight);
-                maskGraphics.restore();
-            }
-        }
+        const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
+        updateRecastMask(this.enemyItemImages[index], progress);
 
         if (item.nextActionTime <= 0) {
-            this.executeAction(item.data, 'enemy', 'player', charObject);
+            this.executeAction(item.data, 'enemy', 'player', this.enemyItemImages[index]);
             item.nextActionTime += item.data.recast;
         }
-        if (this.gameState !== 'battle') return;
     });
 }
     // BattleScene.js の executeAction メソッド (ブロック対応版)
