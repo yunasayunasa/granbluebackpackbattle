@@ -77,7 +77,7 @@ create() {
         this.stateManager.sf.player_backpack = {};
         this.stateManager.sf.player_inventory = ['sword', 'shield', 'potion'];
         // sf変数が変更されたことを通知し、自動保存をトリガーする（StateManagerの実装による）
-        this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
+        //this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
     }
     const backpackData = this.stateManager.sf.player_backpack;
     const inventoryData = this.stateManager.sf.player_inventory;
