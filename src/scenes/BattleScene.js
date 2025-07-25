@@ -233,15 +233,17 @@ prepareForBattle() {
     
     // 0. 全ての配置済みアイテムの「戦闘用コピー」を作成
     const playerFinalItems = [];
-    for (const itemContainer of this.placedItemImages) {
-        const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
+   this.placedItemImages.forEach((itemContainer, index) => {
+    const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
         itemInstance.id = itemContainer.getData('itemId');
         const gridPos = itemContainer.getData('gridPos');
         itemInstance.row = gridPos.row;
         itemInstance.col = gridPos.col;
         itemInstance.rotation = itemContainer.getData('rotation') || 0;
-        playerFinalItems.push(itemInstance);
-    }
+        itemInstance.gameObject = itemContainer; // ★★★ GameObjectへの参照を直接持たせる
+    playerFinalItems.push(itemInstance);
+});
+    
 
     // prepareForBattle の STEP 1 をこれに置き換え
 // ★★★ STEP 1: 属性共鳴バフの計算 ★★★
@@ -400,44 +402,45 @@ for (const element in ELEMENT_RESONANCE_RULES) {
         console.log("★★ 戦闘開始！ ★★");
     }
     
-   // BattleScene.js の update をこれに置き換え
+  // BattleScene.js の update をこれに置き換え
 update(time, delta) {
     if (this.gameState !== 'battle') return;
     
     // Player's turn
-    this.playerBattleItems.forEach((item, index) => {
+    this.playerBattleItems.forEach(item => { // indexはもう不要
         item.nextActionTime -= delta / 1000;
         if (item.nextActionTime <= 0) {
-            const attackerObject = this.placedItemImages[index]; // ★攻撃者のGameObjectを取得
-            this.executeAction(item.data, 'player', 'enemy', attackerObject); // ★引数に追加
+            // ★ item.data に紐づけられたGameObjectを直接使う
+            this.executeAction(item.data, 'player', 'enemy', item.data.gameObject);
             item.nextActionTime += item.data.recast;
-            if (this.gameState !== 'battle') return; // break相当
+            if (this.gameState !== 'battle') return;
         }
     });
 
     if (this.gameState !== 'battle') return;
 
     // Enemy's turn
+    // (敵側も将来的に同様の改修をするとより堅牢になりますが、まずはプレイヤー側を修正します)
     this.enemyBattleItems.forEach((item, index) => {
         item.nextActionTime -= delta / 1000;
         if (item.nextActionTime <= 0) {
-            // ★敵のGameObjectを取得。単純な1対1を想定。
-            // 敵が複数いる場合は、どの敵が攻撃したかを特定するロジックが将来的に必要。
             const attackerObject = this.enemyItemImages[index];
-            this.executeAction(item.data, 'enemy', 'player', attackerObject); // ★引数に追加
+            this.executeAction(item.data, 'enemy', 'player', attackerObject);
             item.nextActionTime += item.data.recast;
-            if (this.gameState !== 'battle') return; // break相当
+            if (this.gameState !== 'battle') return;
         }
     });
 }
 
     // BattleScene.js の executeAction メソッド (ブロック対応版)
 
-   // BattleScene.js の executeAction メソッド (シンタックス修正・完成版)
-
-  // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
 // BattleScene.js の executeAction をこれに置き換え
-executeAction(itemData, attacker, defender) {
+executeAction(itemData, attacker, defender, attackerObject) { // attackerObjectは省略される可能性がある
+    // ★★★ 修正箇所 ★★★
+    // アニメーションは attackerObject が渡された時だけ再生する
+    if (attackerObject) {
+        this.playAttackAnimation(attackerObject, attacker);
+    }
     const action = itemData.action;
     if (!action) return;
 
