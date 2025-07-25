@@ -1,7 +1,27 @@
 // BattleScene.js (最終決定版・完全体)
 import { ITEM_DATA } from '../core/ItemData.js';
 import Tooltip from '../ui/Tooltip.js';
+// BattleScene.js の上部に追加
 
+// ツールチップ表示用の日本語変換テーブル
+const TOOLTIP_TRANSLATIONS = {
+    // 方向
+    up: '上', down: '下', left: '左', right: '右', adjacent: '隣接',
+    // 属性
+    fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
+    // タグ（必要に応じて）
+    weapon: '武器', support: '支援', healer: '回復', defense: '防御',
+    // 効果タイプ
+    add_attack: '攻撃力', add_recast: 'リキャスト'
+};
+
+// 属性共鳴のルール定義
+const ELEMENT_RESONANCE_RULES = {
+    fire:  { threshold: 3, description: (count) => `攻撃力+${Math.floor(count / 2)}` },
+    wind:  { threshold: 3, description: (count) => `リキャスト-${(0.2 * (count - 2)).toFixed(1)}s` },
+    earth: { threshold: 3, description: (count) => `ブロック効果+${count * 2}` },
+    // 他の属性もここに追加
+};
 export default class BattleScene extends Phaser.Scene {
     constructor() {
         super('BattleScene');
@@ -208,36 +228,52 @@ prepareForBattle() {
         playerFinalItems.push(itemInstance);
     }
 
-    // ★★★ STEP 1: 属性共鳴バフの計算 ★★★
-    console.log("属性共鳴の計算を開始...");
-    const elementCounts = {};
-    const ELEMENT_TAGS = ['fire', 'water', 'wind', 'earth', 'light', 'dark']; // 対象の属性タグリスト
-    
-    // 全アイテムの属性タグをカウント
-    playerFinalItems.forEach(item => {
-        item.tags.forEach(tag => {
-            if (ELEMENT_TAGS.includes(tag)) {
-                elementCounts[tag] = (elementCounts[tag] || 0) + 1;
+    // prepareForBattle の STEP 1 をこれに置き換え
+// ★★★ STEP 1: 属性共鳴バフの計算 ★★★
+console.log("属性共鳴の計算を開始...");
+const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
+const elementKeys = Object.keys(elementCounts);
+
+playerFinalItems.forEach(item => {
+    item.tags.forEach(tag => {
+        if (elementKeys.includes(tag)) {
+            elementCounts[tag]++;
+        }
+    });
+});
+console.log("配置済みアイテムの属性カウント:", elementCounts);
+
+// ★★★ 修正箇所 ★★★
+// 定義したルールブック(ELEMENT_RESONANCE_RULES)に基づいてバフを適用
+for (const element in ELEMENT_RESONANCE_RULES) {
+    const rule = ELEMENT_RESONANCE_RULES[element];
+    const count = elementCounts[element] || 0;
+
+    if (count >= rule.threshold) {
+        const effectDesc = rule.description(count);
+        console.log(`🔥 属性共鳴発動！ [${element}]属性: ${effectDesc}`);
+        
+        // 各属性ごとの効果を適用
+        playerFinalItems.forEach(item => {
+            if (item.tags.includes(element)) {
+                if (element === 'fire' && item.action) {
+                    item.action.value += Math.floor(count / 2);
+                }
+                if (element === 'wind' && item.recast) {
+                    item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2)));
+                }
+                if (element === 'earth') {
+                    const bonus = count * 2;
+                    if (item.action && item.action.type === 'block') item.action.value += bonus;
+                    if (item.synergy && item.synergy.effect.type.includes('block')) {
+                        item.synergy.effect.value += bonus;
+                    }
+                }
+                // ... 他の属性効果もここに追加
             }
         });
-    });
-    console.log("配置済みアイテムの属性カウント:", elementCounts);
-
-    // カウント数に基づいてバフを適用
-    const RESONANCE_THRESHOLD = 3; // 属性共鳴が発動する閾値
-    for (const element in elementCounts) {
-        if (elementCounts[element] >= RESONANCE_THRESHOLD) {
-            console.log(`🔥 属性共鳴発動！ [${element}]属性アイテムが ${elementCounts[element]}個 のためバフ適用`);
-            
-            // 対象属性を持つすべてのアイテムにバフを適用
-            playerFinalItems.forEach(item => {
-                if (item.tags.includes(element) && item.action) {
-                    item.action.value += 1; // 例: 攻撃力+1
-                    console.log(` > [${item.id}] の攻撃力が+1されました。`);
-                }
-            });
-        }
     }
+}
 
 
     // ★★★ STEP 2: 隣接 & 方向シナジーの計算 ★★★
@@ -534,6 +570,7 @@ this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + g
     });
 
   // createItem の中の 'pointerup' イベントリスナーをこれに置き換え
+// createItem の中の 'pointerup' イベントリスナーをこれに置き換え
 itemContainer.on('pointerup', (pointer, localX, localY, event) => {
     if (pressTimer) pressTimer.remove();
     
@@ -547,43 +584,60 @@ itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             finalItemData = this.finalizedPlayerItems[placedIndex];
         }
 
-        let tooltipText = `【${itemId}】\n\n`;
-        
-        // --- ★★★ ここから表示ロジックを修正 ★★★ ---
+        // --- ★★★ ツールチップ生成ロジック Start ★★★ ---
 
-        // Recast 値の表示
+        // 日本語変換ヘルパー関数
+        const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+        
+        let tooltipText = `【${itemId}】\n`;
+
+        // 属性の表示
+        const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+        if (itemElements.length > 0) {
+            tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
+        }
+        tooltipText += '\n';
+
+        // Recast
         if (baseItemData.recast && baseItemData.recast > 0) {
             const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
             tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
         }
         
-        // Action 値の表示 (actionプロパティを持つアイテムのみ)
+        // Action
         if (baseItemData.action) {
             const baseValue = baseItemData.action.value;
             const finalValue = (finalItemData && finalItemData.action) ? finalItemData.action.value : baseValue;
-            
             tooltipText += `効果: ${baseItemData.action.type} ${finalValue}\n`;
             if (finalValue !== baseValue) {
                 tooltipText += `  (基本値: ${baseValue})\n`;
             }
         }
-
-        // Passive 効果の表示
+        // Passive
         if (baseItemData.passive && baseItemData.passive.effects) {
             baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
         }
         
-        // Synergy 効果の表示
+        // Synergy
         if (baseItemData.synergy) {
             tooltipText += `\nシナジー:\n`;
-            const dir = baseItemData.synergy.direction;
-            // targetTag がなくてもエラーにならないようにする
-            const tag = baseItemData.synergy.targetTag || 'any'; 
+            const dir = t(baseItemData.synergy.direction);
             const effect = baseItemData.synergy.effect;
-            tooltipText += `  - ${dir}の[${tag}]に\n`;
-            tooltipText += `    効果: ${effect.type} +${effect.value}\n`;
+            const effectType = t(effect.type);
+            tooltipText += `  - ${dir}の味方に\n`;
+            tooltipText += `    効果: ${effectType} +${effect.value}\n`;
         }
-        
+
+        // 属性共鳴ルールの表示
+        tooltipText += `\n--- 属性共鳴 ---\n`;
+        for (const element in ELEMENT_RESONANCE_RULES) {
+            const rule = ELEMENT_RESONANCE_RULES[element];
+            const effectText = rule.description(rule.threshold); // 閾値時点での効果を表示
+            tooltipText += `[${t(element)}] ${rule.threshold}体以上: ${effectText}\n`;
+        }
+
+        // --- ★★★ ツールチップ生成ロジック End ★★★ ---
+
         this.tooltip.show(itemContainer, tooltipText);
         event.stopPropagation();
     }
