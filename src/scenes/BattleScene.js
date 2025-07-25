@@ -206,7 +206,10 @@ create() {
   // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
-    // --- 5a. 戦闘開始ボタン
+      // --- 5a. 戦闘開始ボタン ★★★ このブロックが復活しました ★★★
+    this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:20, y:10} }).setOrigin(0.5).setInteractive().setDepth(11);
+    this.prepareContainer.add(this.startBattleButton);
+    
     this.startBattleButton.on('pointerdown', () => {
         if (this.gameState !== 'prepare') return;
         
