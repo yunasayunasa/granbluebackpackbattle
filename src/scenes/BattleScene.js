@@ -193,117 +193,110 @@ export default class BattleScene extends Phaser.Scene {
 
     // BattleScene.js の prepareForBattle メソッド (最終確定・完全版)
 
-    prepareForBattle() {
-        console.log("--- 戦闘準備開始 ---");
-        
-        // 1. 全ての配置済みアイテムの「戦闘用コピー」を作成
-        const playerFinalItems = [];
-        for (const itemContainer of this.placedItemImages) {
-            const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
-            itemInstance.id = itemContainer.getData('itemId');
-            const gridPos = itemContainer.getData('gridPos');
-            itemInstance.row = gridPos.row;
-            itemInstance.col = gridPos.col;
-            itemInstance.rotation = itemContainer.getData('rotation') || 0;
-            playerFinalItems.push(itemInstance);
-        }
+   // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
+prepareForBattle() {
+    console.log("--- 戦闘準備開始 ---");
+    
+    // 1. 全ての配置済みアイテムの「戦闘用コピー」を作成
+    const playerFinalItems = [];
+    for (const itemContainer of this.placedItemImages) {
+        const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
+        itemInstance.id = itemContainer.getData('itemId');
+        const gridPos = itemContainer.getData('gridPos');
+        itemInstance.row = gridPos.row;
+        itemInstance.col = gridPos.col;
+        itemInstance.rotation = itemContainer.getData('rotation') || 0;
+        playerFinalItems.push(itemInstance);
+    }
 
-        // 2. シナジー効果を計算し、コピーの性能を書き換える
-        console.log("シナジー計算を開始...");
-        const appliedSynergies = new Set();
-        for (const sourceItem of playerFinalItems) {
-            if (!sourceItem.synergy) continue;
+    // 2. シナジー効果を計算し、コピーの性能を書き換える
+    console.log("シナジー計算を開始...");
+    
+    // ★★★ シナジー計算ロジックを全面的に改善 ★★★
+    playerFinalItems.forEach((sourceItem, sourceIndex) => {
+        if (!sourceItem.synergy) return;
+
+        // 総当たりでターゲット候補を探す
+        playerFinalItems.forEach((targetItem, targetIndex) => {
+            // 自分自身はターゲットにしない ＆ ターゲットのタグが一致しているかチェック
+            if (sourceIndex === targetIndex || !targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                return;
+            }
 
             const sourceShape = this.getRotatedShape(sourceItem.id, sourceItem.rotation);
-            const sourceCells = [];
-            for (let r = 0; r < sourceShape.length; r++) {
-                for (let c = 0; c < sourceShape[r].length; c++) {
-                    if (sourceShape[r][c] === 1) sourceCells.push({ r: sourceItem.row + r, c: sourceItem.col + c });
-                }
-            }
-            
-            for (const cell of sourceCells) {
-                let targetPositions = [];
-                const direction = sourceItem.synergy.direction;
-                const rotation = sourceItem.rotation;
-                
-                if (direction === 'adjacent') {
-                    targetPositions = [
-                        {r: cell.r - 1, c: cell.c}, {r: cell.r + 1, c: cell.c},
-                        {r: cell.r, c: cell.c - 1}, {r: cell.r, c: cell.c + 1}
-                    ];
-                } else {
-                    let targetDir = {r: 0, c: 0};
-                    if (direction === 'down')  targetDir = {r: 1, c: 0};
-                    else if (direction === 'up')    targetDir = {r: -1, c: 0};
-                    else if (direction === 'left')  targetDir = {r: 0, c: -1};
-                    else if (direction === 'right') targetDir = {r: 0, c: 1};
-                    if (rotation === 90)  targetDir = {r: -targetDir.c, c: targetDir.r};
-                    else if (rotation === 180) targetDir = {r: -targetDir.r, c: -targetDir.c};
-                    else if (rotation === 270) targetDir = {r: targetDir.c, c: -targetDir.r};
-                    targetPositions.push({ r: cell.r + targetDir.r, c: cell.c + targetDir.c });
-                }
-                
-                for (const pos of targetPositions) {
-                    const targetItem = playerFinalItems.find(item => {
-                        const targetShape = this.getRotatedShape(item.id, item.rotation);
-                        for (let r = 0; r < targetShape.length; r++) {
-                            for (let c = 0; c < targetShape[r].length; c++) {
-                                if (targetShape[r][c] === 1 && (item.row + r) === pos.r && (item.col + c) === pos.c) return true;
-                            }
-                        }
-                        return false;
-                    });
-                    
-                    if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
-                        const effect = sourceItem.synergy.effect;
-                        const synergyId = `${sourceItem.id}->${targetItem.id}->${effect.type}`;
+            const targetShape = this.getRotatedShape(targetItem.id, targetItem.rotation);
 
-                        if (!appliedSynergies.has(synergyId)) {
-                            if (effect.type === 'add_attack' && targetItem.action) {
-                                targetItem.action.value += effect.value;
-                                console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
+            // ソースアイテムの各セルをループ
+            for (let sr = 0; sr < sourceShape.length; sr++) {
+                for (let sc = 0; sc < sourceShape[sr].length; sc++) {
+                    if (sourceShape[sr][sc] === 0) continue; // アイテムの無い部分はスキップ
+
+                    const sourceCellPos = { r: sourceItem.row + sr, c: sourceItem.col + sc };
+
+                    // ターゲットアイテムの各セルをループ
+                    for (let tr = 0; tr < targetShape.length; tr++) {
+                        for (let tc = 0; tc < targetShape[tr].length; tc++) {
+                            if (targetShape[tr][tc] === 0) continue;
+
+                            const targetCellPos = { r: targetItem.row + tr, c: targetItem.col + tc };
+
+                            // 隣接しているかどうかのチェック
+                            const isAdjacent = Math.abs(sourceCellPos.r - targetCellPos.r) + Math.abs(sourceCellPos.c - targetCellPos.c) === 1;
+
+                            if (isAdjacent) {
+                                // 隣接していたら、シナジー効果を適用して、このターゲットアイテムのチェックは終了
+                                const effect = sourceItem.synergy.effect;
+
+                                if (effect.type === 'add_attack' && targetItem.action) {
+                                    targetItem.action.value += effect.value;
+                                    console.log(`★ シナジー適用: [${sourceItem.id}(${sourceIndex})] -> [${targetItem.id}(${targetIndex})] に 攻撃力+${effect.value}`);
+                                }
+                                if (effect.type === 'add_recast' && targetItem.recast > 0) {
+                                    targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
+                                    console.log(`★ シナジー適用: [${sourceItem.id}(${sourceIndex})] -> [${targetItem.id}(${targetIndex})] に リキャスト${effect.value}秒`);
+                                }
+                                
+                                // 一度このペアでシナジーが適用されたら、次のターゲットを探しに行く
+                                // returnを3つ使って、一番外側のターゲット用forEachループまで抜ける
+                                return; // target column loop
                             }
-                            if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                                targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
-                                console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
-                            }
-                            appliedSynergies.add(synergyId);
                         }
                     }
                 }
-            }
-        }
-        console.log("シナジー計算完了。");
-        
-        // 3. 最終ステータスを計算
-        let finalMaxHp = this.initialBattleParams.playerMaxHp;
-        let finalDefense = 0;
-        this.playerBattleItems = [];
-        this.playerStats.attack = 0; // パッシブ攻撃力はここでリセット
+            } // source cell loop
+        }); // target item loop
+    }); // source item loop
+    
+    console.log("シナジー計算完了。");
+    
+    // 3. 最終ステータスを計算 (以降のロジックは変更なし)
+    let finalMaxHp = this.initialBattleParams.playerMaxHp;
+    let finalDefense = 0;
+    this.playerBattleItems = [];
+    this.playerStats.attack = 0;
 
-        for (const item of playerFinalItems) {
-            if (item.passive && item.passive.effects) {
-                for(const effect of item.passive.effects){
-                    if (effect.type === 'defense') finalDefense += effect.value;
-                    if (effect.type === 'max_hp') finalMaxHp += effect.value;
-                }
-            }
-            if (item.recast > 0) {
-                this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
+    for (const item of playerFinalItems) {
+        if (item.passive && item.passive.effects) {
+            for(const effect of item.passive.effects){
+                if (effect.type === 'defense') finalDefense += effect.value;
+                if (effect.type === 'max_hp') finalMaxHp += effect.value;
             }
         }
-        finalMaxHp = Math.max(1, finalMaxHp);
-        this.stateManager.setF('player_max_hp', finalMaxHp);
-        this.stateManager.setF('player_hp', finalMaxHp);
-        this.playerStats = { attack: 0, defense: finalDefense, hp: finalMaxHp, block: 0 };
-        console.log("プレイヤー最終ステータス:", this.playerStats);
-        
-        // 4. 敵のステータス初期化
-        this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
-        this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
-        console.log("敵最終ステータス:", this.enemyStats);
+        if (item.recast > 0) {
+            this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
+        }
     }
+    finalMaxHp = Math.max(1, finalMaxHp);
+    this.stateManager.setF('player_max_hp', finalMaxHp);
+    this.stateManager.setF('player_hp', finalMaxHp);
+    this.playerStats = { attack: 0, defense: finalDefense, hp: finalMaxHp, block: 0 };
+    console.log("プレイヤー最終ステータス:", this.playerStats);
+    
+    // 4. 敵のステータス初期化
+    this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
+    this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
+    console.log("敵最終ステータス:", this.enemyStats);
+}
     startBattle() {
         console.log("★★ 戦闘開始！ ★★");
     }
@@ -460,7 +453,8 @@ createItem(itemId, x, y) {
             this.ghostImage.setVisible(true);
             this.ghostImage.width = shape[0].length * this.cellSize;
             this.ghostImage.height = shape.length * this.cellSize;
-            this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + row * this.cellSize).setOrigin(0);
+          // ★★★ 修正箇所 ★★★
+this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + gridRow * this.cellSize).setOrigin(0);
             this.ghostImage.setFillStyle(this.canPlaceItem(itemContainer, gridCol, gridRow) ? 0x00ff00 : 0xff0000, 0.5);
         } else {
             this.ghostImage.setVisible(false);
