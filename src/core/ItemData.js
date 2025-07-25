@@ -50,17 +50,8 @@ export const ITEM_DATA = {
     'berserker_axe': { // バーサーカーアックス
         storage: 'item_sword', // ★ 新しい画像アセットキー
         shape: [[1], [1], [1]], // 3x1マス
-        tags: ['weapon', 'blade'],
-        recast: 2.5,
-        action: {
-            type: 'attack',
-            value: 15 // 基本攻撃力が高い
-        },
-        passive: {
-            effects: [
-                { type: 'max_hp', value: -20 } // ★ 最大HPを20減らす
-            ]
-        }
+         tags: ["gem", "fire"], // ★属性タグ
+        passive: { effects: [{ type: "defense", value: 1 }] }
     }
 
 };
