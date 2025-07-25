@@ -60,7 +60,7 @@ export default class BattleScene extends Phaser.Scene {
         // 全ての初期化は create で行う。
         console.log("BattleScene: init (空)");
     }
-// BattleScene.js の create を、この最終確定版に置き換えてください
+// BattleScene.js の create を、この完全なコードで置き換えてください
 create() {
     console.log("BattleScene: create - データ永続化対応版");
 
@@ -72,7 +72,7 @@ create() {
     this.tooltip = new Tooltip(this);
 
     // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
-    if (!this.stateManager.f.player_backpack || !this.stateManager.f.player_inventory) {
+    if (this.stateManager.f.player_backpack === undefined || this.stateManager.f.player_inventory === undefined) {
         this.stateManager.setF('player_backpack', {});
         this.stateManager.setF('player_inventory', ['sword', 'shield', 'potion']);
     }
@@ -118,11 +118,11 @@ create() {
 
     // --- 3b. グリッドとアバターの描画
     this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
-    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,this.gridX,this.gridY+i*this.cellSize,this.gridX+gridWidth,this.gridY+i*this.cellSize,10066329,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,this.gridX+i*this.cellSize,this.gridY,this.gridX+i*this.cellSize,this.gridY+gridHeight,10066329,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,this.gridX,this.gridY+i*this.cellSize,this.gridX+gridWidth,this.gridY+i*this.cellSize,0x666666,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,this.gridX+i*this.cellSize,this.gridY,this.gridX+i*this.cellSize,this.gridY+gridHeight,0x666666,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
     this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
     const enemyGridX = gameWidth - 100 - gridWidth;
     this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,enemyGridX,this.gridY+i*this.cellSize,enemyGridX+gridWidth,this.gridY+i*this.cellSize,8947848,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,enemyGridX+i*this.cellSize,this.gridY,enemyGridX+i*this.cellSize,this.gridY+gridHeight,8947848,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,enemyGridX,this.gridY+i*this.cellSize,enemyGridX+gridWidth,this.gridY+i*this.cellSize,0x888888,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,enemyGridX+i*this.cellSize,this.gridY,enemyGridX+i*this.cellSize,this.gridY+gridHeight,0x888888,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
     this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
     const maxAvatarHeight = gridHeight * 0.8;
     [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
@@ -131,75 +131,42 @@ create() {
     const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
     const currentLayout = enemyLayouts[this.initialBattleParams.round] || {};
     for (const itemId in currentLayout) {
+        const itemData = ITEM_DATA[itemId];
+        if (!itemData) continue;
+        const pos = currentLayout[itemId].pos;
+        const containerWidth = itemData.shape[0].length * this.cellSize;
+        const containerHeight = itemData.shape.length * this.cellSize;
+        const itemContainer = this.add.container(
+            enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
+            enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
+        ).setSize(containerWidth, containerHeight);
+
+        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.3).setVisible(false);
+        const maskGraphics = this.add.graphics().setVisible(false);
+        recastOverlay.setMask(maskGraphics.createGeometryMask());
+        
+        itemContainer.add([itemImage, recastOverlay, maskGraphics]);
+        itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
+
+        if (itemData.recast > 0) { recastOverlay.setVisible(true); }
+
+        itemContainer.setDepth(3).setInteractive({ draggable: false });
+        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             const itemData = ITEM_DATA[itemId];
-            if (!itemData) continue;
-            const pos = currentLayout[itemId].pos;
+            if (!itemData) return;
+            let tooltipText = `【${itemId}】\n\n`;
+            if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+            if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+            if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+            if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
+            this.tooltip.show(itemContainer, tooltipText);
+            event.stopPropagation();
+        });
+        this.enemyItemImages.push(itemContainer);
+    }
 
-            // itemImage を itemContainer に変更し、プレイヤー側と構造を合わせる
-            const containerWidth = itemData.shape[0].length * this.cellSize;
-            const containerHeight = itemData.shape.length * this.cellSize;
-            const itemContainer = this.add.container(
-                enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
-                enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
-            ).setSize(containerWidth, containerHeight);
-
-            // 1. ベース画像
-            const itemImage = this.add.image(0, 0, itemData.storage)
-                .setDisplaySize(containerWidth, containerHeight);
-
-            // ★★★ ここからが追加/変更箇所 ★★★
-
-            // 2. リキャストオーバーレイ
-            const recastOverlay = this.add.image(0, 0, itemData.storage)
-                .setDisplaySize(containerWidth, containerHeight)
-                .setTint(0x00aaff, 0.3)
-                .setVisible(false);
-
-            // 3. マスク
-            // ★★★ ここからが修正箇所 ★★★
-            const maskGraphics = this.add.graphics();
-            maskGraphics.setVisible(false);
-            recastOverlay.setMask(maskGraphics.createGeometryMask());
-            // ★★★ 修正箇所ここまで ★★★
-            // コンテナに追加
-            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-            // データをコンテナに持たせる
-            itemContainer.setData({
-                itemId,
-                recastOverlay: recastOverlay, // ★追加
-                recastMask: maskGraphics      // ★追加
-            });
-
-            // リキャストがなければ非表示
-            if (!itemData.recast || itemData.recast <= 0) {
-                recastOverlay.setVisible(false);
-            } else {
-                recastOverlay.setVisible(true);
-            }
-
-            itemContainer.setDepth(3).setInteractive({ draggable: false });
-            itemImage.on('pointerup', (pointer, localX, localY, event) => {
-                const itemData = ITEM_DATA[itemId];
-                if (!itemData) return;
-
-                let tooltipText = `【${itemId}】\n\n`;
-                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
-                if (itemData.passive && itemData.passive.effects) {
-                    itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
-                }
-                if (itemData.synergy) {
-                    tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`;
-                }
-
-                this.tooltip.show(itemContainer, tooltipText);
-                event.stopPropagation();
-            });
-            this.enemyItemImages.push(itemContainer); // ★生成したコンテナを配列に追加
-        }
-
-
-      // =================================================================
+    // =================================================================
     // STEP 4: プレイヤーのバックパックとインベントリの復元
     // =================================================================
     // --- 4a. バックパックのアイテムを復元
@@ -215,8 +182,10 @@ create() {
     // --- 4b. インベントリの描画とアイテム復元
     const inventoryAreaY = 520;
     const inventoryAreaHeight = gameHeight - inventoryAreaY;
-    this.prepareContainer.add(this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10));
-    this.prepareContainer.add(this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11));
+    const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
+    const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+    this.prepareContainer.add([invBg, invText]);
+    
     const inventoryContentWidth = gameWidth - 200;
     const inventoryCount = inventoryData.length;
     const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
@@ -249,9 +218,21 @@ create() {
         // 戦闘開始処理
         this.gameState = 'battle';
         this.prepareForBattle();
-        this.inventoryItemImages.forEach(item => { if(item && item.input) this.input.setDraggable(item, false); });
-        this.placedItemImages.forEach(item => { if(item && item.input) this.input.setDraggable(item, false); });
-        this.tweens.add({ targets: this.prepareContainer, alpha: 0, duration: 300, onComplete: () => { this.prepareContainer.setVisible(false); } });
+        
+        const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
+        allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
+        this.startBattleButton.input.enabled = false;
+
+        this.tweens.add({
+            targets: this.prepareContainer,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => { this.prepareContainer.setVisible(false); }
+        });
+        
+        // ★戦闘開始のディレイを削除
+        // this.time.delayedCall(500, this.startBattle, [], this);
+        this.startBattle();
     });
 
     // --- 5b. グローバルクリック（ツールチップ非表示用）
