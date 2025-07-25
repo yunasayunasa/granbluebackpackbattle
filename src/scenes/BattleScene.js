@@ -722,47 +722,70 @@ getRotatedShape(itemId, rotation) {
     return shape;
 }
 
-   // BattleScene.js の updateArrowVisibility をこれに置き換え
+ // BattleScene.js の updateArrowVisibility をこれに置き換え
 updateArrowVisibility(itemContainer) {
     const itemId = itemContainer.getData('itemId');
     const itemData = ITEM_DATA[itemId];
     const arrowContainer = itemContainer.getData('arrowContainer');
-    const gridPos = itemContainer.getData('gridPos'); // ★グリッド位置を取得
+    const gridPos = itemContainer.getData('gridPos');
 
     if (!arrowContainer) return;
 
-    // ★★★ 修正箇所 ★★★
-    // シナジーを持っていて、かつグリッド上に配置されている場合のみ矢印を表示する
     if (itemData.synergy && gridPos) {
         arrowContainer.setVisible(true);
-        
-        // 方向と回転に応じて矢印の向きと位置を決定する
+        arrowContainer.each(arrow => arrow.setVisible(false)); // いったん全部非表示に
+
         const direction = itemData.synergy.direction;
         const rotation = itemContainer.getData('rotation') || 0;
-        const offset = (this.cellSize / 2) + 10;
         
-        arrowContainer.each(arrow => arrow.setVisible(false).setPosition(0,0).setAngle(0));
+        // ★★★ ここからが矢印位置の計算ロジック ★★★
+        const itemW = itemContainer.width;
+        const itemH = itemContainer.height;
+        const offset = 15; // アイテムの縁からの距離
 
         if (direction === 'adjacent') {
-            arrowContainer.getByName('up').setVisible(true).setY(-offset);
-            arrowContainer.getByName('down').setVisible(true).setY(offset);
-            arrowContainer.getByName('left').setVisible(true).setX(-offset);
-            arrowContainer.getByName('right').setVisible(true).setX(offset);
+            // adjacent の場合は4方向に矢印を出す
+            arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
+            arrowContainer.getByName('down').setVisible(true).setPosition(0, itemH / 2 + offset);
+            arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
+            arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
+
         } else {
+            // up, down, left, right の場合
+            let basePos = { x: 0, y: 0 };
             let arrowToShow = null;
+
             switch(direction) {
-                case 'up':    arrowToShow = arrowContainer.getByName('up'); break;
-                case 'down':  arrowToShow = arrowContainer.getByName('down'); break;
-                case 'left':  arrowToShow = arrowContainer.getByName('left'); break;
-                case 'right': arrowToShow = arrowContainer.getByName('right'); break;
+                case 'up':
+                    basePos = { x: 0, y: -itemH / 2 - offset };
+                    arrowToShow = arrowContainer.getByName('up');
+                    break;
+                case 'down':
+                    basePos = { x: 0, y: itemH / 2 + offset };
+                    arrowToShow = arrowContainer.getByName('down');
+                    break;
+                case 'left':
+                    basePos = { x: 0, y: 0 }; // 左向きの矢印「◀」はY軸中心でOK
+                    basePos.x = -itemW / 2 - offset;
+                    arrowToShow = arrowContainer.getByName('left');
+                    break;
+                case 'right':
+                    basePos = { x: 0, y: 0 }; // 右向きの矢印「▶」はY軸中心でOK
+                    basePos.x = itemW / 2 + offset;
+                    arrowToShow = arrowContainer.getByName('right');
+                    break;
             }
 
             if (arrowToShow) {
-                arrowToShow.setVisible(true).setAngle(rotation);
+                // アイテムの回転に合わせて、算出した矢印の座標も回転させる
+                const rad = Phaser.Math.DegToRad(rotation);
+                const rotatedX = basePos.x * Math.cos(rad) - basePos.y * Math.sin(rad);
+                const rotatedY = basePos.x * Math.sin(rad) + basePos.y * Math.cos(rad);
+
+                arrowToShow.setVisible(true).setPosition(rotatedX, rotatedY);
             }
         }
     } else {
-        // 条件を満たさない場合は非表示にする
         arrowContainer.setVisible(false);
     }
 }
