@@ -56,27 +56,19 @@ export default class BattleScene extends Phaser.Scene {
   // BattleScene.js の init をこれに置き換え
 // BattleScene.js の init をこのシンプルなバージョンに置き換えてください
 init(data) {
-    console.log("BattleScene: init");
-    this.receivedParams = data.params || {};
-    
-    // プロパティのリセット
-    this.inventoryItemImages = [];
-    this.placedItemImages = [];
-    this.enemyItemImages = [];
-    this.finalizedPlayerItems = [];
-    this.battleEnded = false;
-    this.gameState = 'prepare';
+    // データ受け渡しに起因するバグをなくすため、ここでは何もしない。
+    // 全ての初期化は create で行う。
+    console.log("BattleScene: init (空)");
 }
   // BattleScene.js の create をこの最終確定版に置き換えてください
 create() {
     console.log("BattleScene: create");
-    this.cameras.main.setBackgroundColor('#8a2be2');
 
-    // ★★★ 1. 【最優先】データ準備とパラメータ設定 ★★★
-    // 1a. StateManagerの取得
+    // ★★★ STEP 1: 全てのマネージャーとデータの取得・初期化 ★★★
     this.stateManager = this.sys.registry.get('stateManager');
+    this.soundManager = this.sys.registry.get('soundManager');
 
-    // 1b. playerDataの初期化（なければデフォルト値で生成）
+    // playerDataの初期化（なければデフォルト値で生成）
     if (!this.stateManager.sf.player_data) {
         const defaultPlayerData = {
             coins: 0, round: 1, wins: 0,
@@ -86,27 +78,35 @@ create() {
         };
         this.stateManager.setF('sf.player_data', defaultPlayerData);
     }
-    this.playerData = this.stateManager.sf.player_data;
+    const playerData = this.stateManager.sf.player_data; // ローカル変数として使用
 
-    // 1c. 戦闘パラメータの初期化
-    this.initialBattleParams = {
-        playerMaxHp: this.playerData.avatar.max_hp,
-        playerHp: this.playerData.avatar.current_hp,
-        round: this.playerData.round
-    };
-    
-    // --- 1. 準備：マネージャーと変数の定義 ---
-    // StateManagerはinitで取得済みなので、ここではSoundManagerのみ
-    this.soundManager = this.sys.registry.get('soundManager');
+    // 戦闘パラメータの初期化
+    const initialPlayerMaxHp = playerData.avatar.max_hp;
+    const initialPlayerHp = playerData.avatar.current_hp;
+
+    // ★★★ STEP 2: シーンのプロパティ初期化 ★★★
+    this.playerData = playerData; // 参照が必要な場合のために保持
+    this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: playerData.round };
+    this.inventoryItemImages = [];
+    this.placedItemImages = [];
+    this.enemyItemImages = [];
+    this.finalizedPlayerItems = [];
+    this.playerStats = {};
+    this.enemyStats = {};
+    this.playerBattleItems = [];
+    this.enemyBattleItems = [];
+    this.battleEnded = false;
+    this.gameState = 'prepare';
     this.tooltip = new Tooltip(this);
+    this.cameras.main.setBackgroundColor('#8a2be2');
 
-    // ★★★ ここからが追加/変更箇所 ★★★
-    // 1a. 戦闘パラメータの初期化 (initから移動)
-    this.initialBattleParams = {
-        playerMaxHp: this.playerData.avatar.max_hp,
-        playerHp: this.playerData.avatar.current_hp,
-        round: this.playerData.round
-    };
+    // ★★★ STEP 3: グローバルな状態と描画のセットアップ ★★★
+    this.soundManager.playBgm('ronpa_bgm');
+    this.stateManager.setF('player_max_hp', initialPlayerMaxHp);
+    this.stateManager.setF('player_hp', initialPlayerHp);
+    this.stateManager.setF('enemy_max_hp', 100);
+    this.stateManager.setF('enemy_hp', 100);
+
     // ★★★ 追加/変更箇所ここまで ★★★
         const gameWidth = this.scale.width;
         const gameHeight = this.scale.height;
