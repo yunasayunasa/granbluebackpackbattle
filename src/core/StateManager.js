@@ -29,12 +29,14 @@ export default class StateManager extends Phaser.Events.EventEmitter {
      * @param {string} key - sf変数のキー
      * @param {*} value - 設定する値
      */
+      // --- sf (システム変数) の管理 ---
     setSF(key, value) {
         const oldValue = this.sf[key];
-        if (oldValue !== value) {
+        // JSON.stringifyで比較し、オブジェクトや配列の変更も検知
+        if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
             this.sf[key] = value;
             this.emit('sf-variable-changed', key, value, oldValue);
-            this.saveSystemData(); // ★ 変更があったら即座に保存
+            this.saveSystemData(); // 変更があったら即座に保存
         }
     }
 
@@ -44,7 +46,7 @@ export default class StateManager extends Phaser.Events.EventEmitter {
     saveSystemData() {
         try {
             localStorage.setItem('my_novel_engine_system', JSON.stringify(this.sf));
-            console.log("[StateManager] System data saved to localStorage.", this.sf);
+            console.log("%c[StateManager] System data saved to localStorage.", "color: lightgreen; font-weight: bold;", this.sf);
         } catch (e) {
             console.error("システム変数の保存に失敗しました。", e);
         }
@@ -54,7 +56,7 @@ export default class StateManager extends Phaser.Events.EventEmitter {
      * システムデータをlocalStorageから読み込む
      * @returns {object} 読み込んだデータ、または空のオブジェクト
      */
-    loadSystemData() {
+      loadSystemData() {
         try {
             const data = localStorage.getItem('my_novel_engine_system');
             return data ? JSON.parse(data) : {};
@@ -63,6 +65,7 @@ export default class StateManager extends Phaser.Events.EventEmitter {
             return {};
         }
     }
+
 
 
     /**

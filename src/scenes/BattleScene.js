@@ -60,35 +60,31 @@ export default class BattleScene extends Phaser.Scene {
         // 全ての初期化は create で行う。
         console.log("BattleScene: init (空)");
     }
-// BattleScene.js の create を、この完全なコードで置き換えてください
+// BattleScene.js の create を、この最終確定版に置き換えてください
 create() {
-    console.log("BattleScene: create - データ永続化対応版");
+    console.log("BattleScene: create - データ永続化対応版 (sf)");
 
-     // =================================================================
+    // =================================================================
     // STEP 1: マネージャー取得とデータ準備
     // =================================================================
     this.stateManager = this.sys.registry.get('stateManager');
     this.soundManager = this.sys.registry.get('soundManager');
     this.tooltip = new Tooltip(this);
 
-    // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
-if (this.stateManager.sf.player_backpack === undefined) {
-    // ★ 修正箇所 ★: setSF を使う
-    this.stateManager.setSF('player_backpack', {});
-}
-if (this.stateManager.sf.player_inventory === undefined) {
-    // ★ 修正箇所 ★: setSF を使う
-    this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-}
-// 読み込みは直接でOK
-const backpackData = this.stateManager.sf.player_backpack;
-const inventoryData = this.stateManager.sf.player_inventory;
+    // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
+    if (this.stateManager.sf.player_backpack === undefined) {
+        this.stateManager.setSF('player_backpack', {});
+    }
+    if (this.stateManager.sf.player_inventory === undefined) {
+        this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+    }
+    const backpackData = this.stateManager.sf.player_backpack;
+    const inventoryData = this.stateManager.sf.player_inventory;
 
-    // --- 1b. 戦闘パラメータを決定 ★ f のままでOKなものと、sf を使うべきもの ---
-    // HPやラウンドは戦闘ごとにリセットされる可能性があるので、f変数で管理するのが適切かもしれない
+    // --- 1b. 戦闘パラメータを決定
     const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
     const initialPlayerHp = this.stateManager.f.player_hp || initialPlayerMaxHp;
-    const round = this.stateManager.sf.round || 1; // ラウンドは永続データ
+    const round = this.stateManager.sf.round || 1;
     this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
 
 
@@ -100,7 +96,6 @@ const inventoryData = this.stateManager.sf.player_inventory;
     this.playerStats = {}; this.enemyStats = {};
     this.battleEnded = false; this.gameState = 'prepare';
     this.cameras.main.setBackgroundColor('#8a2be2');
-
 
     // =================================================================
     // STEP 3: グローバルな状態設定と基本描画
@@ -215,19 +210,25 @@ const inventoryData = this.stateManager.sf.player_inventory;
     this.startBattleButton.on('pointerdown', () => {
         if (this.gameState !== 'prepare') return;
         
-        // 現在の盤面をsf変数に保存 ★ sf に変更 ★
+         // 現在の盤面をsf変数に保存
         const newBackpackData = {};
-        this.placedItemImages.forEach((item, index) => { newBackpackData[`uid_${index}`] = { itemId: item.getData('itemId'), row: item.getData('gridPos').row, col: item.getData('col'), rotation: item.getData('rotation') }; });
+        this.placedItemImages.forEach((item, index) => {
+            const gridPos = item.getData('gridPos');
+            if(gridPos){ // 安全策：グリッド位置がなければ保存しない
+                newBackpackData[`uid_${index}`] = {
+                    itemId: item.getData('itemId'),
+                    row: gridPos.row,
+                    col: gridPos.col,
+                    rotation: item.getData('rotation')
+                };
+            }
+        });
         const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
         
-        // sf変数を直接変更
-        this.stateManager.sf.player_backpack = newBackpackData;
-        this.stateManager.sf.player_inventory = newInventoryData;
+        // ★★★ setSFを使って自動保存 ★★★
+        this.stateManager.setSF('player_backpack', newBackpackData);
+        this.stateManager.setSF('player_inventory', newInventoryData);
         
-        console.log("Saved Backpack & Inventory to sf-variables.");
-        
-        // sf変数が変更されたことを通知し、自動保存をトリガーする
-        //this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
         // 戦闘開始処理
         this.gameState = 'battle';
         this.prepareForBattle();
