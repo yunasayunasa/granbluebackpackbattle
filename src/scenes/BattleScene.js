@@ -584,7 +584,7 @@ executeAction(itemData, attacker, defender, attackerObject) {
         // ダメージ処理
         if (damage > 0) {
             // ★ ダメージポップアップはここで1回だけ呼ぶ
-            this.showDamagePopup(defender, Math.floor(damage));
+            this.playDamageEffects(defender, Math.floor(damage));
             
             const newHp = defenderStats.hp - damage;
             defenderStats.hp = newHp;
@@ -1053,10 +1053,17 @@ executeAction(itemData, attacker, defender, attackerObject) {
         }
     }
 
-    // BattleScene.js にこの新しいメソッドを追加してください
-    showDamagePopup(target, amount) {
-        if (amount <= 0) return; // 0以下のダメージは表示しない
-
+  /**
+ * ダメージ発生時のすべての視覚エフェクトを再生する
+ * @param {string} targetSide - 'player' または 'enemy'
+ * @param {number} amount - ダメージ量
+ */
+playDamageEffects(targetSide, amount) {
+    if (amount <= 0) return;
+    
+    const damage = Math.floor(amount);
+    let targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
+    if (!targetAvatar) return;
         // ダメージ量に応じてスタイルを決定
         let fontSize = 24;
         let fill = '#ffffff'; // 通常ダメージの色 (白)
@@ -1080,33 +1087,71 @@ executeAction(itemData, attacker, defender, attackerObject) {
             stroke: stroke,
             strokeThickness: strokeThickness,
             fontStyle: 'bold'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(999);
 
          // ★★★ ここからが修正箇所 ★★★
-    let targetAvatar;
-    if (target === 'player') {
-        targetAvatar = this.playerAvatar;
-    } else { // 'enemy'
-        targetAvatar = this.enemyAvatar;
-    }
-    if (!targetAvatar) return; // アバターがなければ何もしない
-
-    // ポップアップの初期位置をアバターの頭上に設定
     const initialX = targetAvatar.x;
     const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
     damageText.setPosition(initialX, initialY);
-
-    // ランダムな横揺れと上昇しながら消えるTween
     this.tweens.add({
         targets: damageText,
-        // initialX, initialY を基準にアニメーションさせる
         x: initialX + Phaser.Math.Between(-40, 40),
         y: initialY - 100,
         alpha: 0,
         duration: 1500,
         ease: 'Power1',
+        onComplete: () => damageText.destroy()
+    });
+// --- 2. 画面シェイク ---
+    // ダメージ量に応じて揺れの強さと時間を変える
+    const shakeIntensity = Math.min(0.015, 0.002 + damage * 0.0002);
+    const shakeDuration = Math.min(200, 100 + damage * 2);
+    this.cameras.main.shake(shakeDuration, shakeIntensity);
+
+    // --- 3. 赤点滅ティント ---
+    // 4回点滅させる (白 -> 赤 -> 白 -> 赤)
+    let blinkCount = 0;
+    this.time.addEvent({
+        delay: 80, // 点滅の間隔
+        callback: () => {
+            targetAvatar.setTint(blinkCount % 2 === 0 ? 0xff0000 : 0xffffff);
+            blinkCount++;
+        },
+        repeat: 3, // (最初の1回 + repeat 3回 = 合計4回)
         onComplete: () => {
-            damageText.destroy();
+            targetAvatar.clearTint(); // 最後に必ずティントをクリア
+        }
+    });
+
+    // --- 4. 斬撃ラインエフェクト (画像なし) ---
+    const slashGraphics = this.add.graphics().setDepth(1001);
+    const lineStyle = { color: 0xffffff, alpha: 0.8, width: 6 };
+
+    // 複数の線をランダムな角度で描画
+    for (let i = 0; i < 3; i++) {
+        const angle = Phaser.Math.DegToRad(Phaser.Math.Between(-60, 60));
+        const length = targetAvatar.displayWidth * 0.8;
+        const p1 = { x: -length, y: 0 };
+        const p2 = { x: length, y: 0 };
+        
+        slashGraphics.lineStyle(lineStyle.width, lineStyle.color, lineStyle.alpha);
+        slashGraphics.save();
+        slashGraphics.translate(targetAvatar.x, targetAvatar.y);
+        slashGraphics.rotate(angle);
+        slashGraphics.lineBetween(p1.x, p1.y, p2.x, p2.y);
+        slashGraphics.restore();
+    }
+    
+    // 描画した線を一瞬で拡大・フェードアウトさせる
+    slashGraphics.setScale(0.5);
+    this.tweens.add({
+        targets: slashGraphics,
+        scale: 1.2,
+        alpha: 0,
+        duration: 200,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+            slashGraphics.destroy();
         }
     });
 }
