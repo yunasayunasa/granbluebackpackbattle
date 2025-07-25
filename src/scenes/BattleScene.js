@@ -222,7 +222,7 @@ create() {
         console.log("Saved Backpack & Inventory to sf-variables.");
         
         // sf変数が変更されたことを通知し、自動保存をトリガーする
-        this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
+        //this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
         // 戦闘開始処理
         this.gameState = 'battle';
         this.prepareForBattle();
