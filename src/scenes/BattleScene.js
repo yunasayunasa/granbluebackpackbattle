@@ -191,10 +191,12 @@ export default class BattleScene extends Phaser.Scene {
 
     // BattleScene.js の prepareForBattle メソッド (方向シナジー対応版)
 
+    // BattleScene.js の prepareForBattle メソッド (最終確定・完全版)
+
     prepareForBattle() {
         console.log("--- 戦闘準備開始 ---");
         
-        // 1. 戦闘用のアイテム情報リストを作成
+        // 1. 全ての配置済みアイテムの「戦闘用コピー」を作成
         const playerFinalItems = [];
         for (const itemContainer of this.placedItemImages) {
             const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
@@ -206,27 +208,9 @@ export default class BattleScene extends Phaser.Scene {
             playerFinalItems.push(itemInstance);
         }
 
-        // 2. パッシブ効果を計算 (シナジーの前に計算するのが安全)
-        let finalMaxHp = this.initialBattleParams.playerMaxHp;
-        let finalDefense = 0;
-        for (const item of playerFinalItems) {
-            if (item.passive && item.passive.effects) {
-                for(const effect of item.passive.effects){
-                    if (effect.type === 'defense') finalDefense += effect.value;
-                    if (effect.type === 'max_hp') finalMaxHp += effect.value;
-                }
-            }
-        }
-        finalMaxHp = Math.max(1, finalMaxHp);
-        this.stateManager.setF('player_max_hp', finalMaxHp);
-        this.stateManager.setF('player_hp', finalMaxHp);
-        // prepareForBattle メソッド内 (シナジー計算ブロック・リキャスト対応版)
-
-        // --- 2. シナジー効果を計算し、コピーの性能を書き換える ---
+        // 2. シナジー効果を計算し、コピーの性能を書き換える
         console.log("シナジー計算を開始...");
-        
-        const appliedSynergies = new Set(); // "targetId->effectType" の形で記録
-
+        const appliedSynergies = new Set();
         for (const sourceItem of playerFinalItems) {
             if (!sourceItem.synergy) continue;
 
@@ -237,7 +221,7 @@ export default class BattleScene extends Phaser.Scene {
                     if (sourceShape[r][c] === 1) sourceCells.push({ r: sourceItem.row + r, c: sourceItem.col + c });
                 }
             }
-
+            
             for (const cell of sourceCells) {
                 let targetPositions = [];
                 const direction = sourceItem.synergy.direction;
@@ -254,11 +238,9 @@ export default class BattleScene extends Phaser.Scene {
                     else if (direction === 'up')    targetDir = {r: -1, c: 0};
                     else if (direction === 'left')  targetDir = {r: 0, c: -1};
                     else if (direction === 'right') targetDir = {r: 0, c: 1};
-                    
                     if (rotation === 90)  targetDir = {r: -targetDir.c, c: targetDir.r};
                     else if (rotation === 180) targetDir = {r: -targetDir.r, c: -targetDir.c};
                     else if (rotation === 270) targetDir = {r: targetDir.c, c: -targetDir.r};
-                    
                     targetPositions.push({ r: cell.r + targetDir.r, c: cell.c + targetDir.c });
                 }
                 
@@ -267,20 +249,14 @@ export default class BattleScene extends Phaser.Scene {
                         const targetShape = this.getRotatedShape(item.id, item.rotation);
                         for (let r = 0; r < targetShape.length; r++) {
                             for (let c = 0; c < targetShape[r].length; c++) {
-                                if (targetShape[r][c] === 1 && (item.row + r) === pos.r && (item.col + c) === pos.c) {
-                                    return true;
-                                }
+                                if (targetShape[r][c] === 1 && (item.row + r) === pos.r && (item.col + c) === pos.c) return true;
                             }
                         }
                         return false;
                     });
                     
-                      if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                    if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
                         const effect = sourceItem.synergy.effect;
-                        
-                        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-                        // ★★★ これが核心：重複チェックのキーを変更 ★★★
-                        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
                         const synergyId = `${sourceItem.id}->${targetItem.id}->${effect.type}`;
 
                         if (!appliedSynergies.has(synergyId)) {
@@ -292,7 +268,6 @@ export default class BattleScene extends Phaser.Scene {
                                 targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
                                 console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
                             }
-                            
                             appliedSynergies.add(synergyId);
                         }
                     }
@@ -300,37 +275,33 @@ export default class BattleScene extends Phaser.Scene {
             }
         }
         console.log("シナジー計算完了。");
-      // 4. 最終的なステータスと行動アイテムリストを作成
-        //    playerStats.attack は、パッシブ効果のみで決まる
-        this.playerStats = { 
-            attack: 0, // ★ パッシブ効果による基礎攻撃力 (今は0)
-            defense: finalDefense, 
-            hp: finalMaxHp, 
-            block: 0 
-        };
-
+        
+        // 3. 最終ステータスを計算
+        let finalMaxHp = this.initialBattleParams.playerMaxHp;
+        let finalDefense = 0;
         this.playerBattleItems = [];
+        this.playerStats.attack = 0; // パッシブ攻撃力はここでリセット
+
         for (const item of playerFinalItems) {
-            // 行動するアイテムをリストアップ
+            if (item.passive && item.passive.effects) {
+                for(const effect of item.passive.effects){
+                    if (effect.type === 'defense') finalDefense += effect.value;
+                    if (effect.type === 'max_hp') finalMaxHp += effect.value;
+                }
+            }
             if (item.recast > 0) {
-                this.playerBattleItems.push({
-                    // ★ シナジーで「recast」が変更された後のitemデータを格納
-                    data: item, 
-                    // ★ 最初の行動時間も、変更後のrecast値で設定
-                    nextActionTime: item.recast 
-                });
+                this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
             }
         }
+        finalMaxHp = Math.max(1, finalMaxHp);
+        this.stateManager.setF('player_max_hp', finalMaxHp);
+        this.stateManager.setF('player_hp', finalMaxHp);
+        this.playerStats = { attack: 0, defense: finalDefense, hp: finalMaxHp, block: 0 };
         console.log("プレイヤー最終ステータス:", this.playerStats);
-        console.log("プレイヤー行動アイテム:", this.playerBattleItems);
-
-
-        // 5. 敵のステータス初期化
+        
+        // 4. 敵のステータス初期化
         this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
-        this.enemyBattleItems = [{
-            data: ITEM_DATA['sword'],
-            nextActionTime: ITEM_DATA['sword'].recast
-        }];
+        this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
         console.log("敵最終ステータス:", this.enemyStats);
     }
     startBattle() {
