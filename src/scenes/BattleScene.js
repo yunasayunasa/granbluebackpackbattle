@@ -53,19 +53,43 @@ export default class BattleScene extends Phaser.Scene {
         this.finalizedPlayerItems = [];
     }
 
-    init(data) {
-        this.receivedParams = data.params || {};
-        const initialMaxHp = this.receivedParams.player_max_hp || 100;
-        this.initialBattleParams = {
-            playerMaxHp: initialMaxHp,
-            playerHp: initialMaxHp,
-            round: this.receivedParams.round || 1,
-        };
-        this.inventoryItemImages = [];
-        this.placedItemImages = [];
-        this.enemyItemImages = [];
-        this.battleEnded = false;
+    // BattleScene.js の init をこれに置き換え
+init(data) {
+    this.receivedParams = data.params || {};
+    this.stateManager = this.sys.registry.get('stateManager'); // ★先に取得
+
+    // sf.player_data が存在しない場合（初回起動時など）の初期データを定義
+    const defaultPlayerData = {
+        coins: 0,
+        round: 1,
+        wins: 0,
+        avatar: { max_hp: 100, current_hp: 100 },
+        backpack: {},
+        inventory: ['sword', 'shield', 'potion'] // 初期の持ち物
+    };
+
+    // sf.player_data がなければ、デフォルト値で初期化する
+    if (!this.stateManager.sf.player_data) {
+        this.stateManager.setF('sf.player_data', defaultPlayerData);
     }
+    
+    // player_data をプロパティに保持
+    this.playerData = this.stateManager.sf.player_data;
+
+    // ★以前の initialBattleParams は playerData から生成する
+    this.initialBattleParams = {
+        playerMaxHp: this.playerData.avatar.max_hp,
+        playerHp: this.playerData.avatar.current_hp,
+        round: this.playerData.round
+    };
+    
+    // プロパティのリセット
+    this.inventoryItemImages = [];
+    this.placedItemImages = [];
+    this.enemyItemImages = [];
+    this.battleEnded = false;
+    this.finalizedPlayerItems = [];
+}
 
     create() {
         console.log("BattleScene: create 開始");
@@ -214,27 +238,37 @@ const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最�
         this.prepareContainer.add([invBg, invText]);
 
         // 3d. ドラッグ可能なアイテム (準備中のみ)
-        this.inventoryItemImages = [];
-        const initialInventory = ['sword', 'shield', 'potion', 'item_spiky_shield', 'leather_armor', 'berserker_axe'];
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ ここからが動的レイアウトのロジック ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        const inventoryContentWidth = gameWidth - 200; // インベントリの左右マージン
-        const itemCount = initialInventory.length;
+// ★★★ ここからがデータ復元ロジック ★★★
+this.inventoryItemImages = []; // 念のためクリア
+this.placedItemImages = [];  // 念のためクリア
 
-        // アイテム数に応じて、最適な間隔を自動計算
-        const itemSpacing = inventoryContentWidth / itemCount;
-        // 最初のアイテムの開始位置を計算
-        const itemStartX = 100 + (itemSpacing / 2);
+// バックパックのアイテムを復元・配置
+for (const uid in this.playerData.backpack) {
+    const itemInfo = this.playerData.backpack[uid];
+    const itemContainer = this.createItem(itemInfo.itemId, 0, 0); // 初期位置は仮でOK
+    if (itemContainer) {
+        // 回転させてから配置
+        itemContainer.setData('rotation', itemInfo.rotation);
+        itemContainer.setAngle(itemInfo.rotation);
+        this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
+        this.updateArrowVisibility(itemContainer); // 矢印更新
+    }
+}
 
-        initialInventory.forEach((itemId, index) => {
-            const x = itemStartX + (index * itemSpacing);
-            const y = inventoryAreaY + inventoryAreaHeight / 2 + 20;
-            const itemImage = this.createItem(itemId, x, y);
-            if (itemImage) {
-                this.inventoryItemImages.push(itemImage);
-            }
-        });
+// インベントリのアイテムを復元・配置
+const inventoryContentWidth = gameWidth - 200;
+const inventoryCount = this.playerData.inventory.length;
+const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
+const itemStartX = 100 + (itemSpacing / 2);
+
+this.playerData.inventory.forEach((itemId, index) => {
+    const x = itemStartX + (index * itemSpacing);
+    const y = inventoryAreaY + inventoryAreaHeight / 2 + 20;
+    const itemContainer = this.createItem(itemId, x, y);
+    if (itemContainer) {
+        this.inventoryItemImages.push(itemContainer);
+    }
+});
 
         // 3e. 戦闘開始ボタン (準備中のみ)
         // ★★★ 座標を画面中央下部に変更 ★★★
@@ -246,8 +280,32 @@ const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最�
         ).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
         // --- 4. イベントリスナーの設定 ---
-        this.startBattleButton.on('pointerdown', () => {
-            if (this.gameState !== 'prepare') return;
+      this.startBattleButton.on('pointerdown', () => {
+    if (this.gameState !== 'prepare') return;
+
+    // ★★★ ここからがデータ書き込みロジック ★★★
+    const newBackpackData = {};
+    let uidCounter = 0;
+    this.placedItemImages.forEach(item => {
+        const uid = `uid_${Date.now()}_${uidCounter++}`; // 簡易的なユニークID生成
+        newBackpackData[uid] = {
+            itemId: item.getData('itemId'),
+            row: item.getData('gridPos').row,
+            col: item.getData('gridPos').col,
+            rotation: item.getData('rotation')
+        };
+    });
+
+    const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+
+    // StateManagerのデータを更新
+    this.playerData.backpack = newBackpackData;
+    this.playerData.inventory = newInventoryData;
+    this.stateManager.setF('sf.player_data', this.playerData);
+    
+    console.log("Updated Player Data:", this.stateManager.sf.player_data);
+    // ★★★ データ書き込みロジックここまで ★★★
+
             this.gameState = 'battle';
             this.prepareForBattle();
             const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
