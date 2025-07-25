@@ -591,11 +591,20 @@ executeAction(itemData, attacker, defender, attackerObject) {
             this.stateManager.setF(`${defender}_hp`, newHp);
             console.log(` > ${attacker}の${itemName}が攻撃！...`);
 
-            if (newHp <= 0) {
-                this.gameState = 'end';
-                this.endBattle(attacker === 'player' ? 'win' : 'lose');
-            }
-        } 
+             // ★★★ ここを修正 ★★★
+    if (newHp <= 0) {
+        this.gameState = 'end'; // これ以上のアクションを防ぐ
+        
+        // defender が 'enemy' の場合のみトドメ演出
+        if (defender === 'enemy') {
+            this.playFinishBlowEffects(this.enemyAvatar);
+        } else {
+            // プレイヤーが負けた場合は即座に終了
+            this.endBattle('lose');
+        }
+
+    }
+}
         // ログ出力
         else if (blockedDamage > 0) {
             console.log(` > ${attacker}の${itemName}の攻撃は完全に防がれた！`);
@@ -1123,41 +1132,46 @@ playDamageEffects(targetSide, amount) {
         }
     });
 
-    // --- 4. 斬撃ラインエフェクト (画像なし) ---
-    // ★★★ ここからが問題の箇所の完全な修正版 ★★★
-    const slashGraphics = this.add.graphics().setDepth(1001);
-    slashGraphics.lineStyle(6, 0xffffff, 0.8);
-
+      // --- 4. 斬撃ラインエフェクト (演出修正版) ---
     const centerX = targetAvatar.x;
     const centerY = targetAvatar.y;
-    const length = targetAvatar.displayWidth * 0.8;
-
-    for (let i = 0; i < 3; i++) {
-        // 線の角度をランダムに決定
-        const angle = Phaser.Math.DegToRad(Phaser.Math.Between(-60, 60));
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        
-        // 回転させた後の始点と終点の座標を計算
-        const startX = centerX - (length / 2) * cos;
-        const startY = centerY - (length / 2) * sin;
-        const endX = centerX + (length / 2) * cos;
-        const endY = centerY + (length / 2) * sin;
-
-        // 計算した座標で線を引く
-        slashGraphics.lineBetween(startX, startY, endX, endY);
-    }
     
-    // 描画した線を一瞬で拡大・フェードアウトさせる
-    slashGraphics.setScale(0.5);
+    // エフェクト全体をまとめるコンテナを作成し、アバターの位置に配置
+    const effectContainer = this.add.container(centerX, centerY).setDepth(1001);
+    
+    const slashGraphics = this.add.graphics();
+    effectContainer.add(slashGraphics); // Graphicsをコンテナに入れる
+
+    const lineLength = targetAvatar.displayWidth * 1.2;
+
+    // 線の色と太さをここで明確に指定
+    slashGraphics.lineStyle(8, 0xffffff, 1.0); // 太い白線
+
+    // 2本の線を交差させて「斬」の形を作る
+    // 1本目（＼）
+    slashGraphics.beginPath();
+    slashGraphics.moveTo(-lineLength / 2, -lineLength / 2);
+    slashGraphics.lineTo(lineLength / 2, lineLength / 2);
+    slashGraphics.strokePath();
+    // 2本目（／）
+    slashGraphics.beginPath();
+    slashGraphics.moveTo(lineLength / 2, -lineLength / 2);
+    slashGraphics.lineTo(-lineLength / 2, lineLength / 2);
+    slashGraphics.strokePath();
+
+    // アニメーションは、Graphicsではなく、親のコンテナに対してかける
+    effectContainer.setAlpha(0.8);
+    effectContainer.setScale(0.3);
+    effectContainer.setAngle(Phaser.Math.DegToRad(Phaser.Math.Between(-25, 25))); // 少しランダムに傾ける
+
     this.tweens.add({
-        targets: slashGraphics,
-        scale: 1.2,
+        targets: effectContainer,
+        scale: 1.0,
         alpha: 0,
-        duration: 200,
+        duration: 250,
         ease: 'Cubic.easeOut',
         onComplete: () => {
-            slashGraphics.destroy();
+            effectContainer.destroy(); // コンテナごと破棄
         }
     });
 }
@@ -1304,6 +1318,48 @@ showHealPopup(targetObject, amount) {
     });
 }
 
+// BattleScene.js にこの新しいメソッドを追加してください
+playFinishBlowEffects(targetAvatar) {
+    if (!targetAvatar) return;
+
+    // 1. スローモーション開始
+    this.time.timeScale = 0.2; // 時間の進みを1/5にする
+
+    // 2. 派手な斬撃エフェクト（通常とは別）
+    const centerX = this.scale.width / 2;
+    const centerY = this.scale.height / 2;
+    
+    const finishEffect = this.add.graphics().setDepth(2000);
+    finishEffect.lineStyle(15, 0xffdd00, 1.0); // 金色で太い線
+    
+    const w = this.scale.width * 1.2;
+    finishEffect.beginPath();
+    finishEffect.moveTo(centerX - w, centerY - w);
+    finishEffect.lineTo(centerX + w, centerY + w);
+    finishEffect.strokePath();
+    
+    finishEffect.setAngle(Phaser.Math.DegToRad(-20));
+    finishEffect.setAlpha(0);
+    finishEffect.setScale(2.0);
+
+    this.tweens.add({
+        targets: finishEffect,
+        alpha: 1.0,
+        scale: 1.0,
+        duration: 200, // スロー中でもここは実時間
+        ease: 'Cubic.easeIn',
+        yoyo: true, // 表示された後、逆再生で消える
+        onComplete: () => {
+            finishEffect.destroy();
+        }
+    });
+
+    // 3. スローモーション解除とバトル終了処理
+    this.time.delayedCall(1500, () => { // 1.5秒後に実行
+        this.time.timeScale = 1.0; // 時間の進みを元に戻す
+        this.endBattle('win'); // バトル終了処理を呼び出す
+    }, [], this);
+}
     shutdown() {
         console.log("BattleScene: shutdown されました。");
     }
