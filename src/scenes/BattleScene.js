@@ -275,23 +275,20 @@ export default class BattleScene extends Phaser.Scene {
                         return false;
                     });
                     
-                    if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                      if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
                         const effect = sourceItem.synergy.effect;
-                        const synergyId = `${targetItem.id}->${effect.type}`;
+                        
+                        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                        // ★★★ これが核心：重複チェックのキーを変更 ★★★
+                        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                        const synergyId = `${sourceItem.id}->${targetItem.id}->${effect.type}`;
 
                         if (!appliedSynergies.has(synergyId)) {
-                            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-                            // ★★★ ここからが修正箇所 ★★★
-                            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-                            
                             if (effect.type === 'add_attack' && targetItem.action) {
                                 targetItem.action.value += effect.value;
                                 console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
                             }
-                            
-                            // ★★★ リキャスト短縮のロジックを復活 ★★★
                             if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                                // リキャストは0.1秒より短くならないように下限を設ける
                                 targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
                                 console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
                             }
@@ -303,7 +300,6 @@ export default class BattleScene extends Phaser.Scene {
             }
         }
         console.log("シナジー計算完了。");
-
       // 4. 最終的なステータスと行動アイテムリストを作成
         //    playerStats.attack は、パッシブ効果のみで決まる
         this.playerStats = { 
