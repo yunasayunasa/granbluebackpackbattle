@@ -293,24 +293,37 @@ export default class BattleScene extends Phaser.Scene {
             }
         }
         console.log("シナジー計算完了。");
-        // (以降の最終ステータス計算は変更なし)
-        // 4. 最終的なステータスと行動アイテムリストを作成
-        this.playerStats = { attack: 0, defense: finalDefense, hp: finalMaxHp, block: 0 };
+      // 4. 最終的なステータスと行動アイテムリストを作成
+        //    playerStats.attack は、パッシブ効果のみで決まる
+        this.playerStats = { 
+            attack: 0, // ★ パッシブ効果による基礎攻撃力 (今は0)
+            defense: finalDefense, 
+            hp: finalMaxHp, 
+            block: 0 
+        };
+
         this.playerBattleItems = [];
         for (const item of playerFinalItems) {
-            // シナジーによって攻撃力が直接加算されるタイプもあるため、ここで集計
-            if (item.action && item.action.type === 'attack') {
-                this.playerStats.attack += item.action.value;
-            }
+            // 行動するアイテムをリストアップ
             if (item.recast > 0) {
-                this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
+                this.playerBattleItems.push({
+                    // ★ シナジーで「recast」が変更された後のitemデータを格納
+                    data: item, 
+                    // ★ 最初の行動時間も、変更後のrecast値で設定
+                    nextActionTime: item.recast 
+                });
             }
         }
         console.log("プレイヤー最終ステータス:", this.playerStats);
+        console.log("プレイヤー行動アイテム:", this.playerBattleItems);
+
 
         // 5. 敵のステータス初期化
-        this.enemyStats = { attack: 5, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 }; // 基礎攻撃力を持たせる
-        this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
+        this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
+        this.enemyBattleItems = [{
+            data: ITEM_DATA['sword'],
+            nextActionTime: ITEM_DATA['sword'].recast
+        }];
         console.log("敵最終ステータス:", this.enemyStats);
     }
     startBattle() {
@@ -347,13 +360,12 @@ export default class BattleScene extends Phaser.Scene {
 
         const attackerStats = this[`${attacker}Stats`];
         const defenderStats = this[`${defender}Stats`];
-        const itemName = itemData.id || "アイテム"; // ログ表示用の名前
-
-        // --- 行動タイプに応じた処理 ---
+        const itemName = itemData.id || "アイテム";
 
         if (action.type === 'attack') {
+            // ★★★ 攻撃力計算の変更 ★★★
+            // アイテム自身の攻撃力 + 攻撃者の基礎攻撃力
             const totalAttack = action.value + attackerStats.attack;
-            let damage = Math.max(0, totalAttack - defenderStats.defense); // ★ ダメージは0もあり得る
             
             // ★ 1. ブロックがあれば、まずブロックでダメージを受ける
             if (defenderStats.block > 0 && damage > 0) {
