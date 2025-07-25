@@ -220,18 +220,17 @@ export default class BattleScene extends Phaser.Scene {
         finalMaxHp = Math.max(1, finalMaxHp);
         this.stateManager.setF('player_max_hp', finalMaxHp);
         this.stateManager.setF('player_hp', finalMaxHp);
-        
-       // --- 3. シナジー効果を計算 ---
+        // prepareForBattle メソッド内 (シナジー計算ブロック・リキャスト対応版)
+
+        // --- 2. シナジー効果を計算し、コピーの性能を書き換える ---
         console.log("シナジー計算を開始...");
+        
+        const appliedSynergies = new Set(); // "targetId->effectType" の形で記録
+
         for (const sourceItem of playerFinalItems) {
             if (!sourceItem.synergy) continue;
-            
-            const rotation = sourceItem.rotation;
-            const direction = sourceItem.synergy.direction;
-            const sourceShape = this.getRotatedShape(sourceItem.id, rotation);
-                   const appliedSynergies = new Set(); // "sourceId->targetId->effectType" の形で記録
 
-            // sourceItemが占めているセルのリスト
+            const sourceShape = this.getRotatedShape(sourceItem.id, sourceItem.rotation);
             const sourceCells = [];
             for (let r = 0; r < sourceShape.length; r++) {
                 for (let c = 0; c < sourceShape[r].length; c++) {
@@ -239,13 +238,11 @@ export default class BattleScene extends Phaser.Scene {
                 }
             }
 
-    
-
-            // ★★★ sourceItemの各セルからターゲットを探す ★★★
             for (const cell of sourceCells) {
                 let targetPositions = [];
+                const direction = sourceItem.synergy.direction;
+                const rotation = sourceItem.rotation;
                 
-                // どの方向をチェックするか決める
                 if (direction === 'adjacent') {
                     targetPositions = [
                         {r: cell.r - 1, c: cell.c}, {r: cell.r + 1, c: cell.c},
@@ -265,9 +262,7 @@ export default class BattleScene extends Phaser.Scene {
                     targetPositions.push({ r: cell.r + targetDir.r, c: cell.c + targetDir.c });
                 }
                 
-                // ターゲット位置にあるアイテムに効果を適用
                 for (const pos of targetPositions) {
-                    // ★ ターゲットセルの上に「左上」があるアイテムを探す
                     const targetItem = playerFinalItems.find(item => {
                         const targetShape = this.getRotatedShape(item.id, item.rotation);
                         for (let r = 0; r < targetShape.length; r++) {
@@ -279,29 +274,34 @@ export default class BattleScene extends Phaser.Scene {
                         }
                         return false;
                     });
-
                     
-           if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                    if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
                         const effect = sourceItem.synergy.effect;
-                        const synergyId = `${sourceItem.id}->${targetItem.id}->${effect.type}`;
+                        const synergyId = `${targetItem.id}->${effect.type}`;
 
-                        // ★ このシナジーはまだ適用されていないか？
                         if (!appliedSynergies.has(synergyId)) {
+                            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                            // ★★★ ここからが修正箇所 ★★★
+                            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                            
                             if (effect.type === 'add_attack' && targetItem.action) {
                                 targetItem.action.value += effect.value;
                                 console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
                             }
+                            
+                            // ★★★ リキャスト短縮のロジックを復活 ★★★
                             if (effect.type === 'add_recast' && targetItem.recast > 0) {
+                                // リキャストは0.1秒より短くならないように下限を設ける
                                 targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
                                 console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
                             }
-                            // 処理が完了したら、このシナジーを記録
+                            
                             appliedSynergies.add(synergyId);
                         }
                     }
                 }
             }
-        } // ★★★ for (const sourceItem...) のループはここで終わり ★★★
+        }
         console.log("シナジー計算完了。");
 
       // 4. 最終的なステータスと行動アイテムリストを作成
