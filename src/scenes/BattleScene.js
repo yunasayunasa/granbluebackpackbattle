@@ -64,25 +64,29 @@ export default class BattleScene extends Phaser.Scene {
 create() {
     console.log("BattleScene: create - データ永続化対応版");
 
-    // =================================================================
+     // =================================================================
     // STEP 1: マネージャー取得とデータ準備
     // =================================================================
     this.stateManager = this.sys.registry.get('stateManager');
     this.soundManager = this.sys.registry.get('soundManager');
     this.tooltip = new Tooltip(this);
 
-    // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
-    if (this.stateManager.f.player_backpack === undefined || this.stateManager.f.player_inventory === undefined) {
-        this.stateManager.setF('player_backpack', {});
-        this.stateManager.setF('player_inventory', ['sword', 'shield', 'potion']);
+    // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化） ★ sf に変更 ★
+    if (this.stateManager.sf.player_backpack === undefined || this.stateManager.sf.player_inventory === undefined) {
+        // sf変数を直接変更
+        this.stateManager.sf.player_backpack = {};
+        this.stateManager.sf.player_inventory = ['sword', 'shield', 'potion'];
+        // sf変数が変更されたことを通知し、自動保存をトリガーする（StateManagerの実装による）
+        this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
     }
-    const backpackData = this.stateManager.f.player_backpack;
-    const inventoryData = this.stateManager.f.player_inventory;
+    const backpackData = this.stateManager.sf.player_backpack;
+    const inventoryData = this.stateManager.sf.player_inventory;
 
-    // --- 1b. 戦闘パラメータを決定
+    // --- 1b. 戦闘パラメータを決定 ★ f のままでOKなものと、sf を使うべきもの ---
+    // HPやラウンドは戦闘ごとにリセットされる可能性があるので、f変数で管理するのが適切かもしれない
     const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
     const initialPlayerHp = this.stateManager.f.player_hp || initialPlayerMaxHp;
-    const round = this.stateManager.f.round || 1;
+    const round = this.stateManager.sf.round || 1; // ラウンドは永続データ
     this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
 
 
@@ -199,23 +203,26 @@ create() {
     });
 
 
-    // =================================================================
+  // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
     // --- 5a. 戦闘開始ボタン
-    this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:20, y:10} }).setOrigin(0.5).setInteractive().setDepth(11);
-    this.prepareContainer.add(this.startBattleButton);
     this.startBattleButton.on('pointerdown', () => {
         if (this.gameState !== 'prepare') return;
         
-        // 現在の盤面をf変数に保存
+        // 現在の盤面をsf変数に保存 ★ sf に変更 ★
         const newBackpackData = {};
-        this.placedItemImages.forEach((item, index) => { newBackpackData[`uid_${index}`] = { itemId: item.getData('itemId'), row: item.getData('gridPos').row, col: item.getData('gridPos').col, rotation: item.getData('rotation') }; });
+        this.placedItemImages.forEach((item, index) => { newBackpackData[`uid_${index}`] = { itemId: item.getData('itemId'), row: item.getData('gridPos').row, col: item.getData('col'), rotation: item.getData('rotation') }; });
         const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-        this.stateManager.setF('player_backpack', newBackpackData);
-        this.stateManager.setF('player_inventory', newInventoryData);
-        console.log("Saved Backpack & Inventory to f-variables.");
-
+        
+        // sf変数を直接変更
+        this.stateManager.sf.player_backpack = newBackpackData;
+        this.stateManager.sf.player_inventory = newInventoryData;
+        
+        console.log("Saved Backpack & Inventory to sf-variables.");
+        
+        // sf変数が変更されたことを通知し、自動保存をトリガーする
+        this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
         // 戦闘開始処理
         this.gameState = 'battle';
         this.prepareForBattle();
