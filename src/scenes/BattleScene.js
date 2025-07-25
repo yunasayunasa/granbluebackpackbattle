@@ -1340,9 +1340,24 @@ create() {
         // 3. スローモーション解除とバトル終了処理
         this.time.delayedCall(1500, () => { // 1.5秒後に実行
             this.time.timeScale = 1.0; // 時間の進みを元に戻す
-            this.endBattle('win'); // バトル終了処理を呼び出す
-        }, [], this);
-    }
+             // ★★★ ここからが修正箇所 ★★★
+        
+        // ラウンド数を進める
+        const currentRound = this.stateManager.sf.round || 1;
+        this.stateManager.setSF('round', currentRound + 1);
+        
+        // 現在のHPを保存
+        this.stateManager.setF('player_hp', this.playerStats.hp);
+
+        // SystemSceneに報酬シーンへの遷移を依頼
+        this.scene.get('SystemScene').events.emit('request-scene-transition', {
+            to: 'RewardScene',
+            from: this.scene.key
+        });
+
+        // ★★★ 修正ここまで ★★★
+    }, [], this);
+}
     shutdown() {
         console.log("BattleScene: shutdown されました。");
     }

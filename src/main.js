@@ -10,7 +10,7 @@ import BacklogScene from './scenes/BacklogScene.js';
 import ActionScene from './scenes/ActionScene.js';
 import BattleScene from './scenes/BattleScene.js';
 import NovelOverlayScene from './scenes/NovelOverlayScene.js';
-
+import RewardScene from './scenes/RewardScene.js'; 
 const config = {
     type: Phaser.AUTO,
     scale: {
@@ -31,7 +31,8 @@ const config = {
         BacklogScene, 
         ActionScene,
          BattleScene,
-        NovelOverlayScene
+        NovelOverlayScene,
+        RewardScene 
     ]
 };
 
