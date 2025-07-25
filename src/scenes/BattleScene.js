@@ -53,53 +53,56 @@ export default class BattleScene extends Phaser.Scene {
         this.finalizedPlayerItems = [];
     }
 
-    // BattleScene.js の init をこれに置き換え
+  // BattleScene.js の init をこれに置き換え
 init(data) {
+    console.log("BattleScene: init");
     this.receivedParams = data.params || {};
-    this.stateManager = this.sys.registry.get('stateManager'); // ★先に取得
 
-    // sf.player_data が存在しない場合（初回起動時など）の初期データを定義
-    const defaultPlayerData = {
-        coins: 0,
-        round: 1,
-        wins: 0,
-        avatar: { max_hp: 100, current_hp: 100 },
-        backpack: {},
-        inventory: ['sword', 'shield', 'potion'] // 初期の持ち物
-    };
+    // 1. StateManagerを取得
+    this.stateManager = this.sys.registry.get('stateManager');
 
-    // sf.player_data がなければ、デフォルト値で初期化する
+    // 2. playerDataの初期化（なければデフォルト値で生成）
     if (!this.stateManager.sf.player_data) {
+        const defaultPlayerData = {
+            coins: 0,
+            round: 1,
+            wins: 0,
+            avatar: { max_hp: 100, current_hp: 100 },
+            backpack: {},
+            inventory: ['sword', 'shield', 'potion']
+        };
         this.stateManager.setF('sf.player_data', defaultPlayerData);
     }
     
-    // player_data をプロパティに保持
+    // 3. 必要なデータをプロパティに保持
     this.playerData = this.stateManager.sf.player_data;
+    
+    // 4. プロパティのリセット
+    this.inventoryItemImages = [];
+    this.placedItemImages = [];
+    this.enemyItemImages = [];
+    this.finalizedPlayerItems = [];
+    this.battleEnded = false;
+    this.gameState = 'prepare';
+}
 
-    // ★以前の initialBattleParams は playerData から生成する
+  create() {
+    console.log("BattleScene: create");
+    this.cameras.main.setBackgroundColor('#8a2be2');
+
+    // --- 1. 準備：マネージャーと変数の定義 ---
+    // StateManagerはinitで取得済みなので、ここではSoundManagerのみ
+    this.soundManager = this.sys.registry.get('soundManager');
+    this.tooltip = new Tooltip(this);
+
+    // ★★★ ここからが追加/変更箇所 ★★★
+    // 1a. 戦闘パラメータの初期化 (initから移動)
     this.initialBattleParams = {
         playerMaxHp: this.playerData.avatar.max_hp,
         playerHp: this.playerData.avatar.current_hp,
         round: this.playerData.round
     };
-    
-    // プロパティのリセット
-    this.inventoryItemImages = [];
-    this.placedItemImages = [];
-    this.enemyItemImages = [];
-    this.battleEnded = false;
-    this.finalizedPlayerItems = [];
-}
-
-    create() {
-        console.log("BattleScene: create 開始");
-        this.cameras.main.setBackgroundColor('#8a2be2');
-
-        // --- 1. 準備：マネージャーと変数の定義 ---
-        this.gameState = 'prepare';
-        this.stateManager = this.sys.registry.get('stateManager');
-        this.soundManager = this.sys.registry.get('soundManager');
-        this.tooltip = new Tooltip(this);
+    // ★★★ 追加/変更箇所ここまで ★★★
         const gameWidth = this.scale.width;
         const gameHeight = this.scale.height;
         const gridWidth = this.backpackGridSize * this.cellSize;
