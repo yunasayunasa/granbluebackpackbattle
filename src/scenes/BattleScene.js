@@ -27,6 +27,7 @@ export default class BattleScene extends Phaser.Scene {
         this.enemyBattleItems = [];
         this.battleEnded = false;
          this.ghostImage = null;
+         this.finalizedPlayerItems = [];
     }
 
     init(data) {
@@ -317,7 +318,7 @@ prepareForBattle() {
     let finalMaxHp = this.initialBattleParams.playerMaxHp;
     let finalDefense = 0;
     this.playerBattleItems = [];
-    this.playerStats.attack = 0;
+  
 
     for (const item of playerFinalItems) {
         if (item.passive && item.passive.effects) {
@@ -334,6 +335,7 @@ prepareForBattle() {
     this.stateManager.setF('player_max_hp', finalMaxHp);
     this.stateManager.setF('player_hp', finalMaxHp);
     this.playerStats = { attack: 0, defense: finalDefense, hp: finalMaxHp, block: 0 };
+    this.finalizedPlayerItems = playerFinalItems; // ★★★ この行を追加 ★★★
     console.log("プレイヤー最終ステータス:", this.playerStats);
     
     // 4. 敵のステータス初期化
@@ -374,21 +376,23 @@ prepareForBattle() {
    // BattleScene.js の executeAction メソッド (シンタックス修正・完成版)
 
   // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
+// BattleScene.js の executeAction をこれに置き換え
 executeAction(itemData, attacker, defender) {
     const action = itemData.action;
     if (!action) return;
 
-    const attackerStats = this[`${attacker}Stats`];
+    // const attackerStats = this[`${attacker}Stats`]; // もう不要
     const defenderStats = this[`${defender}Stats`];
     
     const itemName = itemData.id || "アイテム";
 
     if (action.type === 'attack') {
         // ★★★ 修正箇所 ★★★
-        // アイテム固有の攻撃力(バフ込み) と プレイヤーの基本攻撃力(パッシブ等)を合算する
-        const totalAttack = action.value + attackerStats.attack;
+        // アイテムの火力（バフ込み）をそのまま攻撃力とする
+        const totalAttack = action.value; 
         let damage = Math.max(0, totalAttack - defenderStats.defense);
         
+        // (以降のロジックは変更なし)
         if (defenderStats.block > 0 && damage > 0) {
             const blockDamage = Math.min(defenderStats.block, damage);
             defenderStats.block -= blockDamage;
@@ -412,6 +416,8 @@ executeAction(itemData, attacker, defender) {
     }
     
     else if (action.type === 'block') {
+        // attackerStats はブロック計算で必要なので残す
+        const attackerStats = this[`${attacker}Stats`]; 
         attackerStats.block += action.value;
         console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得 (合計ブロック: ${attackerStats.block})`);
     }
@@ -527,38 +533,61 @@ this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + g
         }
     });
 
-    itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-        if (pressTimer) pressTimer.remove();
+   // createItem の中の 'pointerup' イベントリスナーをこれに置き換え
+itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+    if (pressTimer) pressTimer.remove();
+    
+    if (!isDragging && !itemContainer.getData('isLongPress')) {
+        // ★★★ ここからロジックを大幅変更 ★★★
+        const baseItemData = ITEM_DATA[itemId];
+        if (!baseItemData) return;
         
-        // isDraggingフラグのおかげで、ドラッグ終了時にはツールチップは表示されない
-        if (!isDragging && !itemContainer.getData('isLongPress')) {
-            const itemData = ITEM_DATA[itemId];
-            if (!itemData) return;
-            
-            let tooltipText = `【${itemId}】\n\n`;
-            if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-            if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
-            if (itemData.passive && itemData.passive.effects) {
-                itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
+        // 戦闘準備後のバフ適用済みデータを検索
+        // this.placedItemImages から itemContainer のインデックスを探す
+        const placedIndex = this.placedItemImages.indexOf(itemContainer);
+        let finalItemData = null;
+        if (placedIndex > -1 && this.finalizedPlayerItems && this.finalizedPlayerItems[placedIndex]) {
+            finalItemData = this.finalizedPlayerItems[placedIndex];
+        }
+
+        let tooltipText = `【${itemId}】\n\n`;
+        
+        // 表示する値は finalItemData があればそちらを優先、なければ元のデータを表示
+        const actionValue = finalItemData ? finalItemData.action.value : baseItemData.action.value;
+        const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
+
+        if (baseItemData.recast > 0) {
+            tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
+        }
+        if (baseItemData.action) {
+            tooltipText += `効果: ${baseItemData.action.type} ${actionValue}\n`;
+            // バフがかかっている場合、元の値も表示してあげる
+            if (finalItemData && actionValue !== baseItemData.action.value) {
+                tooltipText += `  (基本値: ${baseItemData.action.value})\n`;
             }
-            if (itemData.synergy) {
-                tooltipText += `\nシナジー:\n`;
-                const dir = itemData.synergy.direction;
-                const tag = itemData.synergy.targetTag;
-                const effect = itemData.synergy.effect;
-                tooltipText += `  - ${dir}の[${tag}]に\n`;
-                tooltipText += `    効果: ${effect.type} +${effect.value}\n`;
-            }
-            
-            this.tooltip.show(itemContainer, tooltipText);
-            event.stopPropagation();
+        }
+        if (baseItemData.passive && baseItemData.passive.effects) {
+            baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
+        }
+        if (baseItemData.synergy) {
+            tooltipText += `\nシナジー:\n`;
+            const dir = baseItemData.synergy.direction;
+            const tag = baseItemData.synergy.targetTag || 'any';
+            const effect = baseItemData.synergy.effect;
+            tooltipText += `  - ${dir}の[${tag}]に\n`;
+            tooltipText += `    効果: ${effect.type} +${effect.value}\n`;
         }
         
-        // 最後にすべてのフラグをリセット
-        isDown = false;
-        isDragging = false;
-        itemContainer.setData('isLongPress', false);
-    });
+        this.tooltip.show(itemContainer, tooltipText);
+        event.stopPropagation();
+    }
+    
+    isDown = false;
+    isDragging = false;
+    itemContainer.setData('isLongPress', false);
+});
+        
+      
     
     return itemContainer;
 }
