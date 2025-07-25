@@ -437,10 +437,14 @@ executeAction(itemData, attacker, defender) {
         }
 
         if (damage > 0) {
+            // ★★★ 修正箇所 ★★★
+            // ダメージポップアップ表示メソッドを呼び出す
+            this.showDamagePopup(defender, Math.floor(damage));
+
             const newHp = defenderStats.hp - damage;
             defenderStats.hp = newHp;
             this.stateManager.setF(`${defender}_hp`, newHp);
-            console.log(` > ${attacker}の${itemName}が攻撃！ ${defender}に${damage}ダメージ (合計攻撃力: ${totalAttack}, 残りHP: ${newHp})`);
+            console.log(` > ${attacker}の${itemName}が攻撃！ ${defender}に${damage.toFixed(1)}ダメージ (合計攻撃力: ${totalAttack}, 残りHP: ${newHp.toFixed(1)})`);
             
             if (newHp <= 0) {
                 this.gameState = 'end';
@@ -452,13 +456,11 @@ executeAction(itemData, attacker, defender) {
     }
     
     else if (action.type === 'block') {
-        // attackerStats はブロック計算で必要なので残す
         const attackerStats = this[`${attacker}Stats`]; 
         attackerStats.block += action.value;
         console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得 (合計ブロック: ${attackerStats.block})`);
     }
 }
-
 
     endBattle(result) {
         if (this.battleEnded) return;
@@ -833,6 +835,69 @@ updateArrowVisibility(itemContainer) {
     } else {
         arrowContainer.setVisible(false);
     }
+}
+
+// BattleScene.js にこの新しいメソッドを追加してください
+showDamagePopup(target, amount) {
+    if (amount <= 0) return; // 0以下のダメージは表示しない
+
+    // ダメージ量に応じてスタイルを決定
+    let fontSize = 24;
+    let fill = '#ffffff'; // 通常ダメージの色 (白)
+    let stroke = '#000000';
+    let strokeThickness = 4;
+
+    if (amount >= 50) { // 大ダメージ
+        fontSize = 48;
+        fill = '#ff0000'; // 赤色
+        stroke = '#ffffff';
+        strokeThickness = 6;
+    } else if (amount >= 20) { // 中ダメージ
+        fontSize = 36;
+        fill = '#ffdd00'; // 黄色
+    }
+    
+    // 表示テキストを作成
+    const damageText = this.add.text(0, 0, amount.toString(), {
+        fontSize: `${fontSize}px`,
+        fill: fill,
+        stroke: stroke,
+        strokeThickness: strokeThickness,
+        fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // どのキャラクターに追従するかを決める
+    // target は 'player' または 'enemy' という文字列
+    // ★★★ 注意：ここではまだ敵キャラクターのオブジェクトがないため、仮の位置に表示します ★★★
+    // 後で敵キャラクターのGameObjectを管理する仕組みができたら、そこと連携させます
+    let targetX, targetY;
+    if (target === 'player') {
+        // プレイヤーグリッドの中央上部あたり
+        targetX = this.gridX + (this.backpackGridSize * this.cellSize) / 2;
+        targetY = this.gridY;
+    } else { // 'enemy' の場合
+        // 敵グリッドの中央上部あたり
+        const enemyGridX = this.scale.width - 100 - (this.backpackGridSize * this.cellSize);
+        targetX = enemyGridX + (this.backpackGridSize * this.cellSize) / 2;
+        targetY = this.gridY;
+    }
+    
+    // テキストの初期位置を設定
+    damageText.setPosition(targetX, targetY);
+    damageText.setDepth(999); // 最前面に表示
+
+    // ランダムな横揺れと上昇しながら消えるTween
+    this.tweens.add({
+        targets: damageText,
+        x: targetX + Phaser.Math.Between(-40, 40), // 左右にランダムに-40pxから+40pxの間で揺れる
+        y: targetY - 100, // 100px上昇
+        alpha: 0,
+        duration: 1500,
+        ease: 'Power1',
+        onComplete: () => {
+            damageText.destroy(); // Tween完了後にオブジェクトを破棄
+        }
+    });
 }
     
     shutdown() {
