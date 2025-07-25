@@ -126,11 +126,41 @@ for (const itemId in currentLayout) {
         enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
     ).setSize(containerWidth, containerHeight);
 
+     // 1. ベース画像
     const itemImage = this.add.image(0, 0, itemData.storage)
         .setDisplaySize(containerWidth, containerHeight);
+        
+    // ★★★ ここからが追加/変更箇所 ★★★
+
+    // 2. リキャストオーバーレイ
+    const recastOverlay = this.add.image(0, 0, itemData.storage)
+        .setDisplaySize(containerWidth, containerHeight)
+        .setTint(0xffffff, 0.6)
+        .setVisible(false);
+
+    // 3. マスク
+    const maskGraphics = this.make.graphics();
+    recastOverlay.setMask(maskGraphics.createGeometryMask());
+
+    // ★★★ 追加/変更箇所ここまで ★★★
+
+    // コンテナに追加
+    itemContainer.add([itemImage, recastOverlay]);
     
-    itemContainer.add(itemImage);
-    itemContainer.setData('itemId', itemId); // データをコンテナに持たせる
+    // データをコンテナに持たせる
+    itemContainer.setData({
+        itemId,
+        recastOverlay: recastOverlay, // ★追加
+        recastMask: maskGraphics      // ★追加
+    });
+
+    // リキャストがなければ非表示
+    if (!itemData.recast || itemData.recast <= 0) {
+        recastOverlay.setVisible(false);
+    } else {
+        recastOverlay.setVisible(true);
+    }
+    
     itemContainer.setDepth(3).setInteractive({ draggable: false });
  itemImage.on('pointerup', (pointer, localX, localY, event) => {
                 const itemData = ITEM_DATA[itemId];
@@ -403,35 +433,67 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     }
     
   // BattleScene.js の update をこれに置き換え
+// BattleScene.js の update をこれに置き換え
 update(time, delta) {
     if (this.gameState !== 'battle') return;
     
-    // Player's turn
-    this.playerBattleItems.forEach(item => { // indexはもう不要
+    // --- Player's items ---
+    this.playerBattleItems.forEach(item => {
+        // 残り時間を更新
         item.nextActionTime -= delta / 1000;
-        if (item.nextActionTime <= 0) {
-            // ★ item.data に紐づけられたGameObjectを直接使う
-            this.executeAction(item.data, 'player', 'enemy', item.data.gameObject);
-            item.nextActionTime += item.data.recast;
-            if (this.gameState !== 'battle') return;
+        
+        // ★★★ マスク更新処理 (Player) ★★★
+        const progress = 1 - (item.nextActionTime / item.data.recast);
+        const charObject = item.data.gameObject;
+        if (charObject && charObject.getData('recastMask')) {
+            const maskGraphics = charObject.getData('recastMask');
+            maskGraphics.clear();
+            if (progress > 0) {
+                const w = charObject.width;
+                const h = charObject.height;
+                const fillHeight = h * progress;
+                maskGraphics.fillRect(-w/2, h/2 - fillHeight, w, fillHeight);
+            }
         }
+        
+        // アクション実行
+        if (item.nextActionTime <= 0) {
+            this.executeAction(item.data, 'player', 'enemy', charObject);
+            item.nextActionTime += item.data.recast; // リキャスト時間をリセット
+            // アクション直後はプログレスが0になるので、次のフレームでマスクは自動的にクリアされる
+        }
+        if (this.gameState !== 'battle') return;
     });
 
     if (this.gameState !== 'battle') return;
 
-    // Enemy's turn
-    // (敵側も将来的に同様の改修をするとより堅牢になりますが、まずはプレイヤー側を修正します)
+    // --- Enemy's items ---
     this.enemyBattleItems.forEach((item, index) => {
+        // 残り時間を更新
         item.nextActionTime -= delta / 1000;
-        if (item.nextActionTime <= 0) {
-            const attackerObject = this.enemyItemImages[index];
-            this.executeAction(item.data, 'enemy', 'player', attackerObject);
-            item.nextActionTime += item.data.recast;
-            if (this.gameState !== 'battle') return;
+
+        // ★★★ マスク更新処理 (Enemy) ★★★
+        const progress = 1 - (item.nextActionTime / item.data.recast);
+        const charObject = this.enemyItemImages[index];
+        if (charObject && charObject.getData('recastMask')) {
+            const maskGraphics = charObject.getData('recastMask');
+            maskGraphics.clear();
+            if (progress > 0) {
+                const w = charObject.width;
+                const h = charObject.height;
+                const fillHeight = h * progress;
+                maskGraphics.fillRect(-w/2, h/2 - fillHeight, w, fillHeight);
+            }
         }
+
+        // アクション実行
+        if (item.nextActionTime <= 0) {
+            this.executeAction(item.data, 'enemy', 'player', charObject);
+            item.nextActionTime += item.data.recast;
+        }
+        if (this.gameState !== 'battle') return;
     });
 }
-
     // BattleScene.js の executeAction メソッド (ブロック対応版)
 
 // BattleScene.js の executeAction をこれに置き換え
@@ -519,7 +581,25 @@ createItem(itemId, x, y) {
     const containerWidth = itemData.shape[0].length * this.cellSize;
     const containerHeight = itemData.shape.length * this.cellSize;
     const itemContainer = this.add.container(x, y).setSize(containerWidth, containerHeight);
+
+    // 1. ベースとなる画像
     const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+
+    // ★★★ ここからが追加/変更箇所 ★★★
+
+    // 2. リキャスト進捗を示すオーバーレイ画像
+    const recastOverlay = this.add.image(0, 0, itemData.storage)
+        .setDisplaySize(containerWidth, containerHeight)
+        .setTint(0xffffff, 0.6) // 半透明の白でティント（好みで色や透明度を調整）
+        .setVisible(false); // recastを持つアイテム以外は非表示
+
+    // 3. マスクとして機能するGraphicsオブジェクト
+    const maskGraphics = this.make.graphics();
+    // ジオメトリマスクを作成し、オーバーレイ画像に適用
+    const mask = maskGraphics.createGeometryMask();
+    recastOverlay.setMask(mask);
+
+    // ★★★ 追加/変更箇所ここまで ★★★
     const arrowContainer = this.add.container(0, 0).setVisible(false);
     const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
     arrowContainer.add([
@@ -528,8 +608,30 @@ createItem(itemId, x, y) {
         this.add.text(0, 0, '◀', arrowStyle).setOrigin(0.5).setName('left'),
         this.add.text(0, 0, '▶', arrowStyle).setOrigin(0.5).setName('right')
     ]);
-    itemContainer.add([itemImage, arrowContainer]).setDepth(12).setInteractive();
-    itemContainer.setData({ itemId, originX: x, originY: y, gridPos: null, itemImage, arrowContainer, rotation: 0 });
+     itemContainer.add([itemImage, recastOverlay, arrowContainer])
+        .setDepth(12)
+        .setInteractive();
+
+    // recastOverlayとmaskGraphicsを後で使えるようにデータとして保持
+    itemContainer.setData({
+        itemId,
+        originX: x,
+        originY: y,
+        gridPos: null,
+        itemImage,
+        arrowContainer,
+        rotation: 0,
+        recastOverlay: recastOverlay, // ★追加
+        recastMask: maskGraphics      // ★追加
+    });
+    
+    // アイテムがリキャストを持たないなら、オーバーレイは常に非表示
+    if (!itemData.recast || itemData.recast <= 0) {
+        recastOverlay.setVisible(false);
+    } else {
+        recastOverlay.setVisible(true);
+    }
+
     this.input.setDraggable(itemContainer);
 
     // --- イベントリスナー ---
