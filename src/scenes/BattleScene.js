@@ -354,33 +354,35 @@ export default class BattleScene extends Phaser.Scene {
 
     // BattleScene.js の executeAction メソッド (ブロック対応版)
 
+   // BattleScene.js の executeAction メソッド (シンタックス修正・完成版)
+
     executeAction(itemData, attacker, defender) {
         const action = itemData.action;
         if (!action) return;
 
         const attackerStats = this[`${attacker}Stats`];
+        // ★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ ここが修正箇所です ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★
         const defenderStats = this[`${defender}Stats`];
+        
         const itemName = itemData.id || "アイテム";
 
         if (action.type === 'attack') {
-            // ★★★ 攻撃力計算の変更 ★★★
-            // アイテム自身の攻撃力 + 攻撃者の基礎攻撃力
             const totalAttack = action.value + attackerStats.attack;
+            let damage = Math.max(0, totalAttack - defenderStats.defense);
             
-            // ★ 1. ブロックがあれば、まずブロックでダメージを受ける
             if (defenderStats.block > 0 && damage > 0) {
                 const blockDamage = Math.min(defenderStats.block, damage);
                 defenderStats.block -= blockDamage;
                 damage -= blockDamage;
                 console.log(` > ${defender}が${blockDamage}ダメージをブロック！ (残りブロック: ${defenderStats.block})`);
-                // ★ TODO: ブロックHUDを更新する (後で)
             }
 
-            // ★ 2. 残りのダメージをHPで受ける
             if (damage > 0) {
                 const newHp = defenderStats.hp - damage;
                 defenderStats.hp = newHp;
-                this.stateManager.setF(`${defender}_hp`, newHp); // HUDに通知
+                this.stateManager.setF(`${defender}_hp`, newHp);
                 console.log(` > ${attacker}の${itemName}が攻撃！ ${defender}に${damage}ダメージ (残りHP: ${newHp})`);
                 
                 if (newHp <= 0) {
@@ -393,15 +395,10 @@ export default class BattleScene extends Phaser.Scene {
         }
         
         else if (action.type === 'block') {
-            // ★ 3. ブロックを付与するアクション
             attackerStats.block += action.value;
             console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得 (合計ブロック: ${attackerStats.block})`);
-            // ★ TODO: ブロックHUDを更新する (後で)
         }
-
-        // (ここに 'heal' などの他のアクションタイプを追加していく)
     }
-
     endBattle(result) {
         if (this.battleEnded) return;
         this.battleEnded = true;
