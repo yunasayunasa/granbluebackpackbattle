@@ -513,61 +513,71 @@ update(time, delta) {
     // BattleScene.js の executeAction メソッド (ブロック対応版)
 
 // BattleScene.js の executeAction をこれに置き換え
-executeAction(itemData, attacker, defender, attackerObject) { // attackerObjectは省略される可能性がある
-    // ★★★ 修正箇所 ★★★
-    // アニメーションは attackerObject が渡された時だけ再生する
+// BattleScene.js の executeAction をこれに置き換え
+executeAction(itemData, attacker, defender, attackerObject) {
     if (attackerObject) {
         this.playAttackAnimation(attackerObject, attacker);
     }
+
     const action = itemData.action;
     if (!action) return;
 
-    // const attackerStats = this[`${attacker}Stats`]; // もう不要
     const defenderStats = this[`${defender}Stats`];
-    
     const itemName = itemData.id || "アイテム";
 
-     if (action.type === 'attack') {
-        // ★★★ 修正箇所 ★★★
-        // 攻撃アニメーションを再生
-        this.playAttackAnimation(attackerObject, attacker);
-
+    if (action.type === 'attack') {
         const totalAttack = action.value;
         let damage = Math.max(0, totalAttack - defenderStats.defense);
-        
-        // (以降のロジックは変更なし)
+        let blockedDamage = 0; // ブロックしたダメージ量を記録
+
         if (defenderStats.block > 0 && damage > 0) {
-            const blockDamage = Math.min(defenderStats.block, damage);
-            defenderStats.block -= blockDamage;
-            damage -= blockDamage;
-            console.log(` > ${defender}が${blockDamage}ダメージをブロック！ (残りブロック: ${defenderStats.block})`);
+            blockedDamage = Math.min(defenderStats.block, damage);
+            defenderStats.block -= blockedDamage;
+            damage -= blockedDamage;
+            console.log(` > ${defender}が${blockedDamage}ダメージをブロック！`);
+        }
+
+        if (blockedDamage > 0) {
+            // ★★★ 修正箇所 ★★★
+            // ブロック成功エフェクトを表示
+            // defenderのGameObjectを特定する必要がある
+            let defenderObject = null;
+            if(defender === 'player'){
+                // プレイヤーが攻撃された場合、誰が受けたか？という問題。一旦全体の位置に。
+            } else { // 敵が攻撃された場合
+                 // 敵の中から誰か（今は一人しかいない想定）
+                defenderObject = this.enemyItemImages[0];
+            }
+            // ★将来的には攻撃対象を特定するロジックが必要
+            this.showBlockSuccessIcon(defenderObject);
         }
 
         if (damage > 0) {
-            // ★★★ 修正箇所 ★★★
-            // ダメージポップアップ表示メソッドを呼び出す
             this.showDamagePopup(defender, Math.floor(damage));
-
             const newHp = defenderStats.hp - damage;
             defenderStats.hp = newHp;
             this.stateManager.setF(`${defender}_hp`, newHp);
-            console.log(` > ${attacker}の${itemName}が攻撃！ ${defender}に${damage.toFixed(1)}ダメージ (合計攻撃力: ${totalAttack}, 残りHP: ${newHp.toFixed(1)})`);
+            console.log(` > ${attacker}の${itemName}が攻撃！...`);
             
             if (newHp <= 0) {
                 this.gameState = 'end';
                 this.endBattle(attacker === 'player' ? 'win' : 'lose');
             }
+        } else if(blockedDamage > 0) {
+            console.log(` > ${attacker}の${itemName}の攻撃は完全に防がれた！`);
         } else {
-             console.log(` > ${attacker}の${itemName}の攻撃は防がれた！ (合計攻撃力: ${totalAttack})`);
+            console.log(` > ${attacker}の${itemName}の攻撃は防がれた！`);
         }
     }
     
     else if (action.type === 'block') {
-         // ★ブロックアニメーションも追加してみる
-        this.playAttackAnimation(attackerObject, attacker);
         const attackerStats = this[`${attacker}Stats`]; 
         attackerStats.block += action.value;
-        console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得 (合計ブロック: ${attackerStats.block})`);
+        console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得...`);
+        
+        // ★★★ 修正箇所 ★★★
+        // ブロック獲得ポップアップを表示
+        this.showGainBlockPopup(attackerObject, action.value);
     }
 }
 
@@ -1087,7 +1097,72 @@ playAttackAnimation(sourceObject, attackerType) {
         }
     });
 }
-    
+   
+// BattleScene.js にこの2つのメソッドを追加
+
+/**
+ * ブロック獲得時に数値をポップアップさせるメソッド
+ * @param {Phaser.GameObjects.Container} targetObject - 対象のキャラクターオブジェクト
+ * @param {number} amount - 獲得したブロック量
+ */
+showGainBlockPopup(targetObject, amount) {
+    if (!targetObject || amount <= 0) return;
+
+    // 緑色のテキストで獲得量を表示
+    const blockText = this.add.text(0, 0, `+${amount} Block`, {
+        fontSize: '28px',
+        fill: '#4caf50', // 緑色
+        stroke: '#ffffff',
+        strokeThickness: 5,
+        fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // キャラクターの頭上に表示
+    const x = targetObject.x;
+    const y = targetObject.y - (targetObject.height / 2);
+    blockText.setPosition(x, y).setDepth(999);
+
+    // 少し上に移動して消えるTween
+    this.tweens.add({
+        targets: blockText,
+        y: y - 50,
+        alpha: 0,
+        duration: 1200,
+        ease: 'Power1',
+        onComplete: () => blockText.destroy()
+    });
+}
+
+/**
+ * ダメージをブロックした際に盾アイコンを表示するメソッド
+ * @param {Phaser.GameObjects.Container} targetObject - 対象のキャラクターオブジェクト
+ */
+showBlockSuccessIcon(targetObject) {
+    if (!targetObject) return;
+
+    // ★★★ 注意：'shield_icon' という画像キーを事前にロードしておく必要があります ★★★
+    // 仮にテキストで代用することも可能
+    const icon = this.add.text(0, 0, '🛡️', { fontSize: '48px' }).setOrigin(0.5);
+    // const icon = this.add.image(0, 0, 'shield_icon').setScale(0.5);
+
+    // キャラクターの中央に表示
+    const x = targetObject.x;
+    const y = targetObject.y;
+    icon.setPosition(x, y).setDepth(1000);
+
+    // 少しだけ表示して、ブルっと震えて消える
+    icon.setAlpha(0);
+    this.tweens.chain({
+        targets: icon,
+        tweens: [
+            { alpha: 1, duration: 100 }, // パッと表示
+            { scale: 1.2, duration: 150, ease: 'Sine.easeInOut', yoyo: true }, // ブルっと震える
+            { alpha: 0, duration: 200, delay: 300 } // 少し待ってから消える
+        ],
+        onComplete: () => icon.destroy()
+    });
+}
+
     shutdown() {
         console.log("BattleScene: shutdown されました。");
     }
