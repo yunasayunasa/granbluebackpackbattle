@@ -11,7 +11,7 @@
     "umi": "assets/umi.jpg" ,
  "item_sword": "assets/item/sword.png" ,
 "item_shield": "assets/item/shield.png" ,
-"item_spiky_shield": "assets/item/shield.png" ,
+"item_spiky_shield": "assets/item/sword.png" ,
 "item_potion": "assets/item/potion.png" ,
      "enzan": "assets/enzan.jpg" ,
      "enzan2": "assets/enzan2.png"
