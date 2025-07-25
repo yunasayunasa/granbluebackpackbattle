@@ -14,7 +14,10 @@
 "item_spiky_shield": "assets/item/sword.png" ,
 "item_potion": "assets/item/potion.png" ,
      "enzan": "assets/enzan.jpg" ,
-     "enzan2": "assets/enzan2.png"
+     "enzan2": "assets/enzan2.png",
+
+        "player_avatar_placeholder":"assets/gran_normal.png",
+            "enemy_avatar_placeholder":"assets/slime_normal.png"
   },
   "sounds": {
 "popopo": "assets/gyakuten_popopo.mp3",
