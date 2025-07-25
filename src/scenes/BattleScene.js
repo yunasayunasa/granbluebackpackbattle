@@ -440,13 +440,26 @@ const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最�
         finalMaxHp = Math.max(1, finalMaxHp);
         this.stateManager.setF('player_max_hp', finalMaxHp);
         this.stateManager.setF('player_hp', finalMaxHp);
-        this.playerStats = { attack: 0, defense: finalDefense, hp: finalMaxHp, block: 0 };
-        this.finalizedPlayerItems = playerFinalItems; // ★★★ この行を追加 ★★★
+        this.playerStats = { 
+    max_hp: finalMaxHp, // ★追加
+    hp: finalMaxHp, 
+    defense: finalDefense, 
+    block: 0,
+    attack: 0 // attackは0のまま
+};    
+this.finalizedPlayerItems = playerFinalItems; // ★★★ この行を追加 ★★★
         console.log("プレイヤー最終ステータス:", this.playerStats);
 
         // 4. 敵のステータス初期化
-        this.enemyStats = { attack: 0, defense: 2, hp: this.stateManager.f.enemy_hp, block: 0 };
-        this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
+        const enemyMaxHp = this.stateManager.f.enemy_max_hp; // ★敵の最大HPも取得
+this.enemyStats = { 
+    max_hp: enemyMaxHp, // ★追加
+    hp: enemyMaxHp, 
+    defense: 2, 
+    block: 0,
+    attack: 0
+};  
+this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
         console.log("敵最終ステータス:", this.enemyStats);
     }
 
@@ -600,6 +613,25 @@ executeAction(itemData, attacker, defender, attackerObject) {
         // ★ ブロック獲得エフェクト
         let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
         this.showGainBlockPopup(targetAvatar, action.value);
+    }
+   // ★★★ 4. 回復アクションの場合 (ここから追加) ★★★
+    else if (action.type === 'heal') {
+        const attackerStats = this[`${attacker}Stats`];
+        
+        // 最大HPを超えないように回復量を計算
+        const healAmount = Math.min(action.value, attackerStats.max_hp - attackerStats.hp);
+        
+        if (healAmount > 0) {
+            attackerStats.hp += healAmount;
+            console.log(` > ${attacker}の${itemName}が発動！ HPを${healAmount.toFixed(1)}回復`);
+
+            // stateManager の値を更新 (HPバーなどに反映させるため)
+            this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+
+            // 回復エフェクトを表示
+            let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+            this.showHealPopup(targetAvatar, Math.floor(healAmount));
+        }
     }
 }
     endBattle(result) {
@@ -1185,6 +1217,41 @@ executeAction(itemData, attacker, defender, attackerObject) {
             onComplete: () => icon.destroy()
         });
     }
+
+    // BattleScene.js にこの新しいメソッドを追加してください
+
+/**
+ * 回復時に緑色の数値をポップアップさせるメソッド
+ * @param {Phaser.GameObjects.Container} targetObject - 対象のアバターオブジェクト
+ * @param {number} amount - 回復量
+ */
+showHealPopup(targetObject, amount) {
+    if (!targetObject || amount <= 0) return;
+
+    // ポジティブな印象を与える緑色のテキスト
+    const healText = this.add.text(0, 0, `+${amount}`, {
+        fontSize: '32px',
+        fill: '#abffab', // 明るい緑
+        stroke: '#1b5e20', // 暗い緑の縁取り
+        strokeThickness: 5,
+        fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // アバターの頭上に表示
+    const x = targetObject.x;
+    const y = targetObject.y - (targetObject.displayHeight / 2);
+    healText.setPosition(x, y).setDepth(999);
+
+    // 少し上に移動して消えるTween
+    this.tweens.add({
+        targets: healText,
+        y: y - 60,
+        alpha: 0,
+        duration: 1500,
+        ease: 'Power1',
+        onComplete: () => healText.destroy()
+    });
+}
 
     shutdown() {
         console.log("BattleScene: shutdown されました。");

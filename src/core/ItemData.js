@@ -12,9 +12,9 @@ export const ITEM_DATA = {
     'shield': {
         storage: 'item_shield',
         shape: [[1], [1]],
-       tags: ["weapon", "wind"],
-        action: { type: "block", value: 8 },
-        recast: 1.5
+          "tags": ["consumable", "light"],
+    "action": { "type": "heal", "value": 15 }, // ★新しいアクションタイプ
+    "recast": 5.0
     },
     'potion': { // 砥石
         storage: 'item_potion',
