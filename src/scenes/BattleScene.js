@@ -139,11 +139,12 @@ for (const itemId in currentLayout) {
         .setVisible(false);
 
     // 3. マスク
-    const maskGraphics = this.make.graphics();
+     // ★★★ ここからが修正箇所 ★★★
+    const maskGraphics = this.add.graphics();
+    itemContainer.add(maskGraphics);
+    maskGraphics.setVisible(false);
     recastOverlay.setMask(maskGraphics.createGeometryMask());
-
-    // ★★★ 追加/変更箇所ここまで ★★★
-
+    // ★★★ 修正箇所ここまで ★★★
     // コンテナに追加
     itemContainer.add([itemImage, recastOverlay]);
     
@@ -431,19 +432,15 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     startBattle() {
         console.log("★★ 戦闘開始！ ★★");
     }
-    
-  // BattleScene.js の update をこれに置き換え
 // BattleScene.js の update をこれに置き換え
 update(time, delta) {
     if (this.gameState !== 'battle') return;
     
-    // --- Player's items ---
+    // Player's items
     this.playerBattleItems.forEach(item => {
-        // 残り時間を更新
         item.nextActionTime -= delta / 1000;
         
-        // ★★★ マスク更新処理 (Player) ★★★
-        const progress = 1 - (item.nextActionTime / item.data.recast);
+        const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
         const charObject = item.data.gameObject;
         if (charObject && charObject.getData('recastMask')) {
             const maskGraphics = charObject.getData('recastMask');
@@ -452,28 +449,26 @@ update(time, delta) {
                 const w = charObject.width;
                 const h = charObject.height;
                 const fillHeight = h * progress;
-                maskGraphics.fillRect(-w/2, h/2 - fillHeight, w, fillHeight);
+                // ★★★ 座標をローカル座標に修正 ★★★
+                // (x, y) は矩形の左上の座標
+                maskGraphics.fillRect(-w / 2, h / 2 - fillHeight, w, fillHeight);
             }
         }
         
-        // アクション実行
         if (item.nextActionTime <= 0) {
             this.executeAction(item.data, 'player', 'enemy', charObject);
-            item.nextActionTime += item.data.recast; // リキャスト時間をリセット
-            // アクション直後はプログレスが0になるので、次のフレームでマスクは自動的にクリアされる
+            item.nextActionTime += item.data.recast;
         }
         if (this.gameState !== 'battle') return;
     });
 
     if (this.gameState !== 'battle') return;
 
-    // --- Enemy's items ---
+    // Enemy's items
     this.enemyBattleItems.forEach((item, index) => {
-        // 残り時間を更新
         item.nextActionTime -= delta / 1000;
 
-        // ★★★ マスク更新処理 (Enemy) ★★★
-        const progress = 1 - (item.nextActionTime / item.data.recast);
+        const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
         const charObject = this.enemyItemImages[index];
         if (charObject && charObject.getData('recastMask')) {
             const maskGraphics = charObject.getData('recastMask');
@@ -482,11 +477,11 @@ update(time, delta) {
                 const w = charObject.width;
                 const h = charObject.height;
                 const fillHeight = h * progress;
-                maskGraphics.fillRect(-w/2, h/2 - fillHeight, w, fillHeight);
+                // ★★★ 座標をローカル座標に修正 ★★★
+                maskGraphics.fillRect(-w / 2, h / 2 - fillHeight, w, fillHeight);
             }
         }
 
-        // アクション実行
         if (item.nextActionTime <= 0) {
             this.executeAction(item.data, 'enemy', 'player', charObject);
             item.nextActionTime += item.data.recast;
@@ -594,10 +589,17 @@ createItem(itemId, x, y) {
         .setVisible(false); // recastを持つアイテム以外は非表示
 
     // 3. マスクとして機能するGraphicsオブジェクト
-    const maskGraphics = this.make.graphics();
-    // ジオメトリマスクを作成し、オーバーレイ画像に適用
+    // 1. マスク用のGraphicsを「コンテナの子として」追加する
+    const maskGraphics = this.add.graphics();
+    itemContainer.add(maskGraphics); // これで座標系がコンテナ基準になる
+    maskGraphics.setVisible(false);  // ただし、マスク自体は見えないようにする
+
+    // 2. マスクを生成して適用
     const mask = maskGraphics.createGeometryMask();
     recastOverlay.setMask(mask);
+    
+    // ★★★ 修正箇所ここまで ★★★
+
 
     // ★★★ 追加/変更箇所ここまで ★★★
     const arrowContainer = this.add.container(0, 0).setVisible(false);
