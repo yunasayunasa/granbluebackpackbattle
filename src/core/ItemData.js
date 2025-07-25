@@ -36,14 +36,11 @@ export const ITEM_DATA = {
      'leather_armor': { // 革鎧
         storage: 'item_potion', // ★ 新しい画像アセットキー
         shape: [[1, 1], [1, 1]], // 2x2マス
-        tags: ['armor'],
-        recast: 1,
-        action: null,
-        passive: {
-            effects: [
-                { type: 'defense', value: 1 },
-                { type: 'max_hp', value: 25 } // ★ 最大HPを25増やす
-            ]
+        tags: ["support"],
+        synergy: {
+            direction: "up",      // ★方向指定
+            targetTag: "weapon",  // 「上」の「武器」に
+            effect: { type: "add_attack", value: 3 }
         }
     },
     
