@@ -71,16 +71,18 @@ create() {
     this.soundManager = this.sys.registry.get('soundManager');
     this.tooltip = new Tooltip(this);
 
-    // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化） ★ sf に変更 ★
-    if (this.stateManager.sf.player_backpack === undefined || this.stateManager.sf.player_inventory === undefined) {
-        // sf変数を直接変更
-        this.stateManager.sf.player_backpack = {};
-        this.stateManager.sf.player_inventory = ['sword', 'shield', 'potion'];
-        // sf変数が変更されたことを通知し、自動保存をトリガーする（StateManagerの実装による）
-        //this.stateManager.saveSystemData(); // ★もしこういうメソッドがあれば呼ぶ
-    }
-    const backpackData = this.stateManager.sf.player_backpack;
-    const inventoryData = this.stateManager.sf.player_inventory;
+    // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
+if (this.stateManager.sf.player_backpack === undefined) {
+    // ★ 修正箇所 ★: setSF を使う
+    this.stateManager.setSF('player_backpack', {});
+}
+if (this.stateManager.sf.player_inventory === undefined) {
+    // ★ 修正箇所 ★: setSF を使う
+    this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+}
+// 読み込みは直接でOK
+const backpackData = this.stateManager.sf.player_backpack;
+const inventoryData = this.stateManager.sf.player_inventory;
 
     // --- 1b. 戦闘パラメータを決定 ★ f のままでOKなものと、sf を使うべきもの ---
     // HPやラウンドは戦闘ごとにリセットされる可能性があるので、f変数で管理するのが適切かもしれない

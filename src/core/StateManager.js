@@ -7,13 +7,63 @@ export default class StateManager extends Phaser.Events.EventEmitter {
         this.sf = this.loadSystemVariables(); 
         if (!this.sf.history) this.sf.history = [];
     }
-     // ★★★ 追加: f変数を設定し、イベントを発行するメソッド ★★★
+      // --- f (ゲーム変数) の管理 ---
+
+    /**
+     * f変数を設定し、変更イベントを発行する
+     * @param {string} key - f変数のキー
+     * @param {*} value - 設定する値
+     */
     setF(key, value) {
-        if (this.f[key] !== value) {
+        const oldValue = this.f[key];
+        if (oldValue !== value) {
             this.f[key] = value;
-            this.emit('f-variable-changed', key, value);
+            this.emit('f-variable-changed', key, value, oldValue);
         }
     }
+
+    // --- sf (システム変数) の管理 ---
+
+    /**
+     * sf変数を設定し、変更イベントを発行し、自動保存する
+     * @param {string} key - sf変数のキー
+     * @param {*} value - 設定する値
+     */
+    setSF(key, value) {
+        const oldValue = this.sf[key];
+        if (oldValue !== value) {
+            this.sf[key] = value;
+            this.emit('sf-variable-changed', key, value, oldValue);
+            this.saveSystemData(); // ★ 変更があったら即座に保存
+        }
+    }
+
+    /**
+     * システムデータをlocalStorageに保存する
+     */
+    saveSystemData() {
+        try {
+            localStorage.setItem('my_novel_engine_system', JSON.stringify(this.sf));
+            console.log("[StateManager] System data saved to localStorage.", this.sf);
+        } catch (e) {
+            console.error("システム変数の保存に失敗しました。", e);
+        }
+    }
+
+    /**
+     * システムデータをlocalStorageから読み込む
+     * @returns {object} 読み込んだデータ、または空のオブジェクト
+     */
+    loadSystemData() {
+        try {
+            const data = localStorage.getItem('my_novel_engine_system');
+            return data ? JSON.parse(data) : {};
+        } catch (e) {
+            console.error("システム変数の読み込みに失敗しました。", e);
+            return {};
+        }
+    }
+
 
     /**
      * ゲームの現在の状態をすべて収集して返す
