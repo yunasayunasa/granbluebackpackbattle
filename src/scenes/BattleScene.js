@@ -45,6 +45,7 @@ export default class BattleScene extends Phaser.Scene {
         this.enemyStats = { attack: 0, defense: 0, hp: 0, block: 0 };
         this.playerBattleItems = [];
         this.enemyBattleItems = [];
+        this.enemyItemImages = [];
         this.battleEnded = false;
          this.ghostImage = null;
          this.finalizedPlayerItems = [];
@@ -60,6 +61,7 @@ export default class BattleScene extends Phaser.Scene {
         };
         this.inventoryItemImages = [];
         this.placedItemImages = [];
+        this.enemyItemImages = [];
         this.battleEnded = false;
     }
 
@@ -106,19 +108,31 @@ export default class BattleScene extends Phaser.Scene {
             this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2);
         }
         const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
-        const currentRound = this.initialBattleParams.round;
-        const currentLayout = enemyLayouts[currentRound] || {};
-        for (const itemId in currentLayout) {
-            const itemData = ITEM_DATA[itemId];
-            if (!itemData) continue;
-            const pos = currentLayout[itemId].pos;
-            const itemImage = this.add.image(
-                enemyGridX + (pos[1] * this.cellSize) + (itemData.shape[0].length * this.cellSize / 2),
-                enemyGridY + (pos[0] * this.cellSize) + (itemData.shape.length * this.cellSize / 2),
-                itemData.storage
-            ).setDepth(3).setInteractive({ draggable: false });
-            itemImage.setDisplaySize(itemData.shape[0].length * this.cellSize, itemData.shape.length * this.cellSize);
-              itemImage.on('pointerup', (pointer, localX, localY, event) => {
+const currentRound = this.initialBattleParams.round;
+const currentLayout = enemyLayouts[currentRound] || {};
+
+// ★★★ ここから修正 ★★★
+this.enemyItemImages = []; // createの開始時に一度クリア
+for (const itemId in currentLayout) {
+    const itemData = ITEM_DATA[itemId];
+    if (!itemData) continue;
+    const pos = currentLayout[itemId].pos;
+
+    // itemImage を itemContainer に変更し、プレイヤー側と構造を合わせる
+    const containerWidth = itemData.shape[0].length * this.cellSize;
+    const containerHeight = itemData.shape.length * this.cellSize;
+    const itemContainer = this.add.container(
+        enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
+        enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
+    ).setSize(containerWidth, containerHeight);
+
+    const itemImage = this.add.image(0, 0, itemData.storage)
+        .setDisplaySize(containerWidth, containerHeight);
+    
+    itemContainer.add(itemImage);
+    itemContainer.setData('itemId', itemId); // データをコンテナに持たせる
+    itemContainer.setDepth(3).setInteractive({ draggable: false });
+ itemImage.on('pointerup', (pointer, localX, localY, event) => {
                 const itemData = ITEM_DATA[itemId];
                 if (!itemData) return;
                 
@@ -132,10 +146,11 @@ export default class BattleScene extends Phaser.Scene {
                     tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`;
                 }
                 
-                this.tooltip.show(itemImage, tooltipText);
+                this.tooltip.show(itemContainer, tooltipText);
                 event.stopPropagation();
             });
-        }
+         this.enemyItemImages.push(itemContainer); // ★生成したコンテナを配列に追加
+}
               
 
         // 3c. インベントリ
@@ -385,27 +400,36 @@ for (const element in ELEMENT_RESONANCE_RULES) {
         console.log("★★ 戦闘開始！ ★★");
     }
     
-    update(time, delta) {
-        if (this.gameState !== 'battle') return;
-        for (const item of this.playerBattleItems) {
-            item.nextActionTime -= delta / 1000;
-            if (item.nextActionTime <= 0) {
-                this.executeAction(item.data, 'player', 'enemy');
-                item.nextActionTime += item.data.recast;
-                if (this.gameState !== 'battle') break;
-            }
+   // BattleScene.js の update をこれに置き換え
+update(time, delta) {
+    if (this.gameState !== 'battle') return;
+    
+    // Player's turn
+    this.playerBattleItems.forEach((item, index) => {
+        item.nextActionTime -= delta / 1000;
+        if (item.nextActionTime <= 0) {
+            const attackerObject = this.placedItemImages[index]; // ★攻撃者のGameObjectを取得
+            this.executeAction(item.data, 'player', 'enemy', attackerObject); // ★引数に追加
+            item.nextActionTime += item.data.recast;
+            if (this.gameState !== 'battle') return; // break相当
         }
-        if (this.gameState === 'battle') {
-            for (const item of this.enemyBattleItems) {
-                item.nextActionTime -= delta / 1000;
-                if (item.nextActionTime <= 0) {
-                    this.executeAction(item.data, 'enemy', 'player');
-                    item.nextActionTime += item.data.recast;
-                    if (this.gameState !== 'battle') break;
-                }
-            }
+    });
+
+    if (this.gameState !== 'battle') return;
+
+    // Enemy's turn
+    this.enemyBattleItems.forEach((item, index) => {
+        item.nextActionTime -= delta / 1000;
+        if (item.nextActionTime <= 0) {
+            // ★敵のGameObjectを取得。単純な1対1を想定。
+            // 敵が複数いる場合は、どの敵が攻撃したかを特定するロジックが将来的に必要。
+            const attackerObject = this.enemyItemImages[index];
+            this.executeAction(item.data, 'enemy', 'player', attackerObject); // ★引数に追加
+            item.nextActionTime += item.data.recast;
+            if (this.gameState !== 'battle') return; // break相当
         }
-    }
+    });
+}
 
     // BattleScene.js の executeAction メソッド (ブロック対応版)
 
@@ -422,10 +446,12 @@ executeAction(itemData, attacker, defender) {
     
     const itemName = itemData.id || "アイテム";
 
-    if (action.type === 'attack') {
+     if (action.type === 'attack') {
         // ★★★ 修正箇所 ★★★
-        // アイテムの火力（バフ込み）をそのまま攻撃力とする
-        const totalAttack = action.value; 
+        // 攻撃アニメーションを再生
+        this.playAttackAnimation(attackerObject, attacker);
+
+        const totalAttack = action.value;
         let damage = Math.max(0, totalAttack - defenderStats.defense);
         
         // (以降のロジックは変更なし)
@@ -456,6 +482,8 @@ executeAction(itemData, attacker, defender) {
     }
     
     else if (action.type === 'block') {
+         // ★ブロックアニメーションも追加してみる
+        this.playAttackAnimation(attackerObject, attacker);
         const attackerStats = this[`${attacker}Stats`]; 
         attackerStats.block += action.value;
         console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得 (合計ブロック: ${attackerStats.block})`);
@@ -896,6 +924,41 @@ showDamagePopup(target, amount) {
         ease: 'Power1',
         onComplete: () => {
             damageText.destroy(); // Tween完了後にオブジェクトを破棄
+        }
+    });
+}
+
+// BattleScene.js にこの新しいメソッドを追加してください
+playAttackAnimation(sourceObject, attackerType) {
+    if (!sourceObject) return;
+
+    const moveDistance = 20; // 前に突き出す距離
+    let moveX = 0;
+    let moveY = 0;
+
+    // プレイヤーは右に、敵は左に突き出す
+    if (attackerType === 'player') {
+        moveX = moveDistance;
+    } else { // 'enemy'
+        moveX = -moveDistance;
+    }
+
+    // YOYO効果のあるTweenで、前に出てすぐ戻る動きを表現
+    this.tweens.add({
+        targets: sourceObject,
+        x: sourceObject.x + moveX,
+        y: sourceObject.y + moveY,
+        duration: 100, // 突き出す速さ
+        ease: 'Power1',
+        yoyo: true, // trueにすると元の位置に自動で戻る
+        onStart: () => {
+            sourceObject.setDepth(100); // アニメーション中だけ最前面に
+        },
+        onComplete: () => {
+            sourceObject.setDepth(12); // 終わったら深度を戻す (敵は3)
+             if (attackerType === 'enemy') {
+                 sourceObject.setDepth(3);
+             }
         }
     });
 }

@@ -13,7 +13,7 @@ export const ITEM_DATA = {
         storage: 'item_shield',
         shape: [[1], [1]],
        tags: ["weapon", "wind"],
-        action: { type: "attack", value: 8 },
+        action: { type: "block", value: 8 },
         recast: 1.5
     },
     'potion': { // 砥石
