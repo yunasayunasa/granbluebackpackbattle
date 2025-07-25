@@ -89,7 +89,13 @@ init(data) {
   create() {
     console.log("BattleScene: create");
     this.cameras.main.setBackgroundColor('#8a2be2');
-
+ // ★★★ 1. 【最優先】playerDataに依存する処理 ★★★
+    // initで準備したplayerDataを使って、戦闘パラメータを初期化
+    this.initialBattleParams = {
+        playerMaxHp: this.playerData.avatar.max_hp,
+        playerHp: this.playerData.avatar.current_hp,
+        round: this.playerData.round
+    };
     // --- 1. 準備：マネージャーと変数の定義 ---
     // StateManagerはinitで取得済みなので、ここではSoundManagerのみ
     this.soundManager = this.sys.registry.get('soundManager');
