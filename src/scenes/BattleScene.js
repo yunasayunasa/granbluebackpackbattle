@@ -135,7 +135,7 @@ for (const itemId in currentLayout) {
     // 2. リキャストオーバーレイ
     const recastOverlay = this.add.image(0, 0, itemData.storage)
         .setDisplaySize(containerWidth, containerHeight)
-        .setTint(0xffffff, 0.6)
+        .setTint(0x00aaff, 0.7)
         .setVisible(false);
 
     // 3. マスク
@@ -606,7 +606,7 @@ createItem(itemId, x, y) {
     // 2. リキャスト進捗を示すオーバーレイ画像
     const recastOverlay = this.add.image(0, 0, itemData.storage)
         .setDisplaySize(containerWidth, containerHeight)
-        .setTint(0xffffff, 0.6) // 半透明の白でティント（好みで色や透明度を調整）
+       .setTint(0x00aaff, 0.7) // 半透明の白でティント（好みで色や透明度を調整）
         .setVisible(false); // recastを持つアイテム以外は非表示
 
     // 3. マスクとして機能するGraphicsオブジェクト
