@@ -146,8 +146,7 @@ for (const itemId in currentLayout) {
     recastOverlay.setMask(maskGraphics.createGeometryMask());
     // ★★★ 修正箇所ここまで ★★★
     // コンテナに追加
-    itemContainer.add([itemImage, recastOverlay]);
-    
+   itemContainer.add([itemImage, recastOverlay, maskGraphics]);
     // データをコンテナに持たせる
     itemContainer.setData({
         itemId,
@@ -610,9 +609,10 @@ createItem(itemId, x, y) {
         this.add.text(0, 0, '◀', arrowStyle).setOrigin(0.5).setName('left'),
         this.add.text(0, 0, '▶', arrowStyle).setOrigin(0.5).setName('right')
     ]);
-     itemContainer.add([itemImage, recastOverlay, arrowContainer])
-        .setDepth(12)
-        .setInteractive();
+    itemContainer.add([itemImage, recastOverlay, arrowContainer, maskGraphics])
+    .setDepth(12)
+    .setInteractive();
+
 
     // recastOverlayとmaskGraphicsを後で使えるようにデータとして保持
     itemContainer.setData({
