@@ -240,18 +240,19 @@ prepareForBattle() {
 
 
     // ★★★ STEP 2: 隣接 & 方向シナジーの計算 ★★★
-    console.log("隣接・方向シナジーの計算を開始...");
+    
+     console.log("隣接・方向シナジーの計算を開始...");
     playerFinalItems.forEach((sourceItem, sourceIndex) => {
         if (!sourceItem.synergy) return;
 
         playerFinalItems.forEach((targetItem, targetIndex) => {
-            if (sourceIndex === targetIndex || !targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+            // ★★★ 修正箇所 ★★★
+            // targetTagのチェックを削除。自分自身でなければOK。
+            if (sourceIndex === targetIndex) {
                 return;
             }
-            
-            // このペアのシナジーが既に適用済みかチェックするためのフラグ
-            let synergyAppliedForThisPair = false;
-
+       
+              let synergyAppliedForThisPair = false;
             const sourceShape = this.getRotatedShape(sourceItem.id, sourceItem.rotation);
             const targetShape = this.getRotatedShape(targetItem.id, targetItem.rotation);
 
@@ -271,11 +272,9 @@ prepareForBattle() {
                             const targetCellPos = { r: targetItem.row + tr, c: targetItem.col + tc };
                             let isMatch = false;
                             
-                            // シナジーの種類によって条件分岐
                             if (sourceItem.synergy.direction === 'adjacent') {
                                 isMatch = Math.abs(sourceCellPos.r - targetCellPos.r) + Math.abs(sourceCellPos.c - targetCellPos.c) === 1;
                             } else {
-                                // 方向指定シナジーの判定
                                 let targetDir = {r: 0, c: 0};
                                 switch(sourceItem.synergy.direction) {
                                     case 'up':    targetDir = {r: -1, c: 0}; break;
@@ -284,12 +283,10 @@ prepareForBattle() {
                                     case 'right': targetDir = {r: 0, c: 1}; break;
                                 }
 
-                                // アイテムの回転を考慮して、方向ベクトルも回転させる
                                 const rad = Phaser.Math.DegToRad(sourceItem.rotation);
                                 const rotatedC = Math.round(targetDir.c * Math.cos(rad) - targetDir.r * Math.sin(rad));
                                 const rotatedR = Math.round(targetDir.c * Math.sin(rad) + targetDir.r * Math.cos(rad));
                                 
-                                // ソースセルの指定方向にターゲットセルがあるか
                                 if (sourceCellPos.r + rotatedR === targetCellPos.r && sourceCellPos.c + rotatedC === targetCellPos.c) {
                                     isMatch = true;
                                 }
@@ -305,8 +302,8 @@ prepareForBattle() {
                                     targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
                                      console.log(`★ シナジー適用: [${sourceItem.id}] -> [${targetItem.id}] に リキャスト${effect.value}秒`);
                                 }
-                                synergyAppliedForThisPair = true; // このペアは適用済み
-                                break; // target column loop
+                                synergyAppliedForThisPair = true;
+                                break;
                             }
                         }
                     }
@@ -376,49 +373,51 @@ prepareForBattle() {
 
    // BattleScene.js の executeAction メソッド (シンタックス修正・完成版)
 
-    executeAction(itemData, attacker, defender) {
-        const action = itemData.action;
-        if (!action) return;
+  // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
+executeAction(itemData, attacker, defender) {
+    const action = itemData.action;
+    if (!action) return;
 
-        const attackerStats = this[`${attacker}Stats`];
-        // ★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ ここが修正箇所です ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★
-        const defenderStats = this[`${defender}Stats`];
+    const attackerStats = this[`${attacker}Stats`];
+    const defenderStats = this[`${defender}Stats`];
+    
+    const itemName = itemData.id || "アイテム";
+
+    if (action.type === 'attack') {
+        // ★★★ 修正箇所 ★★★
+        // アイテム固有の攻撃力(バフ込み) と プレイヤーの基本攻撃力(パッシブ等)を合算する
+        const totalAttack = action.value + attackerStats.attack;
+        let damage = Math.max(0, totalAttack - defenderStats.defense);
         
-        const itemName = itemData.id || "アイテム";
-
-        if (action.type === 'attack') {
-            const totalAttack = action.value + attackerStats.attack;
-            let damage = Math.max(0, totalAttack - defenderStats.defense);
-            
-            if (defenderStats.block > 0 && damage > 0) {
-                const blockDamage = Math.min(defenderStats.block, damage);
-                defenderStats.block -= blockDamage;
-                damage -= blockDamage;
-                console.log(` > ${defender}が${blockDamage}ダメージをブロック！ (残りブロック: ${defenderStats.block})`);
-            }
-
-            if (damage > 0) {
-                const newHp = defenderStats.hp - damage;
-                defenderStats.hp = newHp;
-                this.stateManager.setF(`${defender}_hp`, newHp);
-                console.log(` > ${attacker}の${itemName}が攻撃！ ${defender}に${damage}ダメージ (残りHP: ${newHp})`);
-                
-                if (newHp <= 0) {
-                    this.gameState = 'end';
-                    this.endBattle(attacker === 'player' ? 'win' : 'lose');
-                }
-            } else {
-                 console.log(` > ${attacker}の${itemName}の攻撃は防がれた！`);
-            }
+        if (defenderStats.block > 0 && damage > 0) {
+            const blockDamage = Math.min(defenderStats.block, damage);
+            defenderStats.block -= blockDamage;
+            damage -= blockDamage;
+            console.log(` > ${defender}が${blockDamage}ダメージをブロック！ (残りブロック: ${defenderStats.block})`);
         }
-        
-        else if (action.type === 'block') {
-            attackerStats.block += action.value;
-            console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得 (合計ブロック: ${attackerStats.block})`);
+
+        if (damage > 0) {
+            const newHp = defenderStats.hp - damage;
+            defenderStats.hp = newHp;
+            this.stateManager.setF(`${defender}_hp`, newHp);
+            console.log(` > ${attacker}の${itemName}が攻撃！ ${defender}に${damage}ダメージ (合計攻撃力: ${totalAttack}, 残りHP: ${newHp})`);
+            
+            if (newHp <= 0) {
+                this.gameState = 'end';
+                this.endBattle(attacker === 'player' ? 'win' : 'lose');
+            }
+        } else {
+             console.log(` > ${attacker}の${itemName}の攻撃は防がれた！ (合計攻撃力: ${totalAttack})`);
         }
     }
+    
+    else if (action.type === 'block') {
+        attackerStats.block += action.value;
+        console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得 (合計ブロック: ${attackerStats.block})`);
+    }
+}
+
+
     endBattle(result) {
         if (this.battleEnded) return;
         this.battleEnded = true;
