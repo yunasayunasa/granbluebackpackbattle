@@ -191,13 +191,11 @@ export default class BattleScene extends Phaser.Scene {
 
     // BattleScene.js の prepareForBattle メソッド (方向シナジー対応版)
 
-    // BattleScene.js の prepareForBattle メソッド (最終確定・完全版)
-
    // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
 prepareForBattle() {
     console.log("--- 戦闘準備開始 ---");
     
-    // 1. 全ての配置済みアイテムの「戦闘用コピー」を作成
+    // 0. 全ての配置済みアイテムの「戦闘用コピー」を作成
     const playerFinalItems = [];
     for (const itemContainer of this.placedItemImages) {
         const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
@@ -209,67 +207,116 @@ prepareForBattle() {
         playerFinalItems.push(itemInstance);
     }
 
-    // 2. シナジー効果を計算し、コピーの性能を書き換える
-    console.log("シナジー計算を開始...");
+    // ★★★ STEP 1: 属性共鳴バフの計算 ★★★
+    console.log("属性共鳴の計算を開始...");
+    const elementCounts = {};
+    const ELEMENT_TAGS = ['fire', 'water', 'wind', 'earth', 'light', 'dark']; // 対象の属性タグリスト
     
-    // ★★★ シナジー計算ロジックを全面的に改善 ★★★
+    // 全アイテムの属性タグをカウント
+    playerFinalItems.forEach(item => {
+        item.tags.forEach(tag => {
+            if (ELEMENT_TAGS.includes(tag)) {
+                elementCounts[tag] = (elementCounts[tag] || 0) + 1;
+            }
+        });
+    });
+    console.log("配置済みアイテムの属性カウント:", elementCounts);
+
+    // カウント数に基づいてバフを適用
+    const RESONANCE_THRESHOLD = 3; // 属性共鳴が発動する閾値
+    for (const element in elementCounts) {
+        if (elementCounts[element] >= RESONANCE_THRESHOLD) {
+            console.log(`🔥 属性共鳴発動！ [${element}]属性アイテムが ${elementCounts[element]}個 のためバフ適用`);
+            
+            // 対象属性を持つすべてのアイテムにバフを適用
+            playerFinalItems.forEach(item => {
+                if (item.tags.includes(element) && item.action) {
+                    item.action.value += 1; // 例: 攻撃力+1
+                    console.log(` > [${item.id}] の攻撃力が+1されました。`);
+                }
+            });
+        }
+    }
+
+
+    // ★★★ STEP 2: 隣接 & 方向シナジーの計算 ★★★
+    console.log("隣接・方向シナジーの計算を開始...");
     playerFinalItems.forEach((sourceItem, sourceIndex) => {
         if (!sourceItem.synergy) return;
 
-        // 総当たりでターゲット候補を探す
         playerFinalItems.forEach((targetItem, targetIndex) => {
-            // 自分自身はターゲットにしない ＆ ターゲットのタグが一致しているかチェック
             if (sourceIndex === targetIndex || !targetItem.tags.includes(sourceItem.synergy.targetTag)) {
                 return;
             }
+            
+            // このペアのシナジーが既に適用済みかチェックするためのフラグ
+            let synergyAppliedForThisPair = false;
 
             const sourceShape = this.getRotatedShape(sourceItem.id, sourceItem.rotation);
             const targetShape = this.getRotatedShape(targetItem.id, targetItem.rotation);
 
-            // ソースアイテムの各セルをループ
             for (let sr = 0; sr < sourceShape.length; sr++) {
+                if (synergyAppliedForThisPair) break;
                 for (let sc = 0; sc < sourceShape[sr].length; sc++) {
-                    if (sourceShape[sr][sc] === 0) continue; // アイテムの無い部分はスキップ
+                    if (synergyAppliedForThisPair) break;
+                    if (sourceShape[sr][sc] === 0) continue;
 
                     const sourceCellPos = { r: sourceItem.row + sr, c: sourceItem.col + sc };
 
-                    // ターゲットアイテムの各セルをループ
                     for (let tr = 0; tr < targetShape.length; tr++) {
+                        if (synergyAppliedForThisPair) break;
                         for (let tc = 0; tc < targetShape[tr].length; tc++) {
                             if (targetShape[tr][tc] === 0) continue;
 
                             const targetCellPos = { r: targetItem.row + tr, c: targetItem.col + tc };
+                            let isMatch = false;
+                            
+                            // シナジーの種類によって条件分岐
+                            if (sourceItem.synergy.direction === 'adjacent') {
+                                isMatch = Math.abs(sourceCellPos.r - targetCellPos.r) + Math.abs(sourceCellPos.c - targetCellPos.c) === 1;
+                            } else {
+                                // 方向指定シナジーの判定
+                                let targetDir = {r: 0, c: 0};
+                                switch(sourceItem.synergy.direction) {
+                                    case 'up':    targetDir = {r: -1, c: 0}; break;
+                                    case 'down':  targetDir = {r: 1, c: 0}; break;
+                                    case 'left':  targetDir = {r: 0, c: -1}; break;
+                                    case 'right': targetDir = {r: 0, c: 1}; break;
+                                }
 
-                            // 隣接しているかどうかのチェック
-                            const isAdjacent = Math.abs(sourceCellPos.r - targetCellPos.r) + Math.abs(sourceCellPos.c - targetCellPos.c) === 1;
+                                // アイテムの回転を考慮して、方向ベクトルも回転させる
+                                const rad = Phaser.Math.DegToRad(sourceItem.rotation);
+                                const rotatedC = Math.round(targetDir.c * Math.cos(rad) - targetDir.r * Math.sin(rad));
+                                const rotatedR = Math.round(targetDir.c * Math.sin(rad) + targetDir.r * Math.cos(rad));
+                                
+                                // ソースセルの指定方向にターゲットセルがあるか
+                                if (sourceCellPos.r + rotatedR === targetCellPos.r && sourceCellPos.c + rotatedC === targetCellPos.c) {
+                                    isMatch = true;
+                                }
+                            }
 
-                            if (isAdjacent) {
-                                // 隣接していたら、シナジー効果を適用して、このターゲットアイテムのチェックは終了
+                            if (isMatch) {
                                 const effect = sourceItem.synergy.effect;
-
                                 if (effect.type === 'add_attack' && targetItem.action) {
                                     targetItem.action.value += effect.value;
-                                    console.log(`★ シナジー適用: [${sourceItem.id}(${sourceIndex})] -> [${targetItem.id}(${targetIndex})] に 攻撃力+${effect.value}`);
+                                    console.log(`★ シナジー適用: [${sourceItem.id}] -> [${targetItem.id}] に 攻撃力+${effect.value}`);
                                 }
                                 if (effect.type === 'add_recast' && targetItem.recast > 0) {
                                     targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
-                                    console.log(`★ シナジー適用: [${sourceItem.id}(${sourceIndex})] -> [${targetItem.id}(${targetIndex})] に リキャスト${effect.value}秒`);
+                                     console.log(`★ シナジー適用: [${sourceItem.id}] -> [${targetItem.id}] に リキャスト${effect.value}秒`);
                                 }
-                                
-                                // 一度このペアでシナジーが適用されたら、次のターゲットを探しに行く
-                                // returnを3つ使って、一番外側のターゲット用forEachループまで抜ける
-                                return; // target column loop
+                                synergyAppliedForThisPair = true; // このペアは適用済み
+                                break; // target column loop
                             }
                         }
                     }
                 }
-            } // source cell loop
-        }); // target item loop
-    }); // source item loop
-    
+            }
+        });
+    });
     console.log("シナジー計算完了。");
-    
-    // 3. 最終ステータスを計算 (以降のロジックは変更なし)
+
+    // ★★★ STEP 3: 最終ステータスの計算 ★★★ (ここは変更なし)
     let finalMaxHp = this.initialBattleParams.playerMaxHp;
     let finalDefense = 0;
     this.playerBattleItems = [];
@@ -297,6 +344,8 @@ prepareForBattle() {
     this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
     console.log("敵最終ステータス:", this.enemyStats);
 }
+
+
     startBattle() {
         console.log("★★ 戦闘開始！ ★★");
     }
