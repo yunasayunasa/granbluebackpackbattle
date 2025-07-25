@@ -287,6 +287,22 @@ export default class BattleScene extends Phaser.Scene {
                             console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
                             checkedTargets.add(targetItem.id);
                         }
+
+                         if (effect.type === 'add_attack' && targetItem.action) {
+                            targetItem.action.value += effect.value;
+                            console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
+                        }
+                        
+                        // ★★★ add_recast 効果の処理を追加 ★★★
+                        if (effect.type === 'add_recast' && targetItem.recast > 0) {
+                            targetItem.recast += effect.value;
+                            // リキャストが極端に短くならないように下限を設ける
+                            targetItem.recast = Math.max(0.1, targetItem.recast); 
+                            console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
+                        }
+
+                        // (他のシナジー効果もここに追加していく)
+                        
                         // (他の効果もここに追加)
                     }
                 }
