@@ -538,73 +538,70 @@ const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最�
 
     // BattleScene.js の executeAction をこれに置き換え
     // BattleScene.js の executeAction をこれに置き換え
-    executeAction(itemData, attacker, defender, attackerObject) {
-        if (attackerObject) {
-            this.playAttackAnimation(attackerObject, attacker);
+   // BattleScene.js の executeAction をこの完成版に置き換えてください
+executeAction(itemData, attacker, defender, attackerObject) {
+    // 1. 攻撃者のアニメーション（渡されていれば）
+    if (attackerObject) {
+        this.playAttackAnimation(attackerObject, attacker);
+    }
+
+    const action = itemData.action;
+    if (!action) return;
+
+    const defenderStats = this[`${defender}Stats`];
+    const itemName = itemData.id || "アイテム";
+
+    // 2. 攻撃アクションの場合
+    if (action.type === 'attack') {
+        const totalAttack = action.value;
+        let damage = Math.max(0, totalAttack - defenderStats.defense);
+        let blockedDamage = 0;
+
+        // ブロック処理
+        if (defenderStats.block > 0 && damage > 0) {
+            blockedDamage = Math.min(defenderStats.block, damage);
+            defenderStats.block -= blockedDamage;
+            damage -= blockedDamage;
+            console.log(` > ${defender}が${blockedDamage}ダメージをブロック！`);
+            
+            // ★ ブロック成功エフェクトはここで1回だけ呼ぶ
+            this.showBlockSuccessIcon(defender);
         }
 
-        const action = itemData.action;
-        if (!action) return;
+        // ダメージ処理
+        if (damage > 0) {
+            // ★ ダメージポップアップはここで1回だけ呼ぶ
+            this.showDamagePopup(defender, Math.floor(damage));
+            
+            const newHp = defenderStats.hp - damage;
+            defenderStats.hp = newHp;
+            this.stateManager.setF(`${defender}_hp`, newHp);
+            console.log(` > ${attacker}の${itemName}が攻撃！...`);
 
-        const defenderStats = this[`${defender}Stats`];
-        const itemName = itemData.id || "アイテム";
-
-        if (action.type === 'attack') {
-            const totalAttack = action.value;
-            let damage = Math.max(0, totalAttack - defenderStats.defense);
-            let blockedDamage = 0; // ブロックしたダメージ量を記録
-
-            if (defenderStats.block > 0 && damage > 0) {
-                blockedDamage = Math.min(defenderStats.block, damage);
-                defenderStats.block -= blockedDamage;
-                damage -= blockedDamage;
-                this.showBlockSuccessIcon(defender);
-                console.log(` > ${defender}が${blockedDamage}ダメージをブロック！`);
+            if (newHp <= 0) {
+                this.gameState = 'end';
+                this.endBattle(attacker === 'player' ? 'win' : 'lose');
             }
-
-            if (blockedDamage > 0) {
-                // ★★★ 修正箇所 ★★★
-                // ブロック成功エフェクトを表示
-                // defenderのGameObjectを特定する必要がある
-                let defenderObject = null;
-                if (defender === 'player') {
-                    // プレイヤーが攻撃された場合、誰が受けたか？という問題。一旦全体の位置に。
-                } else { // 敵が攻撃された場合
-                    // 敵の中から誰か（今は一人しかいない想定）
-                     this.showBlockSuccessIcon(defender);
-                }
-                // ★将来的には攻撃対象を特定するロジックが必要
-                this.showBlockSuccessIcon(defenderObject);
-            }
-
-            if (damage > 0) {
-                this.showDamagePopup(defender, Math.floor(damage));
-                const newHp = defenderStats.hp - damage;
-                defenderStats.hp = newHp;
-                this.stateManager.setF(`${defender}_hp`, newHp);
-                this.showDamagePopup(defender, Math.floor(damage));
-                console.log(` > ${attacker}の${itemName}が攻撃！...`);
-
-                if (newHp <= 0) {
-                    this.gameState = 'end';
-                    this.endBattle(attacker === 'player' ? 'win' : 'lose');
-                }
-            } else if (blockedDamage > 0) {
-                console.log(` > ${attacker}の${itemName}の攻撃は完全に防がれた！`);
-            } else {
-                console.log(` > ${attacker}の${itemName}の攻撃は防がれた！`);
-            }
-        }
-
-        else if (action.type === 'block') {
-            const attackerStats = this[`${attacker}Stats`];
-            attackerStats.block += action.value;
-            console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得...`);
-
-            let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
-            this.showGainBlockPopup(targetAvatar, action.value);
+        } 
+        // ログ出力
+        else if (blockedDamage > 0) {
+            console.log(` > ${attacker}の${itemName}の攻撃は完全に防がれた！`);
+        } else {
+            console.log(` > ${attacker}の${itemName}の攻撃は防がれた！`);
         }
     }
+
+    // 3. ブロック獲得アクションの場合
+    else if (action.type === 'block') {
+        const attackerStats = this[`${attacker}Stats`];
+        attackerStats.block += action.value;
+        console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得...`);
+
+        // ★ ブロック獲得エフェクト
+        let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+        this.showGainBlockPopup(targetAvatar, action.value);
+    }
+}
     endBattle(result) {
         if (this.battleEnded) return;
         this.battleEnded = true;
