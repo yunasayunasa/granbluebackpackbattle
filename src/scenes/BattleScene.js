@@ -733,25 +733,20 @@ updateArrowVisibility(itemContainer) {
 
     if (itemData.synergy && gridPos) {
         arrowContainer.setVisible(true);
-        arrowContainer.each(arrow => arrow.setVisible(false)); // いったん全部非表示に
+        arrowContainer.each(arrow => arrow.setVisible(false));
 
         const direction = itemData.synergy.direction;
-        const rotation = itemContainer.getData('rotation') || 0;
-        
-        // ★★★ ここからが矢印位置の計算ロジック ★★★
         const itemW = itemContainer.width;
         const itemH = itemContainer.height;
-        const offset = 15; // アイテムの縁からの距離
+        const offset = 15;
 
         if (direction === 'adjacent') {
-            // adjacent の場合は4方向に矢印を出す
             arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
             arrowContainer.getByName('down').setVisible(true).setPosition(0, itemH / 2 + offset);
             arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
             arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
 
         } else {
-            // up, down, left, right の場合
             let basePos = { x: 0, y: 0 };
             let arrowToShow = null;
 
@@ -765,24 +760,20 @@ updateArrowVisibility(itemContainer) {
                     arrowToShow = arrowContainer.getByName('down');
                     break;
                 case 'left':
-                    basePos = { x: 0, y: 0 }; // 左向きの矢印「◀」はY軸中心でOK
-                    basePos.x = -itemW / 2 - offset;
+                    basePos = { x: -itemW / 2 - offset, y: 0 };
                     arrowToShow = arrowContainer.getByName('left');
                     break;
                 case 'right':
-                    basePos = { x: 0, y: 0 }; // 右向きの矢印「▶」はY軸中心でOK
-                    basePos.x = itemW / 2 + offset;
+                    basePos = { x: itemW / 2 + offset, y: 0 };
                     arrowToShow = arrowContainer.getByName('right');
                     break;
             }
 
             if (arrowToShow) {
-                // アイテムの回転に合わせて、算出した矢印の座標も回転させる
-                const rad = Phaser.Math.DegToRad(rotation);
-                const rotatedX = basePos.x * Math.cos(rad) - basePos.y * Math.sin(rad);
-                const rotatedY = basePos.x * Math.sin(rad) + basePos.y * Math.cos(rad);
-
-                arrowToShow.setVisible(true).setPosition(rotatedX, rotatedY);
+                // ★★★ 修正箇所 ★★★
+                // 手動での座標回転ロジックを完全に削除。
+                // 親(itemContainer)の回転に任せる。
+                arrowToShow.setVisible(true).setPosition(basePos.x, basePos.y);
             }
         }
     } else {
