@@ -1124,22 +1124,28 @@ playDamageEffects(targetSide, amount) {
     });
 
     // --- 4. 斬撃ラインエフェクト (画像なし) ---
+    // ★★★ ここからが問題の箇所の完全な修正版 ★★★
     const slashGraphics = this.add.graphics().setDepth(1001);
-    const lineStyle = { color: 0xffffff, alpha: 0.8, width: 6 };
+    slashGraphics.lineStyle(6, 0xffffff, 0.8);
 
-    // 複数の線をランダムな角度で描画
+    const centerX = targetAvatar.x;
+    const centerY = targetAvatar.y;
+    const length = targetAvatar.displayWidth * 0.8;
+
     for (let i = 0; i < 3; i++) {
+        // 線の角度をランダムに決定
         const angle = Phaser.Math.DegToRad(Phaser.Math.Between(-60, 60));
-        const length = targetAvatar.displayWidth * 0.8;
-        const p1 = { x: -length, y: 0 };
-        const p2 = { x: length, y: 0 };
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
         
-        slashGraphics.lineStyle(lineStyle.width, lineStyle.color, lineStyle.alpha);
-        slashGraphics.save();
-        slashGraphics.translate(targetAvatar.x, targetAvatar.y);
-        slashGraphics.rotate(angle);
-        slashGraphics.lineBetween(p1.x, p1.y, p2.x, p2.y);
-        slashGraphics.restore();
+        // 回転させた後の始点と終点の座標を計算
+        const startX = centerX - (length / 2) * cos;
+        const startY = centerY - (length / 2) * sin;
+        const endX = centerX + (length / 2) * cos;
+        const endY = centerY + (length / 2) * sin;
+
+        // 計算した座標で線を引く
+        slashGraphics.lineBetween(startX, startY, endX, endY);
     }
     
     // 描画した線を一瞬で拡大・フェードアウトさせる
