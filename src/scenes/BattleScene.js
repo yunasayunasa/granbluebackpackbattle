@@ -229,7 +229,8 @@ export default class BattleScene extends Phaser.Scene {
             const rotation = sourceItem.rotation;
             const direction = sourceItem.synergy.direction;
             const sourceShape = this.getRotatedShape(sourceItem.id, rotation);
-            
+            const checkedTargets = new Set(); // 1つのsourceItemは、1つのtargetItemに1回しか効果を与えない
+
             // sourceItemが占めているセルのリスト
             const sourceCells = [];
             for (let r = 0; r < sourceShape.length; r++) {
@@ -238,7 +239,7 @@ export default class BattleScene extends Phaser.Scene {
                 }
             }
 
-            const checkedTargets = new Set(); // 重複バフ防止
+    
 
             // ★★★ sourceItemの各セルからターゲットを探す ★★★
             for (const cell of sourceCells) {
@@ -279,28 +280,25 @@ export default class BattleScene extends Phaser.Scene {
                         return false;
                     });
 
-                    if (targetItem && !checkedTargets.has(targetItem.id) && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
-                        if (targetItem.id === sourceItem.id) continue;
+                    
+                    // ★ 条件チェックを強化
+                    if (targetItem && 
+                        !checkedTargets.has(targetItem.id) && // このsourceItemからはまだ受けていないか？
+                        targetItem.id !== sourceItem.id &&   // 自分自身ではないか？
+                        targetItem.tags.includes(sourceItem.synergy.targetTag)) {
+                        
                         const effect = sourceItem.synergy.effect;
+                        
                         if (effect.type === 'add_attack' && targetItem.action) {
                             targetItem.action.value += effect.value;
                             console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
-                            checkedTargets.add(targetItem.id);
                         }
-
-                         if (effect.type === 'add_attack' && targetItem.action) {
-                            targetItem.action.value += effect.value;
-                            console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
-                        }
-                        
-                        // ★★★ add_recast 効果の処理を追加 ★★★
                         if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                            targetItem.recast += effect.value;
-                            // リキャストが極端に短くならないように下限を設ける
-                            targetItem.recast = Math.max(0.1, targetItem.recast); 
+                            targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
                             console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
                         }
-
+                        
+                        checkedTargets.add(targetItem.id); 
                         // (他のシナジー効果もここに追加していく)
                         
                         // (他の効果もここに追加)
