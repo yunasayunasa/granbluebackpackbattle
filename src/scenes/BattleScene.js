@@ -229,7 +229,7 @@ export default class BattleScene extends Phaser.Scene {
             const rotation = sourceItem.rotation;
             const direction = sourceItem.synergy.direction;
             const sourceShape = this.getRotatedShape(sourceItem.id, rotation);
-            const checkedTargets = new Set(); // 1つのsourceItemは、1つのtargetItemに1回しか効果を与えない
+                   const appliedSynergies = new Set(); // "sourceId->targetId->effectType" の形で記録
 
             // sourceItemが占めているセルのリスト
             const sourceCells = [];
@@ -281,32 +281,29 @@ export default class BattleScene extends Phaser.Scene {
                     });
 
                     
-                    // ★ 条件チェックを強化
-                    if (targetItem && 
-                        !checkedTargets.has(targetItem.id) && // このsourceItemからはまだ受けていないか？
-                        targetItem.id !== sourceItem.id &&   // 自分自身ではないか？
-                        targetItem.tags.includes(sourceItem.synergy.targetTag)) {
-                        
+           if (targetItem && targetItem.id !== sourceItem.id && targetItem.tags.includes(sourceItem.synergy.targetTag)) {
                         const effect = sourceItem.synergy.effect;
-                        
-                        if (effect.type === 'add_attack' && targetItem.action) {
-                            targetItem.action.value += effect.value;
-                            console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
+                        const synergyId = `${sourceItem.id}->${targetItem.id}->${effect.type}`;
+
+                        // ★ このシナジーはまだ適用されていないか？
+                        if (!appliedSynergies.has(synergyId)) {
+                            if (effect.type === 'add_attack' && targetItem.action) {
+                                targetItem.action.value += effect.value;
+                                console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] 攻撃力+${effect.value}`);
+                            }
+                            if (effect.type === 'add_recast' && targetItem.recast > 0) {
+                                targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
+                                console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
+                            }
+                            // 処理が完了したら、このシナジーを記録
+                            appliedSynergies.add(synergyId);
                         }
-                        if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                            targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
-                            console.log(`★ シナジー: [${sourceItem.id}] -> [${targetItem.id}] リキャスト${effect.value}秒`);
-                        }
-                        
-                        checkedTargets.add(targetItem.id); 
-                        // (他のシナジー効果もここに追加していく)
-                        
-                        // (他の効果もここに追加)
                     }
                 }
             }
-        }
+        } // ★★★ for (const sourceItem...) のループはここで終わり ★★★
         console.log("シナジー計算完了。");
+
       // 4. 最終的なステータスと行動アイテムリストを作成
         //    playerStats.attack は、パッシブ効果のみで決まる
         this.playerStats = { 
