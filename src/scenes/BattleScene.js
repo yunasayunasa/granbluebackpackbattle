@@ -46,6 +46,8 @@ export default class BattleScene extends Phaser.Scene {
         this.playerBattleItems = [];
         this.enemyBattleItems = [];
         this.enemyItemImages = [];
+        this.playerAvatar = null; // ★追加
+this.enemyAvatar = null;  // ★追加
         this.battleEnded = false;
          this.ghostImage = null;
          this.finalizedPlayerItems = [];
@@ -98,7 +100,13 @@ export default class BattleScene extends Phaser.Scene {
             this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2);
             this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2);
         }
-
+// ★★★ ここから追加 ★★★
+// 3a-2. プレイヤーアバターの配置
+this.playerAvatar = this.add.sprite(
+    this.gridX - 80, // グリッドの左側に配置
+    this.gridY + gridHeight / 2,
+    'player_avatar_placeholder' // ★事前にロードが必要なアバター画像キー
+).setOrigin(0.5).setDepth(5);
         // 3b. 敵グリッドと敵アイテム
         const enemyGridX = gameWidth - 100 - gridWidth;
         const enemyGridY = this.gridY;
@@ -107,6 +115,14 @@ export default class BattleScene extends Phaser.Scene {
             this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + gridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2);
             this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2);
         }
+        // 3b-2. 敵アバターの配置
+this.enemyAvatar = this.add.sprite(
+    enemyGridX + gridWidth + 80, // グリッドの右側に配置
+    enemyGridY + gridHeight / 2,
+    'enemy_avatar_placeholder' // ★事前にロードが必要なアバター画像キー
+).setOrigin(0.5).setDepth(5);
+// ★★★ 追加ここまで ★★★
+
         const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
 const currentRound = this.initialBattleParams.round;
 const currentLayout = enemyLayouts[currentRound] || {};
@@ -135,7 +151,7 @@ for (const itemId in currentLayout) {
     // 2. リキャストオーバーレイ
     const recastOverlay = this.add.image(0, 0, itemData.storage)
         .setDisplaySize(containerWidth, containerHeight)
-        .setTint(0x00aaff, 0.7)
+        .setTint(0x00aaff, 0.3)
         .setVisible(false);
 
     // 3. マスク
@@ -534,6 +550,7 @@ executeAction(itemData, attacker, defender, attackerObject) {
             blockedDamage = Math.min(defenderStats.block, damage);
             defenderStats.block -= blockedDamage;
             damage -= blockedDamage;
+             this.showBlockSuccessIcon(defender);
             console.log(` > ${defender}が${blockedDamage}ダメージをブロック！`);
         }
 
@@ -557,6 +574,7 @@ executeAction(itemData, attacker, defender, attackerObject) {
             const newHp = defenderStats.hp - damage;
             defenderStats.hp = newHp;
             this.stateManager.setF(`${defender}_hp`, newHp);
+              this.showDamagePopup(defender, Math.floor(damage));
             console.log(` > ${attacker}の${itemName}が攻撃！...`);
             
             if (newHp <= 0) {
@@ -575,12 +593,10 @@ executeAction(itemData, attacker, defender, attackerObject) {
         attackerStats.block += action.value;
         console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得...`);
         
-        // ★★★ 修正箇所 ★★★
-        // ブロック獲得ポップアップを表示
-        this.showGainBlockPopup(attackerObject, action.value);
+           let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+        this.showGainBlockPopup(targetAvatar, action.value);
     }
 }
-
     endBattle(result) {
         if (this.battleEnded) return;
         this.battleEnded = true;
@@ -616,7 +632,7 @@ createItem(itemId, x, y) {
     // 2. リキャスト進捗を示すオーバーレイ画像
     const recastOverlay = this.add.image(0, 0, itemData.storage)
         .setDisplaySize(containerWidth, containerHeight)
-       .setTint(0x00aaff, 0.7) // 半透明の白でティント（好みで色や透明度を調整）
+       .setTint(0x00aaff, 0.3) // 半透明の白でティント（好みで色や透明度を調整）
         .setVisible(false); // recastを持つアイテム以外は非表示
 
     // 3. マスクとして機能するGraphicsオブジェクト
@@ -1034,19 +1050,17 @@ showDamagePopup(target, amount) {
     // ★★★ 注意：ここではまだ敵キャラクターのオブジェクトがないため、仮の位置に表示します ★★★
     // 後で敵キャラクターのGameObjectを管理する仕組みができたら、そこと連携させます
     let targetX, targetY;
-    if (target === 'player') {
-        // プレイヤーグリッドの中央上部あたり
-        targetX = this.gridX + (this.backpackGridSize * this.cellSize) / 2;
-        targetY = this.gridY;
-    } else { // 'enemy' の場合
-        // 敵グリッドの中央上部あたり
-        const enemyGridX = this.scale.width - 100 - (this.backpackGridSize * this.cellSize);
-        targetX = enemyGridX + (this.backpackGridSize * this.cellSize) / 2;
-        targetY = this.gridY;
-    }
+// ★★★ 修正箇所 ★★★
+if (target === 'player') {
+    targetX = this.playerAvatar.x;
+    targetY = this.playerAvatar.y;
+} else { // 'enemy'
+    targetX = this.enemyAvatar.x;
+    targetY = this.enemyAvatar.y;
+}
     
     // テキストの初期位置を設定
-    damageText.setPosition(targetX, targetY);
+    damageText.setPosition(targetX, targetY - (this.playerAvatar.height / 2));
     damageText.setDepth(999); // 最前面に表示
 
     // ランダムな横揺れと上昇しながら消えるTween
@@ -1137,8 +1151,15 @@ showGainBlockPopup(targetObject, amount) {
  * ダメージをブロックした際に盾アイコンを表示するメソッド
  * @param {Phaser.GameObjects.Container} targetObject - 対象のキャラクターオブジェクト
  */
-showBlockSuccessIcon(targetObject) {
+showBlockSuccessIcon(targetSide) {
+    let targetObject;
+    if (targetSide === 'player') {
+        targetObject = this.playerAvatar;
+    } else {
+        targetObject = this.enemyAvatar;
+    }
     if (!targetObject) return;
+
 
     // ★★★ 注意：'shield_icon' という画像キーを事前にロードしておく必要があります ★★★
     // 仮にテキストで代用することも可能
