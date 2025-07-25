@@ -53,123 +53,84 @@ export default class BattleScene extends Phaser.Scene {
         this.finalizedPlayerItems = [];
     }
 
-  // BattleScene.js の init をこれに置き換え
-// BattleScene.js の init をこのシンプルなバージョンに置き換えてください
-init(data) {
-    // データ受け渡しに起因するバグをなくすため、ここでは何もしない。
-    // 全ての初期化は create で行う。
-    console.log("BattleScene: init (空)");
-}
-  // BattleScene.js の create をこの最終確定版に置き換えてください
+    // BattleScene.js の init をこれに置き換え
+    // BattleScene.js の init をこのシンプルなバージョンに置き換えてください
+    init(data) {
+        // データ受け渡しに起因するバグをなくすため、ここでは何もしない。
+        // 全ての初期化は create で行う。
+        console.log("BattleScene: init (空)");
+    }
+// BattleScene.js の create を、この最終確定版に置き換えてください
 create() {
-    console.log("BattleScene: create");
+    console.log("BattleScene: create - データ永続化対応版");
 
-    // ★★★ STEP 1: 全てのマネージャーとデータの取得・初期化 ★★★
+    // =================================================================
+    // STEP 1: マネージャー取得とデータ準備
+    // =================================================================
     this.stateManager = this.sys.registry.get('stateManager');
     this.soundManager = this.sys.registry.get('soundManager');
-
-    // playerDataの初期化（なければデフォルト値で生成）
-    if (!this.stateManager.sf.player_data) {
-        const defaultPlayerData = {
-            coins: 0, round: 1, wins: 0,
-            avatar: { max_hp: 100, current_hp: 100 },
-            backpack: {},
-            inventory: ['sword', 'shield', 'potion']
-        };
-        this.stateManager.setF('sf.player_data', defaultPlayerData);
-    }
-    const playerData = this.stateManager.sf.player_data; // ローカル変数として使用
-
-    // 戦闘パラメータの初期化
-    const initialPlayerMaxHp = playerData.avatar.max_hp;
-    const initialPlayerHp = playerData.avatar.current_hp;
-
-    // ★★★ STEP 2: シーンのプロパティ初期化 ★★★
-    this.playerData = playerData; // 参照が必要な場合のために保持
-    this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: playerData.round };
-    this.inventoryItemImages = [];
-    this.placedItemImages = [];
-    this.enemyItemImages = [];
-    this.finalizedPlayerItems = [];
-    this.playerStats = {};
-    this.enemyStats = {};
-    this.playerBattleItems = [];
-    this.enemyBattleItems = [];
-    this.battleEnded = false;
-    this.gameState = 'prepare';
     this.tooltip = new Tooltip(this);
+
+    // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
+    if (!this.stateManager.f.player_backpack || !this.stateManager.f.player_inventory) {
+        this.stateManager.setF('player_backpack', {});
+        this.stateManager.setF('player_inventory', ['sword', 'shield', 'potion']);
+    }
+    const backpackData = this.stateManager.f.player_backpack;
+    const inventoryData = this.stateManager.f.player_inventory;
+
+    // --- 1b. 戦闘パラメータを決定
+    const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
+    const initialPlayerHp = this.stateManager.f.player_hp || initialPlayerMaxHp;
+    const round = this.stateManager.f.round || 1;
+    this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
+
+
+    // =================================================================
+    // STEP 2: シーンのプロパティ初期化
+    // =================================================================
+    this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
+    this.finalizedPlayerItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
+    this.playerStats = {}; this.enemyStats = {};
+    this.battleEnded = false; this.gameState = 'prepare';
     this.cameras.main.setBackgroundColor('#8a2be2');
 
-    // ★★★ STEP 3: グローバルな状態と描画のセットアップ ★★★
+
+    // =================================================================
+    // STEP 3: グローバルな状態設定と基本描画
+    // =================================================================
     this.soundManager.playBgm('ronpa_bgm');
-    this.stateManager.setF('player_max_hp', initialPlayerMaxHp);
-    this.stateManager.setF('player_hp', initialPlayerHp);
+    this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
+    this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
     this.stateManager.setF('enemy_max_hp', 100);
     this.stateManager.setF('enemy_hp', 100);
 
-    // ★★★ 追加/変更箇所ここまで ★★★
-        const gameWidth = this.scale.width;
-        const gameHeight = this.scale.height;
-        const gridWidth = this.backpackGridSize * this.cellSize;
-        const gridHeight = this.backpackGridSize * this.cellSize;
-        this.gridX = 100;
-        this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
-        this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
-        this.prepareContainer = this.add.container(0, 0);
-        this.battleContainer = this.add.container(0, 0).setVisible(false);
-        this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
-        // --- 2. 状態の初期化：BGMとHP ---
-        this.soundManager.playBgm('ronpa_bgm');
-        this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
-        this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
-        this.stateManager.setF('enemy_max_hp', 100);
-        this.stateManager.setF('enemy_hp', 100);
+    // --- 3a. 盤面レイアウトの計算と描画
+    const gameWidth = this.scale.width;
+    const gameHeight = this.scale.height;
+    const gridWidth = this.backpackGridSize * this.cellSize;
+    const gridHeight = this.backpackGridSize * this.cellSize;
+    this.gridX = 100;
+    this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
+    this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
+    this.prepareContainer = this.add.container(0, 0);
+    this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
 
-        // --- 3. 画面オブジェクトの描画 ---
-        // 3a. プレイヤーグリッド
-        this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) {
-            this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2);
-            this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2);
-        }
-        // ★★★ ここから追加 ★★★
-        // 3a-2. プレイヤーアバターの配置
-        this.playerAvatar = this.add.sprite(
-            this.gridX + gridWidth + 80, // グリッドの【右】側に配置
-            this.gridY + gridHeight / 2,
-            'player_avatar_placeholder'
-        ).setOrigin(0.5).setDepth(5);
-        // 3b. 敵グリッドと敵アイテム
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = this.gridY;
-        this.add.rectangle(enemyGridX + gridWidth / 2, enemyGridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) {
-            this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + gridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2);
-            this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2);
-        }
-        // 3b-2. 敵アバターの配置
-        this.enemyAvatar = this.add.sprite(
-    enemyGridX - 80, // グリッドの【左】側に配置
-    this.gridY + gridHeight / 2,
-    'enemy_avatar_placeholder'
-).setOrigin(0.5).setDepth(5);
+    // --- 3b. グリッドとアバターの描画
+    this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
+    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,this.gridX,this.gridY+i*this.cellSize,this.gridX+gridWidth,this.gridY+i*this.cellSize,10066329,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,this.gridX+i*this.cellSize,this.gridY,this.gridX+i*this.cellSize,this.gridY+gridHeight,10066329,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+    this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
+    const enemyGridX = gameWidth - 100 - gridWidth;
+    this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
+    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,enemyGridX,this.gridY+i*this.cellSize,enemyGridX+gridWidth,this.gridY+i*this.cellSize,8947848,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,enemyGridX+i*this.cellSize,this.gridY,enemyGridX+i*this.cellSize,this.gridY+gridHeight,8947848,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+    this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
+    const maxAvatarHeight = gridHeight * 0.8;
+    [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
 
-// アバターの動的リサイズ処理
-const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最大サイズとする
-[this.playerAvatar, this.enemyAvatar].forEach(avatar => {
-    if (avatar.height > maxAvatarHeight) {
-        avatar.setScale(maxAvatarHeight / avatar.height);
-    }
-});
-        // ★★★ 追加ここまで ★★★
-
-        const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
-        const currentRound = this.initialBattleParams.round;
-        const currentLayout = enemyLayouts[currentRound] || {};
-
-        // ★★★ ここから修正 ★★★
-        this.enemyItemImages = []; // createの開始時に一度クリア
-        for (const itemId in currentLayout) {
+    // --- 3c. 敵アイテムの配置
+    const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
+    const currentLayout = enemyLayouts[this.initialBattleParams.round] || {};
+    for (const itemId in currentLayout) {
             const itemData = ITEM_DATA[itemId];
             if (!itemData) continue;
             const pos = currentLayout[itemId].pos;
@@ -238,107 +199,68 @@ const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最�
         }
 
 
-        // 3c. インベントリ
-        const inventoryAreaY = 520;
-        const inventoryAreaHeight = gameHeight - inventoryAreaY;
-        const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
-        const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
-        this.prepareContainer.add([invBg, invText]);
-
-        // 3d. ドラッグ可能なアイテム (準備中のみ)
-// ★★★ ここからがデータ復元ロジック ★★★
-this.inventoryItemImages = []; // 念のためクリア
-this.placedItemImages = [];  // 念のためクリア
-
-// バックパックのアイテムを復元・配置
-for (const uid in this.playerData.backpack) {
-    const itemInfo = this.playerData.backpack[uid];
-    const itemContainer = this.createItem(itemInfo.itemId, 0, 0); // 初期位置は仮でOK
-    if (itemContainer) {
-        // 回転させてから配置
-        itemContainer.setData('rotation', itemInfo.rotation);
-        itemContainer.setAngle(itemInfo.rotation);
-        this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
-        this.updateArrowVisibility(itemContainer); // 矢印更新
+      // =================================================================
+    // STEP 4: プレイヤーのバックパックとインベントリの復元
+    // =================================================================
+    // --- 4a. バックパックのアイテムを復元
+    for (const uid in backpackData) {
+        const itemInfo = backpackData[uid];
+        const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
+        if (itemContainer) {
+            itemContainer.setData('rotation', itemInfo.rotation);
+            itemContainer.setAngle(itemInfo.rotation);
+            this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
+        }
     }
-}
-
-// インベントリのアイテムを復元・配置
-const inventoryContentWidth = gameWidth - 200;
-const inventoryCount = this.playerData.inventory.length;
-const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
-const itemStartX = 100 + (itemSpacing / 2);
-
-this.playerData.inventory.forEach((itemId, index) => {
-    const x = itemStartX + (index * itemSpacing);
-    const y = inventoryAreaY + inventoryAreaHeight / 2 + 20;
-    const itemContainer = this.createItem(itemId, x, y);
-    if (itemContainer) {
-        this.inventoryItemImages.push(itemContainer);
-    }
-});
-
-        // 3e. 戦闘開始ボタン (準備中のみ)
-        // ★★★ 座標を画面中央下部に変更 ★★★
-        this.startBattleButton = this.add.text(
-            gameWidth / 2, // X座標を中央に
-            inventoryAreaY - 40, // Y座標をインベントリ領域の少し上に
-            '戦闘開始',
-            { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }
-        ).setOrigin(0.5).setInteractive().setDepth(11);
-        this.prepareContainer.add(this.startBattleButton);
-        // --- 4. イベントリスナーの設定 ---
-      this.startBattleButton.on('pointerdown', () => {
-    if (this.gameState !== 'prepare') return;
-
-    // ★★★ ここからがデータ書き込みロジック ★★★
-    const newBackpackData = {};
-    let uidCounter = 0;
-    this.placedItemImages.forEach(item => {
-        const uid = `uid_${Date.now()}_${uidCounter++}`; // 簡易的なユニークID生成
-        newBackpackData[uid] = {
-            itemId: item.getData('itemId'),
-            row: item.getData('gridPos').row,
-            col: item.getData('gridPos').col,
-            rotation: item.getData('rotation')
-        };
+    // --- 4b. インベントリの描画とアイテム復元
+    const inventoryAreaY = 520;
+    const inventoryAreaHeight = gameHeight - inventoryAreaY;
+    this.prepareContainer.add(this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10));
+    this.prepareContainer.add(this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11));
+    const inventoryContentWidth = gameWidth - 200;
+    const inventoryCount = inventoryData.length;
+    const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
+    const itemStartX = 100 + (itemSpacing / 2);
+    inventoryData.forEach((itemId, index) => {
+        const x = itemStartX + (index * itemSpacing);
+        const y = inventoryAreaY + inventoryAreaHeight / 2 + 20;
+        const itemContainer = this.createItem(itemId, x, y);
+        if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
     });
 
-    const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
 
-    // StateManagerのデータを更新
-    this.playerData.backpack = newBackpackData;
-    this.playerData.inventory = newInventoryData;
-    this.stateManager.setF('sf.player_data', this.playerData);
-    
-    console.log("Updated Player Data:", this.stateManager.sf.player_data);
-    // ★★★ データ書き込みロジックここまで ★★★
+    // =================================================================
+    // STEP 5: イベントリスナーと完了通知
+    // =================================================================
+    // --- 5a. 戦闘開始ボタン
+    this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:20, y:10} }).setOrigin(0.5).setInteractive().setDepth(11);
+    this.prepareContainer.add(this.startBattleButton);
+    this.startBattleButton.on('pointerdown', () => {
+        if (this.gameState !== 'prepare') return;
+        
+        // 現在の盤面をf変数に保存
+        const newBackpackData = {};
+        this.placedItemImages.forEach((item, index) => { newBackpackData[`uid_${index}`] = { itemId: item.getData('itemId'), row: item.getData('gridPos').row, col: item.getData('gridPos').col, rotation: item.getData('rotation') }; });
+        const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+        this.stateManager.setF('player_backpack', newBackpackData);
+        this.stateManager.setF('player_inventory', newInventoryData);
+        console.log("Saved Backpack & Inventory to f-variables.");
 
-            this.gameState = 'battle';
-            this.prepareForBattle();
-            const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-            allPlayerItems.forEach(item => { if (item && item.input) this.input.setDraggable(item, false); });
-            this.tweens.add({
-                targets: [this.prepareContainer, ...this.inventoryItemImages],
-                alpha: 0,
-                duration: 300,
-                onComplete: () => {
-                    this.prepareContainer.setVisible(false);
-                    this.inventoryItemImages.forEach(img => img.setVisible(false));
-                }
-            });
-            this.time.delayedCall(500, this.startBattle, [], this);
-        });
-        this.input.on('pointerdown', (pointer) => {
-            if (!pointer.gameObject && this.tooltip.visible) {
-                this.tooltip.hide();
-            }
-        }, this);
+        // 戦闘開始処理
+        this.gameState = 'battle';
+        this.prepareForBattle();
+        this.inventoryItemImages.forEach(item => { if(item && item.input) this.input.setDraggable(item, false); });
+        this.placedItemImages.forEach(item => { if(item && item.input) this.input.setDraggable(item, false); });
+        this.tweens.add({ targets: this.prepareContainer, alpha: 0, duration: 300, onComplete: () => { this.prepareContainer.setVisible(false); } });
+    });
 
-        // --- 5. 準備完了を通知 ---
-        this.events.emit('scene-ready');
-        console.log("BattleScene: create 完了");
-    }
+    // --- 5b. グローバルクリック（ツールチップ非表示用）
+    this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
+
+    // --- 5c. 準備完了をSystemSceneに通知
+    this.events.emit('scene-ready');
+    console.log("BattleScene: create 完了");
+}
 
     // --- ヘルパーメソッド群 (ここから下はすべて完成版) ---
 
@@ -506,26 +428,26 @@ this.playerData.inventory.forEach((itemId, index) => {
         finalMaxHp = Math.max(1, finalMaxHp);
         this.stateManager.setF('player_max_hp', finalMaxHp);
         this.stateManager.setF('player_hp', finalMaxHp);
-        this.playerStats = { 
-    max_hp: finalMaxHp, // ★追加
-    hp: finalMaxHp, 
-    defense: finalDefense, 
-    block: 0,
-    attack: 0 // attackは0のまま
-};    
-this.finalizedPlayerItems = playerFinalItems; // ★★★ この行を追加 ★★★
+        this.playerStats = {
+            max_hp: finalMaxHp, // ★追加
+            hp: finalMaxHp,
+            defense: finalDefense,
+            block: 0,
+            attack: 0 // attackは0のまま
+        };
+        this.finalizedPlayerItems = playerFinalItems; // ★★★ この行を追加 ★★★
         console.log("プレイヤー最終ステータス:", this.playerStats);
 
         // 4. 敵のステータス初期化
         const enemyMaxHp = this.stateManager.f.enemy_max_hp; // ★敵の最大HPも取得
-this.enemyStats = { 
-    max_hp: enemyMaxHp, // ★追加
-    hp: enemyMaxHp, 
-    defense: 2, 
-    block: 0,
-    attack: 0
-};  
-this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
+        this.enemyStats = {
+            max_hp: enemyMaxHp, // ★追加
+            hp: enemyMaxHp,
+            defense: 2,
+            block: 0,
+            attack: 0
+        };
+        this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['sword'].recast }];
         console.log("敵最終ステータス:", this.enemyStats);
     }
 
@@ -617,98 +539,98 @@ this.enemyBattleItems = [{ data: ITEM_DATA['sword'], nextActionTime: ITEM_DATA['
 
     // BattleScene.js の executeAction をこれに置き換え
     // BattleScene.js の executeAction をこれに置き換え
-   // BattleScene.js の executeAction をこの完成版に置き換えてください
-executeAction(itemData, attacker, defender, attackerObject) {
-    // 1. 攻撃者のアニメーション（渡されていれば）
-    if (attackerObject) {
-        this.playAttackAnimation(attackerObject, attacker);
-    }
-
-    const action = itemData.action;
-    if (!action) return;
-
-    const defenderStats = this[`${defender}Stats`];
-    const itemName = itemData.id || "アイテム";
-
-    // 2. 攻撃アクションの場合
-    if (action.type === 'attack') {
-        const totalAttack = action.value;
-        let damage = Math.max(0, totalAttack - defenderStats.defense);
-        let blockedDamage = 0;
-
-        // ブロック処理
-        if (defenderStats.block > 0 && damage > 0) {
-            blockedDamage = Math.min(defenderStats.block, damage);
-            defenderStats.block -= blockedDamage;
-            damage -= blockedDamage;
-            console.log(` > ${defender}が${blockedDamage}ダメージをブロック！`);
-            
-            // ★ ブロック成功エフェクトはここで1回だけ呼ぶ
-            this.showBlockSuccessIcon(defender);
+    // BattleScene.js の executeAction をこの完成版に置き換えてください
+    executeAction(itemData, attacker, defender, attackerObject) {
+        // 1. 攻撃者のアニメーション（渡されていれば）
+        if (attackerObject) {
+            this.playAttackAnimation(attackerObject, attacker);
         }
 
-        // ダメージ処理
-        if (damage > 0) {
-            // ★ ダメージポップアップはここで1回だけ呼ぶ
-            this.playDamageEffects(defender, Math.floor(damage));
-            
-            const newHp = defenderStats.hp - damage;
-            defenderStats.hp = newHp;
-            this.stateManager.setF(`${defender}_hp`, newHp);
-            console.log(` > ${attacker}の${itemName}が攻撃！...`);
+        const action = itemData.action;
+        if (!action) return;
 
-             // ★★★ ここを修正 ★★★
-    if (newHp <= 0) {
-        this.gameState = 'end'; // これ以上のアクションを防ぐ
-        
-        // defender が 'enemy' の場合のみトドメ演出
-        if (defender === 'enemy') {
-            this.playFinishBlowEffects(this.enemyAvatar);
-        } else {
-            // プレイヤーが負けた場合は即座に終了
-            this.endBattle('lose');
+        const defenderStats = this[`${defender}Stats`];
+        const itemName = itemData.id || "アイテム";
+
+        // 2. 攻撃アクションの場合
+        if (action.type === 'attack') {
+            const totalAttack = action.value;
+            let damage = Math.max(0, totalAttack - defenderStats.defense);
+            let blockedDamage = 0;
+
+            // ブロック処理
+            if (defenderStats.block > 0 && damage > 0) {
+                blockedDamage = Math.min(defenderStats.block, damage);
+                defenderStats.block -= blockedDamage;
+                damage -= blockedDamage;
+                console.log(` > ${defender}が${blockedDamage}ダメージをブロック！`);
+
+                // ★ ブロック成功エフェクトはここで1回だけ呼ぶ
+                this.showBlockSuccessIcon(defender);
+            }
+
+            // ダメージ処理
+            if (damage > 0) {
+                // ★ ダメージポップアップはここで1回だけ呼ぶ
+                this.playDamageEffects(defender, Math.floor(damage));
+
+                const newHp = defenderStats.hp - damage;
+                defenderStats.hp = newHp;
+                this.stateManager.setF(`${defender}_hp`, newHp);
+                console.log(` > ${attacker}の${itemName}が攻撃！...`);
+
+                // ★★★ ここを修正 ★★★
+                if (newHp <= 0) {
+                    this.gameState = 'end'; // これ以上のアクションを防ぐ
+
+                    // defender が 'enemy' の場合のみトドメ演出
+                    if (defender === 'enemy') {
+                        this.playFinishBlowEffects(this.enemyAvatar);
+                    } else {
+                        // プレイヤーが負けた場合は即座に終了
+                        this.endBattle('lose');
+                    }
+
+                }
+            }
+            // ログ出力
+            else if (blockedDamage > 0) {
+                console.log(` > ${attacker}の${itemName}の攻撃は完全に防がれた！`);
+            } else {
+                console.log(` > ${attacker}の${itemName}の攻撃は防がれた！`);
+            }
         }
 
-    }
-}
-        // ログ出力
-        else if (blockedDamage > 0) {
-            console.log(` > ${attacker}の${itemName}の攻撃は完全に防がれた！`);
-        } else {
-            console.log(` > ${attacker}の${itemName}の攻撃は防がれた！`);
-        }
-    }
+        // 3. ブロック獲得アクションの場合
+        else if (action.type === 'block') {
+            const attackerStats = this[`${attacker}Stats`];
+            attackerStats.block += action.value;
+            console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得...`);
 
-    // 3. ブロック獲得アクションの場合
-    else if (action.type === 'block') {
-        const attackerStats = this[`${attacker}Stats`];
-        attackerStats.block += action.value;
-        console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得...`);
-
-        // ★ ブロック獲得エフェクト
-        let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
-        this.showGainBlockPopup(targetAvatar, action.value);
-    }
-   // ★★★ 4. 回復アクションの場合 (ここから追加) ★★★
-    else if (action.type === 'heal') {
-        const attackerStats = this[`${attacker}Stats`];
-        
-        // 最大HPを超えないように回復量を計算
-        const healAmount = Math.min(action.value, attackerStats.max_hp - attackerStats.hp);
-        
-        if (healAmount > 0) {
-            attackerStats.hp += healAmount;
-            console.log(` > ${attacker}の${itemName}が発動！ HPを${healAmount.toFixed(1)}回復`);
-
-            // stateManager の値を更新 (HPバーなどに反映させるため)
-            this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
-
-            // 回復エフェクトを表示
+            // ★ ブロック獲得エフェクト
             let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
-            this.showHealPopup(targetAvatar, Math.floor(healAmount));
+            this.showGainBlockPopup(targetAvatar, action.value);
+        }
+        // ★★★ 4. 回復アクションの場合 (ここから追加) ★★★
+        else if (action.type === 'heal') {
+            const attackerStats = this[`${attacker}Stats`];
+
+            // 最大HPを超えないように回復量を計算
+            const healAmount = Math.min(action.value, attackerStats.max_hp - attackerStats.hp);
+
+            if (healAmount > 0) {
+                attackerStats.hp += healAmount;
+                console.log(` > ${attacker}の${itemName}が発動！ HPを${healAmount.toFixed(1)}回復`);
+
+                // stateManager の値を更新 (HPバーなどに反映させるため)
+                this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+
+                // 回復エフェクトを表示
+                let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+                this.showHealPopup(targetAvatar, Math.floor(healAmount));
+            }
         }
     }
-}
     endBattle(result) {
         if (this.battleEnded) return;
         this.battleEnded = true;
@@ -1128,17 +1050,17 @@ executeAction(itemData, attacker, defender, attackerObject) {
         }
     }
 
-  /**
- * ダメージ発生時のすべての視覚エフェクトを再生する
- * @param {string} targetSide - 'player' または 'enemy'
- * @param {number} amount - ダメージ量
- */
-playDamageEffects(targetSide, amount) {
-    if (amount <= 0) return;
-    
-    const damage = Math.floor(amount);
-    let targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
-    if (!targetAvatar) return;
+    /**
+   * ダメージ発生時のすべての視覚エフェクトを再生する
+   * @param {string} targetSide - 'player' または 'enemy'
+   * @param {number} amount - ダメージ量
+   */
+    playDamageEffects(targetSide, amount) {
+        if (amount <= 0) return;
+
+        const damage = Math.floor(amount);
+        let targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
+        if (!targetAvatar) return;
         // ダメージ量に応じてスタイルを決定
         let fontSize = 24;
         let fill = '#ffffff'; // 通常ダメージの色 (白)
@@ -1164,83 +1086,83 @@ playDamageEffects(targetSide, amount) {
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(999);
 
-         // ★★★ ここからが修正箇所 ★★★
-    const initialX = targetAvatar.x;
-    const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
-    damageText.setPosition(initialX, initialY);
-    this.tweens.add({
-        targets: damageText,
-        x: initialX + Phaser.Math.Between(-40, 40),
-        y: initialY - 100,
-        alpha: 0,
-        duration: 1500,
-        ease: 'Power1',
-        onComplete: () => damageText.destroy()
-    });
-// --- 2. 画面シェイク ---
-    // ダメージ量に応じて揺れの強さと時間を変える
-    const shakeIntensity = Math.min(0.015, 0.002 + damage * 0.0002);
-    const shakeDuration = Math.min(200, 100 + damage * 2);
-    this.cameras.main.shake(shakeDuration, shakeIntensity);
+        // ★★★ ここからが修正箇所 ★★★
+        const initialX = targetAvatar.x;
+        const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
+        damageText.setPosition(initialX, initialY);
+        this.tweens.add({
+            targets: damageText,
+            x: initialX + Phaser.Math.Between(-40, 40),
+            y: initialY - 100,
+            alpha: 0,
+            duration: 1500,
+            ease: 'Power1',
+            onComplete: () => damageText.destroy()
+        });
+        // --- 2. 画面シェイク ---
+        // ダメージ量に応じて揺れの強さと時間を変える
+        const shakeIntensity = Math.min(0.015, 0.002 + damage * 0.0002);
+        const shakeDuration = Math.min(200, 100 + damage * 2);
+        this.cameras.main.shake(shakeDuration, shakeIntensity);
 
-    // --- 3. 赤点滅ティント ---
-    // 4回点滅させる (白 -> 赤 -> 白 -> 赤)
-    let blinkCount = 0;
-    this.time.addEvent({
-        delay: 80, // 点滅の間隔
-        callback: () => {
-            targetAvatar.setTint(blinkCount % 2 === 0 ? 0xff0000 : 0xffffff);
-            blinkCount++;
-        },
-        repeat: 3, // (最初の1回 + repeat 3回 = 合計4回)
-        onComplete: () => {
-            targetAvatar.clearTint(); // 最後に必ずティントをクリア
-        }
-    });
+        // --- 3. 赤点滅ティント ---
+        // 4回点滅させる (白 -> 赤 -> 白 -> 赤)
+        let blinkCount = 0;
+        this.time.addEvent({
+            delay: 80, // 点滅の間隔
+            callback: () => {
+                targetAvatar.setTint(blinkCount % 2 === 0 ? 0xff0000 : 0xffffff);
+                blinkCount++;
+            },
+            repeat: 3, // (最初の1回 + repeat 3回 = 合計4回)
+            onComplete: () => {
+                targetAvatar.clearTint(); // 最後に必ずティントをクリア
+            }
+        });
 
-      // --- 4. 斬撃ラインエフェクト (演出修正版) ---
-    const centerX = targetAvatar.x;
-    const centerY = targetAvatar.y;
-    
-    // エフェクト全体をまとめるコンテナを作成し、アバターの位置に配置
-    const effectContainer = this.add.container(centerX, centerY).setDepth(1001);
-    
-    const slashGraphics = this.add.graphics();
-    effectContainer.add(slashGraphics); // Graphicsをコンテナに入れる
+        // --- 4. 斬撃ラインエフェクト (演出修正版) ---
+        const centerX = targetAvatar.x;
+        const centerY = targetAvatar.y;
 
-    const lineLength = targetAvatar.displayWidth * 1.2;
+        // エフェクト全体をまとめるコンテナを作成し、アバターの位置に配置
+        const effectContainer = this.add.container(centerX, centerY).setDepth(1001);
 
-    // 線の色と太さをここで明確に指定
-    slashGraphics.lineStyle(8, 0xffffff, 1.0); // 太い白線
+        const slashGraphics = this.add.graphics();
+        effectContainer.add(slashGraphics); // Graphicsをコンテナに入れる
 
-    // 2本の線を交差させて「斬」の形を作る
-    // 1本目（＼）
-    slashGraphics.beginPath();
-    slashGraphics.moveTo(-lineLength / 2, -lineLength / 2);
-    slashGraphics.lineTo(lineLength / 2, lineLength / 2);
-    slashGraphics.strokePath();
-    // 2本目（／）
-    slashGraphics.beginPath();
-    slashGraphics.moveTo(lineLength / 2, -lineLength / 2);
-    slashGraphics.lineTo(-lineLength / 2, lineLength / 2);
-    slashGraphics.strokePath();
+        const lineLength = targetAvatar.displayWidth * 1.2;
 
-    // アニメーションは、Graphicsではなく、親のコンテナに対してかける
-    effectContainer.setAlpha(0.8);
-    effectContainer.setScale(0.3);
-    effectContainer.setAngle(Phaser.Math.DegToRad(Phaser.Math.Between(-25, 25))); // 少しランダムに傾ける
+        // 線の色と太さをここで明確に指定
+        slashGraphics.lineStyle(8, 0xffffff, 1.0); // 太い白線
 
-    this.tweens.add({
-        targets: effectContainer,
-        scale: 1.0,
-        alpha: 0,
-        duration: 250,
-        ease: 'Cubic.easeOut',
-        onComplete: () => {
-            effectContainer.destroy(); // コンテナごと破棄
-        }
-    });
-}
+        // 2本の線を交差させて「斬」の形を作る
+        // 1本目（＼）
+        slashGraphics.beginPath();
+        slashGraphics.moveTo(-lineLength / 2, -lineLength / 2);
+        slashGraphics.lineTo(lineLength / 2, lineLength / 2);
+        slashGraphics.strokePath();
+        // 2本目（／）
+        slashGraphics.beginPath();
+        slashGraphics.moveTo(lineLength / 2, -lineLength / 2);
+        slashGraphics.lineTo(-lineLength / 2, lineLength / 2);
+        slashGraphics.strokePath();
+
+        // アニメーションは、Graphicsではなく、親のコンテナに対してかける
+        effectContainer.setAlpha(0.8);
+        effectContainer.setScale(0.3);
+        effectContainer.setAngle(Phaser.Math.DegToRad(Phaser.Math.Between(-25, 25))); // 少しランダムに傾ける
+
+        this.tweens.add({
+            targets: effectContainer,
+            scale: 1.0,
+            alpha: 0,
+            duration: 250,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                effectContainer.destroy(); // コンテナごと破棄
+            }
+        });
+    }
 
     // BattleScene.js にこの新しいメソッドを追加してください
     playAttackAnimation(sourceObject, attackerType) {
@@ -1351,81 +1273,81 @@ playDamageEffects(targetSide, amount) {
 
     // BattleScene.js にこの新しいメソッドを追加してください
 
-/**
- * 回復時に緑色の数値をポップアップさせるメソッド
- * @param {Phaser.GameObjects.Container} targetObject - 対象のアバターオブジェクト
- * @param {number} amount - 回復量
- */
-showHealPopup(targetObject, amount) {
-    if (!targetObject || amount <= 0) return;
+    /**
+     * 回復時に緑色の数値をポップアップさせるメソッド
+     * @param {Phaser.GameObjects.Container} targetObject - 対象のアバターオブジェクト
+     * @param {number} amount - 回復量
+     */
+    showHealPopup(targetObject, amount) {
+        if (!targetObject || amount <= 0) return;
 
-    // ポジティブな印象を与える緑色のテキスト
-    const healText = this.add.text(0, 0, `+${amount}`, {
-        fontSize: '32px',
-        fill: '#abffab', // 明るい緑
-        stroke: '#1b5e20', // 暗い緑の縁取り
-        strokeThickness: 5,
-        fontStyle: 'bold'
-    }).setOrigin(0.5);
+        // ポジティブな印象を与える緑色のテキスト
+        const healText = this.add.text(0, 0, `+${amount}`, {
+            fontSize: '32px',
+            fill: '#abffab', // 明るい緑
+            stroke: '#1b5e20', // 暗い緑の縁取り
+            strokeThickness: 5,
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
 
-    // アバターの頭上に表示
-    const x = targetObject.x;
-    const y = targetObject.y - (targetObject.displayHeight / 2);
-    healText.setPosition(x, y).setDepth(999);
+        // アバターの頭上に表示
+        const x = targetObject.x;
+        const y = targetObject.y - (targetObject.displayHeight / 2);
+        healText.setPosition(x, y).setDepth(999);
 
-    // 少し上に移動して消えるTween
-    this.tweens.add({
-        targets: healText,
-        y: y - 60,
-        alpha: 0,
-        duration: 1500,
-        ease: 'Power1',
-        onComplete: () => healText.destroy()
-    });
-}
+        // 少し上に移動して消えるTween
+        this.tweens.add({
+            targets: healText,
+            y: y - 60,
+            alpha: 0,
+            duration: 1500,
+            ease: 'Power1',
+            onComplete: () => healText.destroy()
+        });
+    }
 
-// BattleScene.js にこの新しいメソッドを追加してください
-playFinishBlowEffects(targetAvatar) {
-    if (!targetAvatar) return;
+    // BattleScene.js にこの新しいメソッドを追加してください
+    playFinishBlowEffects(targetAvatar) {
+        if (!targetAvatar) return;
 
-    // 1. スローモーション開始
-    this.time.timeScale = 0.2; // 時間の進みを1/5にする
+        // 1. スローモーション開始
+        this.time.timeScale = 0.2; // 時間の進みを1/5にする
 
-    // 2. 派手な斬撃エフェクト（通常とは別）
-    const centerX = this.scale.width / 2;
-    const centerY = this.scale.height / 2;
-    
-    const finishEffect = this.add.graphics().setDepth(2000);
-    finishEffect.lineStyle(15, 0xffdd00, 1.0); // 金色で太い線
-    
-    const w = this.scale.width * 1.2;
-    finishEffect.beginPath();
-    finishEffect.moveTo(centerX - w, centerY - w);
-    finishEffect.lineTo(centerX + w, centerY + w);
-    finishEffect.strokePath();
-    
-    finishEffect.setAngle(Phaser.Math.DegToRad(-20));
-    finishEffect.setAlpha(0);
-    finishEffect.setScale(2.0);
+        // 2. 派手な斬撃エフェクト（通常とは別）
+        const centerX = this.scale.width / 2;
+        const centerY = this.scale.height / 2;
 
-    this.tweens.add({
-        targets: finishEffect,
-        alpha: 1.0,
-        scale: 1.0,
-        duration: 200, // スロー中でもここは実時間
-        ease: 'Cubic.easeIn',
-        yoyo: true, // 表示された後、逆再生で消える
-        onComplete: () => {
-            finishEffect.destroy();
-        }
-    });
+        const finishEffect = this.add.graphics().setDepth(2000);
+        finishEffect.lineStyle(15, 0xffdd00, 1.0); // 金色で太い線
 
-    // 3. スローモーション解除とバトル終了処理
-    this.time.delayedCall(1500, () => { // 1.5秒後に実行
-        this.time.timeScale = 1.0; // 時間の進みを元に戻す
-        this.endBattle('win'); // バトル終了処理を呼び出す
-    }, [], this);
-}
+        const w = this.scale.width * 1.2;
+        finishEffect.beginPath();
+        finishEffect.moveTo(centerX - w, centerY - w);
+        finishEffect.lineTo(centerX + w, centerY + w);
+        finishEffect.strokePath();
+
+        finishEffect.setAngle(Phaser.Math.DegToRad(-20));
+        finishEffect.setAlpha(0);
+        finishEffect.setScale(2.0);
+
+        this.tweens.add({
+            targets: finishEffect,
+            alpha: 1.0,
+            scale: 1.0,
+            duration: 200, // スロー中でもここは実時間
+            ease: 'Cubic.easeIn',
+            yoyo: true, // 表示された後、逆再生で消える
+            onComplete: () => {
+                finishEffect.destroy();
+            }
+        });
+
+        // 3. スローモーション解除とバトル終了処理
+        this.time.delayedCall(1500, () => { // 1.5秒後に実行
+            this.time.timeScale = 1.0; // 時間の進みを元に戻す
+            this.endBattle('win'); // バトル終了処理を呼び出す
+        }, [], this);
+    }
     shutdown() {
         console.log("BattleScene: shutdown されました。");
     }
