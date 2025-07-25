@@ -571,7 +571,7 @@ const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最�
                     // プレイヤーが攻撃された場合、誰が受けたか？という問題。一旦全体の位置に。
                 } else { // 敵が攻撃された場合
                     // 敵の中から誰か（今は一人しかいない想定）
-                    defenderObject = this.enemyItemImages[0];
+                     this.showBlockSuccessIcon(defender);
                 }
                 // ★将来的には攻撃対象を特定するロジックが必要
                 this.showBlockSuccessIcon(defenderObject);
@@ -1053,37 +1053,34 @@ const maxAvatarHeight = gridHeight * 0.8; // グリッドの高さの80%を最�
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        // どのキャラクターに追従するかを決める
-        // target は 'player' または 'enemy' という文字列
-        // ★★★ 注意：ここではまだ敵キャラクターのオブジェクトがないため、仮の位置に表示します ★★★
-        // 後で敵キャラクターのGameObjectを管理する仕組みができたら、そこと連携させます
-        let targetX, targetY;
-        // ★★★ 修正箇所 ★★★
-        if (target === 'player') {
-            targetX = this.playerAvatar.x;
-            targetY = this.playerAvatar.y;
-        } else { // 'enemy'
-            targetX = this.enemyAvatar.x;
-            targetY = this.enemyAvatar.y;
-        }
-
-        // テキストの初期位置を設定
-        damageText.setPosition(targetX, targetY - (this.playerAvatar.height / 2));
-        damageText.setDepth(999); // 最前面に表示
-
-        // ランダムな横揺れと上昇しながら消えるTween
-        this.tweens.add({
-            targets: damageText,
-            x: targetX + Phaser.Math.Between(-40, 40), // 左右にランダムに-40pxから+40pxの間で揺れる
-            y: targetY - 100, // 100px上昇
-            alpha: 0,
-            duration: 1500,
-            ease: 'Power1',
-            onComplete: () => {
-                damageText.destroy(); // Tween完了後にオブジェクトを破棄
-            }
-        });
+         // ★★★ ここからが修正箇所 ★★★
+    let targetAvatar;
+    if (target === 'player') {
+        targetAvatar = this.playerAvatar;
+    } else { // 'enemy'
+        targetAvatar = this.enemyAvatar;
     }
+    if (!targetAvatar) return; // アバターがなければ何もしない
+
+    // ポップアップの初期位置をアバターの頭上に設定
+    const initialX = targetAvatar.x;
+    const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
+    damageText.setPosition(initialX, initialY);
+
+    // ランダムな横揺れと上昇しながら消えるTween
+    this.tweens.add({
+        targets: damageText,
+        // initialX, initialY を基準にアニメーションさせる
+        x: initialX + Phaser.Math.Between(-40, 40),
+        y: initialY - 100,
+        alpha: 0,
+        duration: 1500,
+        ease: 'Power1',
+        onComplete: () => {
+            damageText.destroy();
+        }
+    });
+}
 
     // BattleScene.js にこの新しいメソッドを追加してください
     playAttackAnimation(sourceObject, attackerType) {
