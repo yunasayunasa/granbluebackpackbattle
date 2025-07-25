@@ -533,17 +533,14 @@ this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + g
         }
     });
 
-   // createItem の中の 'pointerup' イベントリスナーをこれに置き換え
+  // createItem の中の 'pointerup' イベントリスナーをこれに置き換え
 itemContainer.on('pointerup', (pointer, localX, localY, event) => {
     if (pressTimer) pressTimer.remove();
     
     if (!isDragging && !itemContainer.getData('isLongPress')) {
-        // ★★★ ここからロジックを大幅変更 ★★★
         const baseItemData = ITEM_DATA[itemId];
         if (!baseItemData) return;
         
-        // 戦闘準備後のバフ適用済みデータを検索
-        // this.placedItemImages から itemContainer のインデックスを探す
         const placedIndex = this.placedItemImages.indexOf(itemContainer);
         let finalItemData = null;
         if (placedIndex > -1 && this.finalizedPlayerItems && this.finalizedPlayerItems[placedIndex]) {
@@ -552,27 +549,36 @@ itemContainer.on('pointerup', (pointer, localX, localY, event) => {
 
         let tooltipText = `【${itemId}】\n\n`;
         
-        // 表示する値は finalItemData があればそちらを優先、なければ元のデータを表示
-        const actionValue = finalItemData ? finalItemData.action.value : baseItemData.action.value;
-        const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
+        // --- ★★★ ここから表示ロジックを修正 ★★★ ---
 
-        if (baseItemData.recast > 0) {
+        // Recast 値の表示
+        if (baseItemData.recast && baseItemData.recast > 0) {
+            const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
             tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
         }
+        
+        // Action 値の表示 (actionプロパティを持つアイテムのみ)
         if (baseItemData.action) {
-            tooltipText += `効果: ${baseItemData.action.type} ${actionValue}\n`;
-            // バフがかかっている場合、元の値も表示してあげる
-            if (finalItemData && actionValue !== baseItemData.action.value) {
-                tooltipText += `  (基本値: ${baseItemData.action.value})\n`;
+            const baseValue = baseItemData.action.value;
+            const finalValue = (finalItemData && finalItemData.action) ? finalItemData.action.value : baseValue;
+            
+            tooltipText += `効果: ${baseItemData.action.type} ${finalValue}\n`;
+            if (finalValue !== baseValue) {
+                tooltipText += `  (基本値: ${baseValue})\n`;
             }
         }
+
+        // Passive 効果の表示
         if (baseItemData.passive && baseItemData.passive.effects) {
             baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
         }
+        
+        // Synergy 効果の表示
         if (baseItemData.synergy) {
             tooltipText += `\nシナジー:\n`;
             const dir = baseItemData.synergy.direction;
-            const tag = baseItemData.synergy.targetTag || 'any';
+            // targetTag がなくてもエラーにならないようにする
+            const tag = baseItemData.synergy.targetTag || 'any'; 
             const effect = baseItemData.synergy.effect;
             tooltipText += `  - ${dir}の[${tag}]に\n`;
             tooltipText += `    効果: ${effect.type} +${effect.value}\n`;
@@ -605,26 +611,41 @@ _rotateMatrix(matrix) {
     return newMatrix;
 }
 
-    rotateItem(itemContainer) {
-        const originalRotation = itemContainer.getData('rotation');
-        const newRotation = (originalRotation + 90) % 360;
-        itemContainer.setData('rotation', newRotation);
-        const gridPos = itemContainer.getData('gridPos');
-        if (gridPos) {
-            if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                itemContainer.setData('rotation', originalRotation);
-                this.removeItemFromBackpack(itemContainer);
-                itemContainer.x = itemContainer.getData('originX');
-                itemContainer.y = itemContainer.getData('originY');
-                itemContainer.setAngle(0);
-                itemContainer.setData('rotation', 0);
-                this.updateArrowVisibility(itemContainer);
-                return;
-            }
+   // BattleScene.js の rotateItem をこれに置き換え
+rotateItem(itemContainer) {
+    const originalRotation = itemContainer.getData('rotation');
+    const newRotation = (originalRotation + 90) % 360;
+    itemContainer.setData('rotation', newRotation);
+
+    const gridPos = itemContainer.getData('gridPos');
+    if (gridPos) {
+        // 回転後に配置不能になる場合は回転をキャンセルしてインベントリに戻す
+        if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
+            itemContainer.setData('rotation', originalRotation); // 角度を元に戻す
+            this.removeItemFromBackpack(itemContainer);
+            this.tweens.add({
+                targets: itemContainer,
+                x: itemContainer.getData('originX'),
+                y: itemContainer.getData('originY'),
+                angle: 0, // 見た目の回転も戻す
+                duration: 200,
+                ease: 'Power2',
+                onComplete: () => {
+                    itemContainer.setData('rotation', 0); // データもリセット
+                    this.updateArrowVisibility(itemContainer); // 最終状態を更新
+                }
+            });
+            return;
         }
-        itemContainer.setAngle(newRotation);
-        this.updateArrowVisibility(itemContainer);
     }
+    
+    // 見た目の角度を更新
+    itemContainer.setAngle(newRotation);
+    
+    // ★★★ 修正箇所 ★★★
+    // 矢印の表示更新を専用メソッドに一任する
+    this.updateArrowVisibility(itemContainer);
+}
     
     canPlaceItem(itemContainer, startCol, startRow) {
         const itemId = itemContainer.getData('itemId');
@@ -701,26 +722,50 @@ getRotatedShape(itemId, rotation) {
     return shape;
 }
 
-    updateArrowVisibility(itemContainer) {
-        const itemId = itemContainer.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
-        const arrowContainer = itemContainer.getData('arrowContainer');
-        if (!arrowContainer) return;
-        if (itemData.synergy) {
-            arrowContainer.setVisible(true);
-            const direction = itemData.synergy.direction;
-            const offset = this.cellSize / 2 + 10;
-            arrowContainer.each(arrow => arrow.setVisible(false));
-            if (direction === 'adjacent') {
-                arrowContainer.getByName('up').setVisible(true).setY(-offset);
-                arrowContainer.getByName('down').setVisible(true).setY(offset);
-                arrowContainer.getByName('left').setVisible(true).setX(-offset);
-                arrowContainer.getByName('right').setVisible(true).setX(offset);
-            } else if (direction === 'down') arrowContainer.getByName('down').setVisible(true).setY(offset);
+   // BattleScene.js の updateArrowVisibility をこれに置き換え
+updateArrowVisibility(itemContainer) {
+    const itemId = itemContainer.getData('itemId');
+    const itemData = ITEM_DATA[itemId];
+    const arrowContainer = itemContainer.getData('arrowContainer');
+    const gridPos = itemContainer.getData('gridPos'); // ★グリッド位置を取得
+
+    if (!arrowContainer) return;
+
+    // ★★★ 修正箇所 ★★★
+    // シナジーを持っていて、かつグリッド上に配置されている場合のみ矢印を表示する
+    if (itemData.synergy && gridPos) {
+        arrowContainer.setVisible(true);
+        
+        // 方向と回転に応じて矢印の向きと位置を決定する
+        const direction = itemData.synergy.direction;
+        const rotation = itemContainer.getData('rotation') || 0;
+        const offset = (this.cellSize / 2) + 10;
+        
+        arrowContainer.each(arrow => arrow.setVisible(false).setPosition(0,0).setAngle(0));
+
+        if (direction === 'adjacent') {
+            arrowContainer.getByName('up').setVisible(true).setY(-offset);
+            arrowContainer.getByName('down').setVisible(true).setY(offset);
+            arrowContainer.getByName('left').setVisible(true).setX(-offset);
+            arrowContainer.getByName('right').setVisible(true).setX(offset);
         } else {
-            arrowContainer.setVisible(false);
+            let arrowToShow = null;
+            switch(direction) {
+                case 'up':    arrowToShow = arrowContainer.getByName('up'); break;
+                case 'down':  arrowToShow = arrowContainer.getByName('down'); break;
+                case 'left':  arrowToShow = arrowContainer.getByName('left'); break;
+                case 'right': arrowToShow = arrowContainer.getByName('right'); break;
+            }
+
+            if (arrowToShow) {
+                arrowToShow.setVisible(true).setAngle(rotation);
+            }
         }
+    } else {
+        // 条件を満たさない場合は非表示にする
+        arrowContainer.setVisible(false);
     }
+}
     
     shutdown() {
         console.log("BattleScene: shutdown されました。");
