@@ -54,30 +54,12 @@ export default class BattleScene extends Phaser.Scene {
     }
 
   // BattleScene.js の init をこれに置き換え
+// BattleScene.js の init をこのシンプルなバージョンに置き換えてください
 init(data) {
     console.log("BattleScene: init");
     this.receivedParams = data.params || {};
-
-    // 1. StateManagerを取得
-    this.stateManager = this.sys.registry.get('stateManager');
-
-    // 2. playerDataの初期化（なければデフォルト値で生成）
-    if (!this.stateManager.sf.player_data) {
-        const defaultPlayerData = {
-            coins: 0,
-            round: 1,
-            wins: 0,
-            avatar: { max_hp: 100, current_hp: 100 },
-            backpack: {},
-            inventory: ['sword', 'shield', 'potion']
-        };
-        this.stateManager.setF('sf.player_data', defaultPlayerData);
-    }
     
-    // 3. 必要なデータをプロパティに保持
-    this.playerData = this.stateManager.sf.player_data;
-    
-    // 4. プロパティのリセット
+    // プロパティのリセット
     this.inventoryItemImages = [];
     this.placedItemImages = [];
     this.enemyItemImages = [];
@@ -85,17 +67,34 @@ init(data) {
     this.battleEnded = false;
     this.gameState = 'prepare';
 }
-
-  create() {
+  // BattleScene.js の create をこの最終確定版に置き換えてください
+create() {
     console.log("BattleScene: create");
     this.cameras.main.setBackgroundColor('#8a2be2');
- // ★★★ 1. 【最優先】playerDataに依存する処理 ★★★
-    // initで準備したplayerDataを使って、戦闘パラメータを初期化
+
+    // ★★★ 1. 【最優先】データ準備とパラメータ設定 ★★★
+    // 1a. StateManagerの取得
+    this.stateManager = this.sys.registry.get('stateManager');
+
+    // 1b. playerDataの初期化（なければデフォルト値で生成）
+    if (!this.stateManager.sf.player_data) {
+        const defaultPlayerData = {
+            coins: 0, round: 1, wins: 0,
+            avatar: { max_hp: 100, current_hp: 100 },
+            backpack: {},
+            inventory: ['sword', 'shield', 'potion']
+        };
+        this.stateManager.setF('sf.player_data', defaultPlayerData);
+    }
+    this.playerData = this.stateManager.sf.player_data;
+
+    // 1c. 戦闘パラメータの初期化
     this.initialBattleParams = {
         playerMaxHp: this.playerData.avatar.max_hp,
         playerHp: this.playerData.avatar.current_hp,
         round: this.playerData.round
     };
+    
     // --- 1. 準備：マネージャーと変数の定義 ---
     // StateManagerはinitで取得済みなので、ここではSoundManagerのみ
     this.soundManager = this.sys.registry.get('soundManager');
