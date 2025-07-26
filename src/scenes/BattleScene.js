@@ -173,47 +173,49 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
     this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:20, y:10} }).setOrigin(0.5).setInteractive().setDepth(11);
     this.prepareContainer.add(this.startBattleButton);
     
-    this.startBattleButton.on('pointerdown', () => {
-        if (this.gameState !== 'prepare') return;
-        
-         // 現在の盤面をsf変数に保存
-        const newBackpackData = {};
-        this.placedItemImages.forEach((item, index) => {
-            const gridPos = item.getData('gridPos');
-            if(gridPos){ // 安全策：グリッド位置がなければ保存しない
-                newBackpackData[`uid_${index}`] = {
-                    itemId: item.getData('itemId'),
-                    row: gridPos.row,
-                    col: gridPos.col,
-                    rotation: item.getData('rotation')
-                };
-            }
-        });
-        const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-        
-        // ★★★ setSFを使って自動保存 ★★★
-        this.stateManager.setSF('player_backpack', newBackpackData);
-        this.stateManager.setSF('player_inventory', newInventoryData);
-        
-        // 戦闘開始処理
-        this.gameState = 'battle';
-        this.prepareForBattle();
-        
-        const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-        allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
-        this.startBattleButton.input.enabled = false;
-
-        this.tweens.add({
-            targets: this.prepareContainer,
-            alpha: 0,
-            duration: 300,
-            onComplete: () => { this.prepareContainer.setVisible(false); }
-        });
-        
-        // ★戦闘開始のディレイを削除
-        // this.time.delayedCall(500, this.startBattle, [], this);
-        this.startBattle();
+   // create メソッド内の startBattleButton.on('pointerdown', ...) リスナーを、これに置き換えてください
+this.startBattleButton.on('pointerdown', () => {
+    if (this.gameState !== 'prepare') return;
+    
+    // 現在の盤面をsf変数に保存 (このセーブタイミングで詰みは回避できている)
+    const newBackpackData = {};
+    this.placedItemImages.forEach((item, index) => {
+        const gridPos = item.getData('gridPos');
+        if (gridPos) {
+            newBackpackData[`uid_${index}`] = {
+                itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+            };
+        }
     });
+    const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+    this.stateManager.setSF('player_backpack', newBackpackData);
+    this.stateManager.setSF('player_inventory', newInventoryData);
+
+    // --- 戦闘開始処理 ---
+    this.gameState = 'battle';
+    this.prepareForBattle();
+    
+    // 全てのプレイヤーアイテムとボタンの入力を無効化
+    const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
+    allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
+    this.startBattleButton.input.enabled = false;
+
+    // ★★★ ここからが修正点 ★★★
+    // prepareContainer (背景や文字) と inventoryItemImages (アイテム画像) の両方を消す
+    this.tweens.add({
+        targets: [this.prepareContainer, ...this.inventoryItemImages],
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+            this.prepareContainer.setVisible(false);
+            // inventoryItemImages は Tween で alpha:0 になっているので、
+            // setVisible(false) は必須ではないが、念のためやっておくとより確実
+            this.inventoryItemImages.forEach(item => item.setVisible(false));
+        }
+    });
+    
+    this.startBattle();
+});
 
     // --- 5b. グローバルクリック（ツールチップ非表示用）
     this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
@@ -592,18 +594,33 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
             }
         }
     }
-    endBattle(result) {
-        if (this.battleEnded) return;
-        this.battleEnded = true;
-        console.log(`バトル終了。結果: ${result}`);
-        if (result === 'win') {
-            this.scene.get('SystemScene').events.emit('return-to-novel', { from: this.scene.key, params: { 'f.battle_result': '"win"', 'f.player_hp': this.playerStats.hp } });
-        } else {
-            this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, 'GAME OVER', { fontSize: '64px', fill: '#f00' }).setOrigin(0.5).setDepth(999);
-            const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 50, 'もう一度挑戦', { fontSize: '32px', fill: '#fff', backgroundColor: '#880000' }).setOrigin(0.5).setInteractive().setDepth(999);
-            retryButton.on('pointerdown', () => { this.scene.get('SystemScene').events.emit('request-scene-transition', { to: this.scene.key, from: this.scene.key, params: this.receivedParams }); });
-        }
+    // BattleScene.js の endBattle メソッドを、これに置き換えてください
+endBattle(result) {
+    if (this.battleEnded) return;
+    this.battleEnded = true;
+    console.log(`バトル終了。結果: ${result}`);
+
+    if (result === 'win') {
+        // 勝利時の処理は playFinishBlowEffects に移動したので、ここはシンプルにする
+        // もしスローモーションを使わない場合の勝利処理が必要ならここに書く
+    } else {
+        // 敗北時の処理
+        this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, 'GAME OVER', { 
+            fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4 
+        }).setOrigin(0.5).setDepth(999);
+        
+        const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 50, 'もう一度挑戦', { 
+            fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive().setDepth(999);
+        
+        retryButton.on('pointerdown', () => { 
+            // ★★★ ここが修正点 ★★★
+            // SystemSceneを介さず、現在のシーンを直接リスタートする
+            // これにより、createメソッドが必ず再実行され、詰みセーブを回避できる
+            this.scene.start(this.scene.key, { params: this.receivedParams });
+        });
     }
+}
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
 // BattleScene.js にこの新しいメソッドを追加してください
