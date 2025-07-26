@@ -2,7 +2,16 @@
 import { ITEM_DATA } from '../core/ItemData.js';
 import Tooltip from '../ui/Tooltip.js';
 // BattleScene.js の上部に追加
+// BattleScene.js の上部に追加
 
+const ELEMENT_COLORS = {
+    fire: 0xff4d4d, // 明るい赤
+    wind: 0x4dff4d, // 明るい緑
+    earth: 0xffaa4d, // オレンジ/茶色
+    water: 0x4d4dff, // 明るい青
+    light: 0xffff4d, // 黄色
+    dark: 0xaa4dff  // 紫
+};
 // ツールチップ表示用の日本語変換テーブル
 const TOOLTIP_TRANSLATIONS = {
     // 方向
@@ -20,7 +29,9 @@ const ELEMENT_RESONANCE_RULES = {
     fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor(count / 2)}` },
     wind: { threshold: 3, description: (count) => `リキャスト-${(0.2 * (count - 2)).toFixed(1)}s` },
     earth: { threshold: 3, description: (count) => `ブロック効果+${count * 2}` },
-    // 他の属性もここに追加
+    light: { threshold: 3, description: (count) => `回復効果+${count * 2}` },
+    water: { threshold: 3, description: (count) => `シナジー効果+${count - 2}` },
+    dark:  { threshold: 3, description: (count) => `背水効果(小)` } // 説明はシンプルに
 };
 export default class BattleScene extends Phaser.Scene {
     constructor() {
@@ -90,36 +101,36 @@ export default class BattleScene extends Phaser.Scene {
         const backpackData = this.stateManager.sf.player_backpack;
         const inventoryData = this.stateManager.sf.player_inventory;
 
-       // in create() -> STEP 1-b
+        // in create() -> STEP 1-b
 
-// --- 1b. 戦闘パラメータを決定 ---
-const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
+        // --- 1b. 戦闘パラメータを決定 ---
+        const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
 
-// ★★★ ここからが修正箇所 ★★★
-// 前のラウンドからHPを引き継ぐ。ただし初回（f.player_hpが存在しない場合）は最大HPから開始。
-const initialPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : initialPlayerMaxHp;
-// ★★★ 修正箇所ここまで ★★★
+        // ★★★ ここからが修正箇所 ★★★
+        // 前のラウンドからHPを引き継ぐ。ただし初回（f.player_hpが存在しない場合）は最大HPから開始。
+        const initialPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : initialPlayerMaxHp;
+        // ★★★ 修正箇所ここまで ★★★
 
-const round = this.stateManager.sf.round || 1;
-this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
-// ★★★ ここからが追加箇所 ★★★
-// --- 1c. ゲームオーバー判定
-// 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
-if (initialPlayerHp <= 0) {
-    console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
-    
-    // 将来的には GameOverScene に遷移する
-    // 今は暫定的に、データをリセットして同じバトルシーンを再起動する（はじめから）
-    this.stateManager.sf = {}; // メモリ上のsfをリセット
-    localStorage.removeItem('my_novel_engine_system'); // ストレージのsfをリセット
-    this.stateManager.f = {}; // メモリ上のfをリセット
+        const round = this.stateManager.sf.round || 1;
+        this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
+        // ★★★ ここからが追加箇所 ★★★
+        // --- 1c. ゲームオーバー判定
+        // 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
+        if (initialPlayerHp <= 0) {
+            console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
 
-    // SystemSceneにタイトルへの復帰などを依頼するのが理想だが、今は直接リスタート
-    this.scene.start(this.scene.key);
-    
-    return; // create処理をここで中断
-}
-// ★★★ 追加ここまで ★★★
+            // 将来的には GameOverScene に遷移する
+            // 今は暫定的に、データをリセットして同じバトルシーンを再起動する（はじめから）
+            this.stateManager.sf = {}; // メモリ上のsfをリセット
+            localStorage.removeItem('my_novel_engine_system'); // ストレージのsfをリセット
+            this.stateManager.f = {}; // メモリ上のfをリセット
+
+            // SystemSceneにタイトルへの復帰などを依頼するのが理想だが、今は直接リスタート
+            this.scene.start(this.scene.key);
+
+            return; // create処理をここで中断
+        }
+        // ★★★ 追加ここまで ★★★
 
 
         // =================================================================
@@ -281,8 +292,8 @@ if (initialPlayerHp <= 0) {
                 backpack: initialBackpackData,
                 inventory: initialInventoryData,
                 // 将来的にコインやHPもここに入れる
-                 coins: this.stateManager.sf.coins || 0,
-    hp: this.initialBattleParams.playerHp
+                coins: this.stateManager.sf.coins || 0,
+                hp: this.initialBattleParams.playerHp
             };
             console.log("Round start state checkpoint created.", this.roundStartState);
             // ★★★ 修正箇所ここまで ★★★
@@ -402,7 +413,41 @@ if (initialPlayerHp <= 0) {
                                 item.synergy.effect.value += bonus;
                             }
                         }
+                            // 【光属性】回復効果アップ
+            if (item.tags.includes('light')) {
+                const bonus = count * 2;
+                if (item.action && item.action.type === 'heal') {
+                    item.action.value += bonus;
+                }
+                if (item.synergy && item.synergy.effect.type.includes('heal')) {
+                    item.synergy.effect.value += bonus;
+                }
+            }
+            
+            // 【水属性】シナジー効果アップ
+            // この効果は、水属性キャラ自身ではなく、「全てのシナジーを持つキャラ」に適用される
+            if (element === 'water' && item.synergy) {
+                const bonus = count - 2; // 3体で+1, 4体で+2...
+                // effect.value が数値である効果のみを対象にする
+                if (typeof item.synergy.effect.value === 'number') {
+                    // 効果がプラスかマイナスかを判定してボーナスを加算
+                    if (item.synergy.effect.value > 0) {
+                        item.synergy.effect.value += bonus;
+                    } else { // リキャスト短縮などのマイナス効果
+                        item.synergy.effect.value -= bonus;
+                    }
+                }
+            }
+
+            // ★★★ 追加ロジックここまで ★★★
+
                         // ... 他の属性効果もここに追加
+                        // 対応するGameObjectを取得し、フラッシュエフェクトを再生
+                        const targetObject = item.gameObject;
+                        const flashColor = ELEMENT_COLORS[element];
+                        if (targetObject && flashColor) {
+                            this.playResonanceFlash(targetObject, flashColor);
+                        }
                     }
                 });
             }
@@ -484,44 +529,52 @@ if (initialPlayerHp <= 0) {
         console.log("シナジー計算完了。");
 
         // ★★★ STEP 3: 最終ステータスの計算 ★★★
-let finalMaxHp = this.initialBattleParams.playerMaxHp;
-let finalDefense = 0;
-this.playerBattleItems = [];
+        let finalMaxHp = this.initialBattleParams.playerMaxHp;
+        let finalDefense = 0;
+        this.playerBattleItems = [];
 
-// パッシブ効果によるステータス変動を計算
-for (const item of playerFinalItems) {
-    if (item.passive && item.passive.effects) {
-        for(const effect of item.passive.effects){
-            if (effect.type === 'defense') finalDefense += effect.value;
-            if (effect.type === 'max_hp') finalMaxHp += effect.value;
+        // パッシブ効果によるステータス変動を計算
+        for (const item of playerFinalItems) {
+            if (item.passive && item.passive.effects) {
+                for (const effect of item.passive.effects) {
+                    if (effect.type === 'defense') finalDefense += effect.value;
+                    if (effect.type === 'max_hp') finalMaxHp += effect.value;
+                }
+            }
+            if (item.recast > 0) {
+                this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
+            }
         }
-    }
-    if (item.recast > 0) {
-        this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
-    }
+        finalMaxHp = Math.max(1, finalMaxHp);
+
+        // ★★★ ここからが修正箇所 ★★★
+        // 1. 引き継いだHPを取得。ただし、新しい最大HPを超えないようにする。
+        const inheritedHp = Math.min(this.initialBattleParams.playerHp, finalMaxHp);
+
+        // 2. StateManagerの値をセット
+        this.stateManager.setF('player_max_hp', finalMaxHp);
+        this.stateManager.setF('player_hp', inheritedHp); // ★最大HPではなく、引き継いだHPをセット
+
+// ★★★ ここからが追加箇所 ★★★
+let darkResonanceLevel = 0;
+if (elementCounts.dark >= 3) {
+    // 将来的に段階を増やすことも見越して、レベルで記録
+    darkResonanceLevel = 1; 
 }
-finalMaxHp = Math.max(1, finalMaxHp);
+// ★★★ 追加ここまで ★★★
 
-// ★★★ ここからが修正箇所 ★★★
-// 1. 引き継いだHPを取得。ただし、新しい最大HPを超えないようにする。
-const inheritedHp = Math.min(this.initialBattleParams.playerHp, finalMaxHp);
+        // 3. 戦闘用の内部ステータスも、引き継いだHPで初期化
+        this.playerStats = {
+            max_hp: finalMaxHp,
+            hp: inheritedHp, // ★最大HPではなく、引き継いだHPで開始
+            defense: finalDefense,
+            block: 0,
+            attack: 0
+        };
+        // ★★★ 修正箇所ここまで ★★★
 
-// 2. StateManagerの値をセット
-this.stateManager.setF('player_max_hp', finalMaxHp);
-this.stateManager.setF('player_hp', inheritedHp); // ★最大HPではなく、引き継いだHPをセット
-
-// 3. 戦闘用の内部ステータスも、引き継いだHPで初期化
-this.playerStats = { 
-    max_hp: finalMaxHp, 
-    hp: inheritedHp, // ★最大HPではなく、引き継いだHPで開始
-    defense: finalDefense, 
-    block: 0,
-    attack: 0
-};
-// ★★★ 修正箇所ここまで ★★★
-
-this.finalizedPlayerItems = playerFinalItems;
-console.log("プレイヤー最終ステータス:", this.playerStats);
+        this.finalizedPlayerItems = playerFinalItems;
+        console.log("プレイヤー最終ステータス:", this.playerStats);
 
         // 4. 敵のステータス初期化
         const enemyMaxHp = this.stateManager.f.enemy_max_hp; // ★敵の最大HPも取得
@@ -640,6 +693,22 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
         // 2. 攻撃アクションの場合
         if (action.type === 'attack') {
             const totalAttack = action.value;
+            // ★★★ ここからが追加箇所 ★★★
+    // 【闇属性】背水効果の計算
+    if (attacker === 'player' && itemData.tags.includes('dark') && attackerStats.darkResonanceLevel > 0) {
+        const hpPercent = (attackerStats.hp / attackerStats.max_hp) * 100;
+        let bonus = 0;
+        if (hpPercent < 75) bonus += 2;
+        if (hpPercent < 50) bonus += 3;
+        if (hpPercent < 25) bonus += 5;
+        
+        if (bonus > 0) {
+            totalAttack += bonus;
+            console.log(`▼ 背水発動！ HP ${hpPercent.toFixed(0)}% のため攻撃力+${bonus}`);
+        }
+    }
+    // ★★★ 追加ここまで ★★★
+
             let damage = Math.max(0, totalAttack - defenderStats.defense);
             let blockedDamage = 0;
 
@@ -716,63 +785,63 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
             }
         }
     }
-   // BattleScene.js の endBattle メソッドを、この最終版に置き換え
+    // BattleScene.js の endBattle メソッドを、この最終版に置き換え
 
-/**
- * 戦闘終了処理 (勝利/敗北)
- * @param {string} result - 'win' または 'lose'
- */
-endBattle(result) {
-    if (this.battleEnded) return;
-    this.battleEnded = true;
-    console.log(`バトル終了。結果: ${result}`);
+    /**
+     * 戦闘終了処理 (勝利/敗北)
+     * @param {string} result - 'win' または 'lose'
+     */
+    endBattle(result) {
+        if (this.battleEnded) return;
+        this.battleEnded = true;
+        console.log(`バトル終了。結果: ${result}`);
 
-    if (result === 'win') {
-        // 勝利時の処理は playFinishBlowEffects が担当するので、ここでは何もしない
-        return;
+        if (result === 'win') {
+            // 勝利時の処理は playFinishBlowEffects が担当するので、ここでは何もしない
+            return;
+        }
+
+        // --- 敗北時の処理 ---
+        this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', {
+            fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
+        }).setOrigin(0.5).setDepth(999);
+
+        // ★★★ ここからが2択ボタンの実装 ★★★
+
+        // 1. 「このラウンドを再挑戦」ボタン
+        const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', {
+            fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive().setDepth(999);
+
+        retryButton.on('pointerdown', () => {
+            const roundStartState = this.roundStartState;
+            if (roundStartState) {
+                // ★チェックポイントのデータを使ってsfとfを復元
+                this.stateManager.setSF('player_backpack', roundStartState.backpack);
+                this.stateManager.setSF('player_inventory', roundStartState.inventory);
+                this.stateManager.setSF('coins', roundStartState.coins); // コインを復元
+                this.stateManager.setF('player_hp', roundStartState.hp); // HPを復元
+
+                console.log("ラウンド開始時の状態に復元してリトライします。");
+                this.scene.start(this.scene.key);
+            } else {
+                // チェックポイントがない（異常事態）場合は、安全に全リセット
+                console.error("チェックポイントが見つかりません。ゲームをリセットします。");
+                this.handleGameOver();
+            }
+        });
+
+        // 2. 「はじめからやり直す」ボタン
+        const resetButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', {
+            fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive().setDepth(999);
+
+        resetButton.on('pointerdown', () => {
+            // 共通のゲームオーバー（全リセット）処理を呼び出す
+            resetButton.disableInteractive().setText('リセット中...');
+            this.handleGameOver();
+        });
     }
-
-    // --- 敗北時の処理 ---
-    this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', { 
-        fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4 
-    }).setOrigin(0.5).setDepth(999);
-    
-    // ★★★ ここからが2択ボタンの実装 ★★★
-
-    // 1. 「このラウンドを再挑戦」ボタン
-    const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', { 
-        fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
-    }).setOrigin(0.5).setInteractive().setDepth(999);
-    
- retryButton.on('pointerdown', () => {
-    const roundStartState = this.roundStartState;
-    if (roundStartState) {
-        // ★チェックポイントのデータを使ってsfとfを復元
-        this.stateManager.setSF('player_backpack', roundStartState.backpack);
-        this.stateManager.setSF('player_inventory', roundStartState.inventory);
-        this.stateManager.setSF('coins', roundStartState.coins); // コインを復元
-        this.stateManager.setF('player_hp', roundStartState.hp); // HPを復元
-        
-        console.log("ラウンド開始時の状態に復元してリトライします。");
-        this.scene.start(this.scene.key);
-    } else {
-        // チェックポイントがない（異常事態）場合は、安全に全リセット
-        console.error("チェックポイントが見つかりません。ゲームをリセットします。");
-        this.handleGameOver();
-    }
-});
-
-    // 2. 「はじめからやり直す」ボタン
-    const resetButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', { 
-        fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
-    }).setOrigin(0.5).setInteractive().setDepth(999);
-
-    resetButton.on('pointerdown', () => {
-        // 共通のゲームオーバー（全リセット）処理を呼び出す
-        resetButton.disableInteractive().setText('リセット中...');
-        this.handleGameOver();
-    });
-}
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
     // BattleScene.js にこの新しいメソッドを追加してください
@@ -839,7 +908,44 @@ endBattle(result) {
     }
     // BattleScene.js の createItem メソッド (イベントリスナー完全版)
 
+    // BattleScene.js にこの新しいメソッドを追加
 
+    /**
+     * 属性共鳴が発動したキャラクターを光らせる
+     * @param {Phaser.GameObjects.Container} targetObject - 対象のキャラクターオブジェクト
+     * @param {number} color - 光らせる色の16進数カラーコード
+     */
+    playResonanceFlash(targetObject, color) {
+        if (!targetObject) return;
+
+        // オーバーレイ用の画像（ベース画像と同じもの）を取得または生成
+        // createItemで既にrecastOverlayがあるので、それを流用するのが効率的
+        const overlay = targetObject.getData('recastOverlay');
+        if (!overlay) return;
+
+        // 色とアルファ値を設定して表示
+        overlay.setTint(color);
+        overlay.setAlpha(0.7);
+        overlay.setVisible(true);
+
+        // 短いTweenでフェードアウトさせる
+        this.tweens.add({
+            targets: overlay,
+            alpha: 0,
+            duration: 800, // 0.8秒かけてゆっくり消える
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                // recastを持つキャラの場合、リキャスト表示が消えないように
+                const itemData = ITEM_DATA[targetObject.getData('itemId')];
+                if (itemData && itemData.recast > 0) {
+                    overlay.setTint(0x00aaff, 0.7); // リキャスト用の色に戻す
+                    overlay.setAlpha(1.0); // マスクで制御するのでアルファは1に戻す
+                } else {
+                    overlay.setVisible(false); // recastがなければ非表示に
+                }
+            }
+        });
+    }
     // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
@@ -1594,7 +1700,7 @@ endBattle(result) {
         const gameWidth = this.scale.width;
         const inventoryAreaY = 480; // UI領域の開始Y座標
         const inventoryAreaHeight = this.scale.height - inventoryAreaY; // UI領域の高さ
-        const currentRound = this.initialBattleParams.round ||1;
+        const currentRound = this.initialBattleParams.round || 1;
 
         // --- 2. ラウンドに応じた商品数を決定 ---
         let slotCount = 3;
@@ -1694,11 +1800,11 @@ endBattle(result) {
                     // 画像領域がクリックされたらツールチップを表示
                     const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
                     let tooltipText = `【${itemId}】\n`;
-                     // 属性の表示
-    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-    if (itemElements.length > 0) {
-        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-    }
+                    // 属性の表示
+                    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+                    if (itemElements.length > 0) {
+                        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
+                    }
                     const sizeH = itemData.shape.length;
                     const sizeW = itemData.shape[0].length;
 
@@ -1708,14 +1814,14 @@ endBattle(result) {
                     if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`; }
 
                     this.tooltip.show(slotContainer, tooltipText);
-                       const matrix = slotContainer.getWorldTransformMatrix();
-                const worldX = matrix.tx;
-                const worldY = matrix.ty;
-                this.tooltip.showAt(worldX, worldY - slotContainer.height/2 - 10, tooltipText);
-            }
+                    const matrix = slotContainer.getWorldTransformMatrix();
+                    const worldX = matrix.tx;
+                    const worldY = matrix.ty;
+                    this.tooltip.showAt(worldX, worldY - slotContainer.height / 2 - 10, tooltipText);
+                }
+            });
         });
-    });
-}
+    }
 
     /*  // BattleScene.js にこの新しいメソッドを追加してください/**
    * トドメの一撃の演出を再生する (最終確定版)
@@ -1785,75 +1891,75 @@ endBattle(result) {
         this.time.delayedCall(1500, () => {
             this.time.timeScale = 1.0;
             const currentRound = this.stateManager.sf.round || 1;
-    const FINAL_ROUND = 2; // ★最終ラウンドを定義
+            const FINAL_ROUND = 2; // ★最終ラウンドを定義
 
-    // ★★★ ここからが修正箇所 ★★★
-    if (currentRound >= FINAL_ROUND) {
-        // --- ゲームクリア処理 ---
-        console.log("★★★★ GAME CLEAR! ★★★★");
-        this.add.text(this.scale.width/2, this.scale.height/2, 'GAME CLEAR!', {fontSize: '64px', fill: '#ffd700'}).setOrigin(0.5);
+            // ★★★ ここからが修正箇所 ★★★
+            if (currentRound >= FINAL_ROUND) {
+                // --- ゲームクリア処理 ---
+                console.log("★★★★ GAME CLEAR! ★★★★");
+                this.add.text(this.scale.width / 2, this.scale.height / 2, 'GAME CLEAR!', { fontSize: '64px', fill: '#ffd700' }).setOrigin(0.5);
 
-        // クリア時もデータをリセットして「はじめから」に戻す
-        this.handleGameOver(); // 共通のゲームオーバー（リセット）処理を流用
+                // クリア時もデータをリセットして「はじめから」に戻す
+                this.handleGameOver(); // 共通のゲームオーバー（リセット）処理を流用
 
-    } else {
+            } else {
 
-            const finalBackpackData = {};
-            this.placedItemImages.forEach((item, index) => {
-                const gridPos = item.getData('gridPos');
-                if (gridPos) {
-                    finalBackpackData[`uid_${index}`] = {
-                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                    };
-                }
-            });
-            const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-            this.stateManager.setSF('player_backpack', finalBackpackData);
-            this.stateManager.setSF('player_inventory', finalInventoryData);
-            // ★★★ ここからが追加箇所 ★★★
-            // 3. コイン獲得処理
-            const currentCoins = this.stateManager.sf.coins || 0;
-           // const currentRound = this.stateManager.sf.round || 1;
-            const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
-            this.stateManager.setSF('coins', currentCoins + rewardCoins);
+                const finalBackpackData = {};
+                this.placedItemImages.forEach((item, index) => {
+                    const gridPos = item.getData('gridPos');
+                    if (gridPos) {
+                        finalBackpackData[`uid_${index}`] = {
+                            itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                        };
+                    }
+                });
+                const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+                this.stateManager.setSF('player_backpack', finalBackpackData);
+                this.stateManager.setSF('player_inventory', finalInventoryData);
+                // ★★★ ここからが追加箇所 ★★★
+                // 3. コイン獲得処理
+                const currentCoins = this.stateManager.sf.coins || 0;
+                // const currentRound = this.stateManager.sf.round || 1;
+                const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
+                this.stateManager.setSF('coins', currentCoins + rewardCoins);
 
-            this.stateManager.setSF('round', currentRound + 1);
-            this.stateManager.setF('player_hp', this.playerStats.hp);
+                this.stateManager.setSF('round', currentRound + 1);
+                this.stateManager.setF('player_hp', this.playerStats.hp);
 
-            this.scene.get('SystemScene').events.emit('request-scene-transition', {
-                to: 'RewardScene',
-                from: this.scene.key
-            });
-        }
+                this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                    to: 'RewardScene',
+                    from: this.scene.key
+                });
+            }
         }, [], this);
     }
     // BattleScene.js にこの新しいメソッドを追加してください
 
-/**
- * ゲームオーバー処理を一元管理する
- */
-handleGameOver() {
-    console.log("ゲームオーバー処理を開始します。");
+    /**
+     * ゲームオーバー処理を一元管理する
+     */
+    handleGameOver() {
+        console.log("ゲームオーバー処理を開始します。");
 
-    // 1. 全てのデータをリセット
-    this.stateManager.setSF('player_backpack', {});
-    this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-    this.stateManager.setSF('round', 1);
-    this.stateManager.setSF('coins', 0); // ★コインを0にリセットし、HUD更新をトリガー
-    
-    // f変数もクリア
-    this.stateManager.f = {};
-    this.stateManager.setF('player_hp', 100);
-    this.stateManager.setF('player_max_hp', 100);
+        // 1. 全てのデータをリセット
+        this.stateManager.setSF('player_backpack', {});
+        this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+        this.stateManager.setSF('round', 1);
+        this.stateManager.setSF('coins', 0); // ★コインを0にリセットし、HUD更新をトリガー
 
-    // 2. localStorageの物理削除は不要（setSFが上書き保存するため）
+        // f変数もクリア
+        this.stateManager.f = {};
+        this.stateManager.setF('player_hp', 100);
+        this.stateManager.setF('player_max_hp', 100);
 
-    // 3. タイトル画面に戻るのが理想だが、今はリスタート
-    // 少しディレイを入れて、プレイヤーが何が起きたか認識する時間を与える
-    this.time.delayedCall(2000, () => {
-        this.scene.start('BattleScene');
-    }, [], this);
-}
+        // 2. localStorageの物理削除は不要（setSFが上書き保存するため）
+
+        // 3. タイトル画面に戻るのが理想だが、今はリスタート
+        // 少しディレイを入れて、プレイヤーが何が起きたか認識する時間を与える
+        this.time.delayedCall(2000, () => {
+            this.scene.start('BattleScene');
+        }, [], this);
+    }
     shutdown() {
         console.log("BattleScene: shutdown されました。");
     }

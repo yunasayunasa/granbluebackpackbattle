@@ -7,7 +7,7 @@ export const ITEM_DATA = {
        shape: [[1]],
        "cost": 10,
         "rarity": 1,
-        tags: ["weapon", "fire"], // ★属性タグ
+        tags: ["weapon", "dark"], // ★属性タグ
         action: { type: "attack", value: 10 },
         recast: 2.0
     },
@@ -31,7 +31,7 @@ export const ITEM_DATA = {
     'spiky_shield': { // トゲの盾
         storage: 'item_spiky_shield', // ★ 新しい画像アセットキー
           shape: [[1]],
-        tags: ["support"],
+        tags: ["support","light"],
         "cost": 20,
         "rarity": 2,
         synergy: {
@@ -44,7 +44,7 @@ export const ITEM_DATA = {
      'leather_armor': { // 革鎧
         storage: 'item_potion', // ★ 新しい画像アセットキー
         shape: [[1, 1], [1, 1]], // 2x2マス
-        tags: ["support"],
+        tags: ["support","water"],
         synergy: {
             direction: "up",      // ★方向指定
             targetTag: "weapon",  // 「上」の「武器」に
