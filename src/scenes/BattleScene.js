@@ -132,8 +132,7 @@ create() {
 
     // --- 3c. 敵アイテムの配置
   // --- 3c. 敵アイテムの配置
-this.setupEnemy(); // ★ごっそり置き換える
-   
+this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
 
     // =================================================================
     // STEP 4: プレイヤーのバックパックとインベントリの復元
@@ -611,12 +610,11 @@ this.setupEnemy(); // ★ごっそり置き換える
 /**
  * 現在のラウンドに応じて敵の盤面をセットアップする
  */
-setupEnemy() {
+setupEnemy(gridY) { // ★引数 gridY を追加
     const gameWidth = this.scale.width;
     const gridWidth = this.backpackGridSize * this.cellSize;
     const enemyGridX = gameWidth - 100 - gridWidth;
-    const enemyGridY = this.gridY;
-
+    const enemyGridY = gridY; // ★引数で受け取った値を使う
     // 以前の敵オブジェクトが残っていれば全て破棄する
     this.enemyItemImages.forEach(item => item.destroy());
     this.enemyItemImages = [];
