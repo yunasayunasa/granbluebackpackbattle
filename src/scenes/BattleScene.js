@@ -281,8 +281,8 @@ if (initialPlayerHp <= 0) {
                 backpack: initialBackpackData,
                 inventory: initialInventoryData,
                 // 将来的にコインやHPもここに入れる
-                // coins: this.stateManager.sf.coins,
-                // hp: this.stateManager.f.player_hp
+                 coins: this.stateManager.sf.coins || 0,
+    hp: this.initialBattleParams.playerHp
             };
             console.log("Round start state checkpoint created.", this.roundStartState);
             // ★★★ 修正箇所ここまで ★★★
@@ -716,33 +716,63 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
             }
         }
     }
-    // BattleScene.js の endBattle メソッドを、これに置き換えてください
-    endBattle(result) {
-        if (this.battleEnded) return;
-        this.battleEnded = true;
-        console.log(`バトル終了。結果: ${result}`);
+   // BattleScene.js の endBattle メソッドを、この最終版に置き換え
 
-        if (result === 'win') {
-            // 勝利時の処理は playFinishBlowEffects に移動したので、ここはシンプルにする
-            // もしスローモーションを使わない場合の勝利処理が必要ならここに書く
-        } else {
-            // 敗北時の処理
-            this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, 'GAME OVER', {
-                fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
-            }).setOrigin(0.5).setDepth(999);
+/**
+ * 戦闘終了処理 (勝利/敗北)
+ * @param {string} result - 'win' または 'lose'
+ */
+endBattle(result) {
+    if (this.battleEnded) return;
+    this.battleEnded = true;
+    console.log(`バトル終了。結果: ${result}`);
 
-            const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 50, 'もう一度挑戦', {
-                fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
-            }).setOrigin(0.5).setInteractive().setDepth(999);
-
-            retryButton.on('pointerdown', () => {
-                // ★★★ ここが修正点 ★★★
-                // SystemSceneを介さず、現在のシーンを直接リスタートする
-                // これにより、createメソッドが必ず再実行され、詰みセーブを回避できる
-                this.scene.start(this.scene.key, { params: this.receivedParams });
-            });
-        }
+    if (result === 'win') {
+        // 勝利時の処理は playFinishBlowEffects が担当するので、ここでは何もしない
+        return;
     }
+
+    // --- 敗北時の処理 ---
+    this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', { 
+        fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4 
+    }).setOrigin(0.5).setDepth(999);
+    
+    // ★★★ ここからが2択ボタンの実装 ★★★
+
+    // 1. 「このラウンドを再挑戦」ボタン
+    const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', { 
+        fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
+    }).setOrigin(0.5).setInteractive().setDepth(999);
+    
+ retryButton.on('pointerdown', () => {
+    const roundStartState = this.roundStartState;
+    if (roundStartState) {
+        // ★チェックポイントのデータを使ってsfとfを復元
+        this.stateManager.setSF('player_backpack', roundStartState.backpack);
+        this.stateManager.setSF('player_inventory', roundStartState.inventory);
+        this.stateManager.setSF('coins', roundStartState.coins); // コインを復元
+        this.stateManager.setF('player_hp', roundStartState.hp); // HPを復元
+        
+        console.log("ラウンド開始時の状態に復元してリトライします。");
+        this.scene.start(this.scene.key);
+    } else {
+        // チェックポイントがない（異常事態）場合は、安全に全リセット
+        console.error("チェックポイントが見つかりません。ゲームをリセットします。");
+        this.handleGameOver();
+    }
+});
+
+    // 2. 「はじめからやり直す」ボタン
+    const resetButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', { 
+        fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
+    }).setOrigin(0.5).setInteractive().setDepth(999);
+
+    resetButton.on('pointerdown', () => {
+        // 共通のゲームオーバー（全リセット）処理を呼び出す
+        resetButton.disableInteractive().setText('リセット中...');
+        this.handleGameOver();
+    });
+}
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
     // BattleScene.js にこの新しいメソッドを追加してください
@@ -1758,18 +1788,15 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
     const FINAL_ROUND = 10; // ★最終ラウンドを定義
 
     // ★★★ ここからが修正箇所 ★★★
-    // --- ゲームクリア判定 ---
     if (currentRound >= FINAL_ROUND) {
+        // --- ゲームクリア処理 ---
         console.log("★★★★ GAME CLEAR! ★★★★");
-        // 将来的には GameClearScene に遷移
-        // 今は暫定的にデータをリセットして最初から
-        this.stateManager.sf = {};
-        localStorage.removeItem('my_novel_engine_system');
-        this.stateManager.f = {};
-        this.scene.start(this.scene.key);
-        return; // これ以降の処理は行わない
-    }
-    // ★★★ 修正ここまで ★★★
+        this.add.text(this.scale.width/2, this.scale.height/2, 'GAME CLEAR!', {fontSize: '64px', fill: '#ffd700'}).setOrigin(0.5);
+
+        // クリア時もデータをリセットして「はじめから」に戻す
+        this.handleGameOver(); // 共通のゲームオーバー（リセット）処理を流用
+
+    } else {
 
             const finalBackpackData = {};
             this.placedItemImages.forEach((item, index) => {
@@ -1797,8 +1824,36 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
                 to: 'RewardScene',
                 from: this.scene.key
             });
+        }
         }, [], this);
     }
+    // BattleScene.js にこの新しいメソッドを追加してください
+
+/**
+ * ゲームオーバー処理を一元管理する
+ */
+handleGameOver() {
+    console.log("ゲームオーバー処理を開始します。");
+
+    // 1. 全てのデータをリセット
+    this.stateManager.setSF('player_backpack', {});
+    this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+    this.stateManager.setSF('round', 1);
+    this.stateManager.setSF('coins', 0); // ★コインを0にリセットし、HUD更新をトリガー
+    
+    // f変数もクリア
+    this.stateManager.f = {};
+    this.stateManager.setF('player_hp', 100);
+    this.stateManager.setF('player_max_hp', 100);
+
+    // 2. localStorageの物理削除は不要（setSFが上書き保存するため）
+
+    // 3. タイトル画面に戻るのが理想だが、今はリスタート
+    // 少しディレイを入れて、プレイヤーが何が起きたか認識する時間を与える
+    this.time.delayedCall(2000, () => {
+        this.scene.start('BattleScene');
+    }, [], this);
+}
     shutdown() {
         console.log("BattleScene: shutdown されました。");
     }
