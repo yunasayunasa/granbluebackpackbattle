@@ -850,7 +850,9 @@ if (elementCounts.dark >= 3) {
      * 現在のラウンドに応じて敵の盤面をセットアップする
      */
     // BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
-    setupEnemy(gridY) {
+// BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
+
+setupEnemy(gridY) {
     const gameWidth = this.scale.width;
     const gridWidth = this.backpackGridSize * this.cellSize;
     const enemyGridX = gameWidth - 100 - gridWidth;
@@ -860,51 +862,51 @@ if (elementCounts.dark >= 3) {
     this.enemyItemImages.forEach(item => item.destroy());
     this.enemyItemImages = [];
 
-    // ★★★ ここからが修正箇所 ★★★
     // EnemyGeneratorから現在のラウンドのレイアウトを取得
     const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
     console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
-    // ★★★ 修正箇所ここまで ★★★
-        for (const itemId in currentLayout) {
+
+    for (const itemId in currentLayout) {
+        const itemData = ITEM_DATA[itemId];
+        if (!itemData) continue;
+        const pos = currentLayout[itemId].pos;
+
+        const containerWidth = itemData.shape[0].length * this.cellSize;
+        
+        // ★★★ この一行を修正した、これが正しいコードです ★★★
+        const containerHeight = itemData.shape.length * this.cellSize;
+
+        const itemContainer = this.add.container(
+            enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
+            enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
+        ).setSize(containerWidth, containerHeight);
+        
+        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
+        const maskGraphics = this.add.graphics().setVisible(false);
+        recastOverlay.setMask(maskGraphics.createGeometryMask());
+        
+        itemContainer.add([itemImage, recastOverlay, maskGraphics]);
+        itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
+
+        if (itemData.recast > 0) { recastOverlay.setVisible(true); }
+
+        itemContainer.setDepth(3).setInteractive({ draggable: false });
+        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+            event.stopPropagation();
             const itemData = ITEM_DATA[itemId];
-            if (!itemData) continue;
-            const pos = currentLayout[itemId].pos;
-
-            const containerWidth = itemData.shape[0].length * this.cellSize;
-            // ★★★ この一行が修正された最終版です ★★★
-            const containerHeight = itemData.shape.length * this.cellSize;
-
-            const itemContainer = this.add.container(
-                enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
-                enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
-            ).setSize(containerWidth, containerHeight);
-
-            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
-            const maskGraphics = this.add.graphics().setVisible(false);
-            recastOverlay.setMask(maskGraphics.createGeometryMask());
-
-            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-            itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
-
-            if (itemData.recast > 0) { recastOverlay.setVisible(true); }
-
-            itemContainer.setDepth(3).setInteractive({ draggable: false });
-            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-                const itemData = ITEM_DATA[itemId];
-                if (!itemData) return;
-                let tooltipText = `【${itemId}】\n\n`;
-                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
-                if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-                if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
-                this.tooltip.show(itemContainer, tooltipText);
-                event.stopPropagation();
-            });
-
-            this.enemyItemImages.push(itemContainer);
-        }
+            if (!itemData) return;
+            let tooltipText = `【${itemId}】\n\n`;
+            if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+            if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+            if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+            if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
+            this.tooltip.show(itemContainer, tooltipText);
+        });
+        
+        this.enemyItemImages.push(itemContainer);
     }
+}
     // BattleScene.js の createItem メソッド (イベントリスナー完全版)
 
     // BattleScene.js にこの新しいメソッドを追加
