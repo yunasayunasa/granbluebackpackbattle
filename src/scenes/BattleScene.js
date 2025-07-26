@@ -581,7 +581,7 @@ if (elementCounts.dark >= 3) {
         this.enemyStats = {
             max_hp: enemyMaxHp, // ★追加
             hp: enemyMaxHp,
-            defense: 2,
+            defense: 0,
             block: 0,
             attack: 0
         };
