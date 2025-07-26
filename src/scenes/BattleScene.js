@@ -1524,7 +1524,7 @@ refreshShop() {
     this.shopItemSlots = [];
 
     const gameWidth = this.scale.width;
-    const inventoryAreaY = 450;
+    const inventoryAreaY = 480;
     const currentRound = this.initialBattleParams.round;
 
     // 1. ラウンドに応じた商品数を決定
@@ -1557,17 +1557,20 @@ refreshShop() {
     const itemSpacing = shopContentWidth / slotCount;
     const itemStartX = 100 + (itemSpacing / 2);
 
-    selectedItems.forEach((itemId, index) => {
+       selectedItems.forEach((itemId, index) => {
         const x = itemStartX + (index * itemSpacing);
-        const y = inventoryAreaY / 2;
+        const y = inventoryAreaY + inventoryAreaHeight / 2 - 20; // ★Y座標を中心に少し上に
         const itemData = ITEM_DATA[itemId];
         
-          // 1. slotContainerのサイズを定義
-        const slotWidth = 150;
-        const slotHeight = 250;
+       // --- ★★★ ここからがUIと入力の最終修正版 ★★★ ---
+
+        const slotWidth = 160;
+        const slotHeight = 200;
         const slotContainer = this.add.container(x, y);
-        // setSizeでインタラクション領域を設定しないと、中のボタンがクリックできない
+        
+        // 1. コンテナ自体にインタラクションとサイズを設定
         slotContainer.setSize(slotWidth, slotHeight);
+        slotContainer.setInteractive();
 
         this.shopContainer.add(slotContainer);
         this.shopItemSlots.push(slotContainer);
@@ -1580,12 +1583,35 @@ refreshShop() {
             const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
             itemImage.setScale(scale);
         }
+     
+           
+   slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
         
-        // ★画像にインタラクションを設定し、ツールチップを表示
-        itemImage.setInteractive();
-        itemImage.on('pointerdown', (pointer, localX, localY, event) => {
-            pointer.stopPropagation();
-            // 上で修正したツールチップ生成ロジックとほぼ同じ
+        // 3. 親コンテナの on('pointerdown') で全ての入力を処理
+        slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
+            // ★ event.stopPropagation() をここで呼ぶ
+            event.stopPropagation();
+            this.tooltip.hide(); // とりあえずツールチップは隠す
+
+            // 購入ボタンの領域（Y座標が70より下）がクリックされたか判定
+            if (localY > 70) {
+                // 購入処理
+                const currentCoins = this.stateManager.sf.coins || 0;
+                if (currentCoins >= itemData.cost) {
+                    this.stateManager.setSF('coins', currentCoins - itemData.cost);
+                    const currentInventory = this.stateManager.sf.player_inventory;
+                    currentInventory.push(itemId);
+                    this.stateManager.setSF('player_inventory', currentInventory);
+                    
+                    buyButtonText.setText('購入済み');
+                    buyButtonBg.setFillStyle(0x555555);
+                    slotContainer.removeInteractive(); // 一度買ったら反応しないようにする
+                } else {
+                    // コイン不足のフィードバック
+                    this.tweens.add({ targets: buyButtonBg, scaleX: 1.1, scaleY: 1.1, duration: 80, yoyo: true });
+                }
+            } else {
+                 // 上で修正したツールチップ生成ロジックとほぼ同じ
             const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
             let tooltipText = `【${itemId}】\n`;
             const sizeH = itemData.shape.length;
@@ -1596,33 +1622,8 @@ refreshShop() {
             if(itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`;}
             
             this.tooltip.show(itemImage, tooltipText);
-        });
-
-        // 2. テキストとボタンの位置を全体的に下にずらす
-        const nameText = this.add.text(0, 35, itemId, { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
-        const costText = this.add.text(0, 60, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700' }).setOrigin(0.5);
-        const buyButton = this.add.text(0, 95, '購入', { fontSize: '22px', backgroundColor: '#3399ff', padding: { x: 10, y: 5 } }).setOrigin(0.5);
-        buyButton.setInteractive();
-        
-        slotContainer.add([itemImage, nameText, costText, buyButton]);
-        
-        buyButton.on('pointerdown', (pointer, localX, localY, event) => {
-            pointer.stopPropagation();
-            this.tooltip.hide();
-            const currentCoins = this.stateManager.sf.coins || 0;
-            if (currentCoins >= itemData.cost) {
-                // 購入処理
-                this.stateManager.setSF('coins', currentCoins - itemData.cost);
-                const currentInventory = this.stateManager.sf.player_inventory;
-                currentInventory.push(itemId);
-                this.stateManager.setSF('player_inventory', currentInventory);
-                
-                // 購入済み表示
-                buyButton.setText('購入済み').disableInteractive();
-                card.setFillStyle(0x888888);
-            } else {
-                console.log("コインが足りません！");
-            }
+      
+     } // それ以外の場所（画像など）がクリックされたらツールチップを表示
         });
     });
 }
