@@ -946,30 +946,52 @@ create() {
             }
         }
         const index = this.inventoryItemImages.indexOf(itemContainer);
-        if (index > -1) this.inventoryItemImages.splice(index, 1);
+    if (index > -1) this.inventoryItemImages.splice(index, 1);
+    
+    // 配置済みリストに追加（重複しないように）
+    if (!this.placedItemImages.includes(itemContainer)) {
         this.placedItemImages.push(itemContainer);
-        this.updateArrowVisibility(itemContainer);
     }
 
-    removeItemFromBackpack(itemContainer) {
-        const gridPos = itemContainer.getData('gridPos');
-        if (!gridPos) return;
-        const itemId = itemContainer.getData('itemId');
-        const rotation = itemContainer.getData('rotation') || 0;
-        let shape = this.getRotatedShape(itemId, rotation);
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    this.backpack[gridPos.row + r][gridPos.col + c] = 0;
-                }
+    this.updateArrowVisibility(itemContainer);
+    
+    // ★★★ 修正箇所 ★★★
+    // アイテムが1つ減ったので、インベントリのレイアウトを更新する
+    this.updateInventoryLayout();
+}
+
+  // removeItemFromBackpack をこれに置き換え
+removeItemFromBackpack(itemContainer) {
+    const gridPos = itemContainer.getData('gridPos');
+    if (!gridPos) return;
+
+    const itemId = itemContainer.getData('itemId');
+    const rotation = itemContainer.getData('rotation') || 0;
+    let shape = this.getRotatedShape(itemId, rotation);
+    for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c] === 1) {
+                this.backpack[gridPos.row + r][gridPos.col + c] = 0;
             }
         }
-        itemContainer.setData('gridPos', null);
-        const index = this.placedItemImages.indexOf(itemContainer);
-        if (index > -1) this.placedItemImages.splice(index, 1);
-        this.inventoryItemImages.push(itemContainer);
-        this.updateArrowVisibility(itemContainer);
     }
+
+    itemContainer.setData('gridPos', null);
+    
+    const index = this.placedItemImages.indexOf(itemContainer);
+    if (index > -1) this.placedItemImages.splice(index, 1);
+    
+    // インベントリリストに追加（まだ重複の可能性がある）
+    if (!this.inventoryItemImages.includes(itemContainer)) {
+        this.inventoryItemImages.push(itemContainer);
+    }
+    
+    this.updateArrowVisibility(itemContainer);
+
+    // ★★★ 修正箇所 ★★★
+    // インベントリ全体のレイアウトを更新する
+    this.updateInventoryLayout();
+}
 
     // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
     getRotatedShape(itemId, rotation) {
@@ -1158,6 +1180,40 @@ create() {
             }
         });
     }
+
+    // BattleScene.js にこの新しいメソッドを追加してください
+/**
+ * インベントリ内のアイテムのレイアウトを更新し、再配置する
+ */
+updateInventoryLayout() {
+    const gameWidth = this.scale.width;
+    const inventoryAreaY = 520;
+    const inventoryAreaHeight = 500; // createから値を参照できないため、ここで仮定義
+
+    const inventoryContentWidth = gameWidth - 200;
+    const itemCount = this.inventoryItemImages.length;
+    if (itemCount === 0) return;
+
+    const itemSpacing = inventoryContentWidth / itemCount;
+    const itemStartX = 100 + (itemSpacing / 2);
+
+    this.inventoryItemImages.forEach((itemContainer, index) => {
+        const targetX = itemStartX + (index * itemSpacing);
+        const targetY = inventoryAreaY + 140; // createから値を参照できないため、ここで仮定義
+        
+        // 新しい「帰るべき場所」として origin データを更新
+        itemContainer.setData({ originX: targetX, originY: targetY });
+
+        // Tweenでスムーズに移動させる
+        this.tweens.add({
+            targets: itemContainer,
+            x: targetX,
+            y: targetY,
+            duration: 200,
+            ease: 'Power2'
+        });
+    });
+}
 
     // BattleScene.js にこの新しいメソッドを追加してください
     playAttackAnimation(sourceObject, attackerType) {
