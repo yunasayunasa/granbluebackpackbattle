@@ -148,9 +148,15 @@ export default class BattleScene extends Phaser.Scene {
         this.soundManager.playBgm('ronpa_bgm');
         this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
         this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
-        this.stateManager.setF('enemy_max_hp', 100);
-        this.stateManager.setF('enemy_hp', 100);
+        // in create()
+// ...
+const enemyBaseHp = 100;
+const enemyRoundBonus = (this.initialBattleParams.round - 1) * 20;
+const enemyFinalHp = enemyBaseHp + enemyRoundBonus;
 
+this.stateManager.setF('enemy_max_hp', enemyFinalHp); 
+this.stateManager.setF('enemy_hp', enemyFinalHp);
+        
         // --- 3a. 盤面レイアウトの計算と描画
         const gameWidth = this.scale.width;
         const gameHeight = this.scale.height;
