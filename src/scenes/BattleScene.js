@@ -52,6 +52,9 @@ export default class BattleScene extends Phaser.Scene {
         this.ghostImage = null;
         this.finalizedPlayerItems = [];
         this.roundStartState = null; 
+        this.shopContainer = null;      // ★ショップUI全体をまとめるコンテナ
+this.shopItemSlots = [];        // ★商品のスロット（カード）を保持する配列
+this.isShopVisible = false;    
     }
 
     // BattleScene.js の init をこれに置き換え
@@ -171,9 +174,36 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
     });
 
 
+// =================================================================
+// ★★★ STEP 4.5: ショップのセットアップ ★★★
+// =================================================================
+this.setupShop();
+
   // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
+   const shopToggleButton = this.add.text(gameWidth - 150, inventoryAreaY - 40, 'ショップ表示', { fontSize: '20px',
+    fill: '#ffdd00',
+    backgroundColor: '#000000aa',
+    padding: { x: 10, y: 5 }})
+    .setOrigin(0.5).setInteractive().setDepth(11);
+this.prepareContainer.add(shopToggleButton);
+
+shopToggleButton.on('pointerdown', () => {
+    this.isShopVisible = !this.isShopVisible;
+    if (this.isShopVisible) {
+        // インベントリアイテムを隠し、ショップを表示
+        this.inventoryItemImages.forEach(item => item.setVisible(false));
+        this.shopContainer.setVisible(true);
+        shopToggleButton.setText('インベントリ表示');
+        this.refreshShop(); // ★ショップを開くたびに品揃えを更新（しなくても良い、仕様による）
+    } else {
+        // ショップを隠し、インベントリアイテムを表示
+        this.shopContainer.setVisible(false);
+        this.inventoryItemImages.forEach(item => item.setVisible(true));
+        shopToggleButton.setText('ショップ表示');
+    }
+});
     // --- 5a. 暫定リセットボタン ---
 const resetButton = this.add.text(80, 40, '[ リセット ]', {
     fontSize: '20px',
@@ -1458,7 +1488,115 @@ updateInventoryLayout() {
             onComplete: () => healText.destroy()
         });
     }
+// BattleScene.js にこの2つのメソッドを追加
 
+/**
+ * ショップUIの骨格を作成する
+ */
+setupShop() {
+    const gameWidth = this.scale.width;
+    const inventoryAreaY = 520;
+    const inventoryAreaHeight = 500; // 仮
+
+    // ショップUI全体をまとめるコンテナ（最初は非表示）
+    this.shopContainer = this.add.container(0, 0).setVisible(false);
+    this.prepareContainer.add(this.shopContainer); // prepareContainerの子にする
+
+    // リロールボタン
+    const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY + 30, 'リロール (1 coin)', { /* ... style ... */})
+        .setOrigin(0.5).setInteractive().setDepth(12);
+    rerollButton.on('pointerdown', () => {
+        const rerollCost = 1;
+        const currentCoins = this.stateManager.sf.coins || 0;
+        if (currentCoins >= rerollCost) {
+            this.stateManager.setSF('coins', currentCoins - rerollCost);
+            this.refreshShop(); // 商品を再抽選
+        } else {
+            console.log("コインが足りません！"); // 将来的にはポップアップ表示
+        }
+    });
+    this.shopContainer.add(rerollButton);
+}
+
+/**
+ * ショップの商品を抽選し、表示を更新する
+ */
+refreshShop() {
+    // 既存の商品スロットをクリア
+    this.shopItemSlots.forEach(slot => slot.destroy());
+    this.shopItemSlots = [];
+
+    const gameWidth = this.scale.width;
+    const inventoryAreaY = 520;
+    const currentRound = this.initialBattleParams.round;
+
+    // 1. ラウンドに応じた商品数を決定
+    let slotCount = 3;
+    if (currentRound >= 5) slotCount = 4;
+    if (currentRound >= 8) slotCount = 5;
+
+    // 2. ラウンドに応じた抽選プールを作成
+    const fullPool = Object.keys(ITEM_DATA);
+    const shopPool = fullPool.filter(id => {
+        const item = ITEM_DATA[id];
+        if (!item.cost) return false; // 価格がないものは除外
+        
+        // ラウンドが進むにつれて高レアリティも抽選対象に加える
+        if (currentRound < 3 && item.rarity > 1) return false; //序盤はコモンのみ
+        if (currentRound < 6 && item.rarity > 2) return false; //中盤はアンコモンまで
+        return true;
+    });
+
+    // 3. 商品を抽選
+    const selectedItems = [];
+    for (let i = 0; i < slotCount; i++) {
+        if (shopPool.length === 0) break;
+        const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
+        selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
+    }
+
+    // 4. 商品スロットをUIに生成
+    const shopContentWidth = gameWidth - 200;
+    const itemSpacing = shopContentWidth / slotCount;
+    const itemStartX = 100 + (itemSpacing / 2);
+
+    selectedItems.forEach((itemId, index) => {
+        const x = itemStartX + (index * itemSpacing);
+        const y = inventoryAreaY + 140;
+        const itemData = ITEM_DATA[itemId];
+        
+        const slotContainer = this.add.container(x, y);
+        this.shopContainer.add(slotContainer);
+        this.shopItemSlots.push(slotContainer);
+
+        // カード、画像、テキストなどを生成
+        const card = this.add.rectangle(0, 0, 150, 200, 0xe0e0e0);
+        const itemImage = this.add.image(0, -30, itemData.storage);
+        // ... (画像のリサイズ処理) ...
+        const nameText = this.add.text(0, 50, itemId, { /* ... */ });
+        const costText = this.add.text(0, 80, `${itemData.cost} coins`, { /* ... */ });
+        const buyButton = this.add.text(0, 115, '購入', { /* ... */ }).setInteractive();
+        
+        slotContainer.add([card, itemImage, nameText, costText, buyButton]);
+
+        buyButton.on('pointerdown', () => {
+            const currentCoins = this.stateManager.sf.coins || 0;
+            if (currentCoins >= itemData.cost) {
+                // 購入処理
+                this.stateManager.setSF('coins', currentCoins - itemData.cost);
+                const currentInventory = this.stateManager.sf.player_inventory;
+                currentInventory.push(itemId);
+                this.stateManager.setSF('player_inventory', currentInventory);
+                
+                // 購入済み表示
+                buyButton.setText('購入済み').disableInteractive();
+                card.setFillStyle(0x888888);
+            } else {
+                console.log("コインが足りません！");
+            }
+        });
+    });
+}
   /*  // BattleScene.js にこの新しいメソッドを追加してください/**
  * トドメの一撃の演出を再生する (最終確定版)
  * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
