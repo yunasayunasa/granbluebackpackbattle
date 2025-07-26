@@ -1577,11 +1577,15 @@ refreshShop() {
 
         // 2. 各UI要素の座標を、slotContainerの中心(0,0)からの相対座標で指定
         const itemImage = this.add.image(0, -40, itemData.storage); // 上の方
-    // アスペクト比を保ったままリサイズ
-    if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
-        const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
-        itemImage.setScale(scale);
-    }
+    // 画像の表示領域サイズを定義
+const imageAreaWidth = 120;
+const imageAreaHeight = 100;
+
+// アスペクト比を保ったままリサイズ
+if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
+    const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
+    itemImage.setScale(scale);
+}
             const nameText = this.add.text(0, 40, itemId, { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
         const costText = this.add.text(0, 65, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700' }).setOrigin(0.5);
         
