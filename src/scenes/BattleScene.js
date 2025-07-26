@@ -610,33 +610,40 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
 /**
  * 現在のラウンドに応じて敵の盤面をセットアップする
  */
-setupEnemy(gridY) { // ★引数 gridY を追加
+// BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
+setupEnemy(gridY) {
     const gameWidth = this.scale.width;
     const gridWidth = this.backpackGridSize * this.cellSize;
     const enemyGridX = gameWidth - 100 - gridWidth;
-    const enemyGridY = gridY; // ★引数で受け取った値を使う
+    const enemyGridY = gridY;
+
     // 以前の敵オブジェクトが残っていれば全て破棄する
     this.enemyItemImages.forEach(item => item.destroy());
     this.enemyItemImages = [];
 
-    const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
-    const currentLayout = enemyLayouts[this.initialBattleParams.round] || {};
+    // ★将来的には、このenemyLayoutsをラウンドに応じて動的に生成する
+    const enemyLayouts = { 
+        1: { 'sword': { pos: [2, 2], angle: 0 } },
+        2: { 'berserker_axe': { pos: [1, 2], angle: 0 }, 'shield': { pos: [3, 3], angle: 0 } }
+    };
+    const currentLayout = enemyLayouts[this.initialBattleParams.round] || enemyLayouts[1]; // ラウンド2以降も仮で表示
 
     for (const itemId in currentLayout) {
-        // ... (敵アイテムのGameObjectを生成し、this.enemyItemImagesに追加するロジックは create からそのまま移動) ...
         const itemData = ITEM_DATA[itemId];
         if (!itemData) continue;
         const pos = currentLayout[itemId].pos;
+
         const containerWidth = itemData.shape[0].length * this.cellSize;
-          // ★★★ この一行を修正 ★★★
-        const containerHeight = itemData.shape.length * this.cellSize; // shape.length を使う     
-          const itemContainer = this.add.container(
+        // ★★★ この一行が修正された最終版です ★★★
+        const containerHeight = itemData.shape.length * this.cellSize;
+
+        const itemContainer = this.add.container(
             enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
             enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
         ).setSize(containerWidth, containerHeight);
         
-            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.3).setVisible(false);
+        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
         const maskGraphics = this.add.graphics().setVisible(false);
         recastOverlay.setMask(maskGraphics.createGeometryMask());
         
@@ -657,9 +664,9 @@ setupEnemy(gridY) { // ★引数 gridY を追加
             this.tooltip.show(itemContainer, tooltipText);
             event.stopPropagation();
         });
+        
         this.enemyItemImages.push(itemContainer);
     }
-   
 }
     // BattleScene.js の createItem メソッド (イベントリスナー完全版)
 
