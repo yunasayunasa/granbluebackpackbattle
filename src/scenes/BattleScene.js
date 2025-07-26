@@ -1892,7 +1892,7 @@ if (elementCounts.dark >= 3) {
         this.time.delayedCall(1500, () => {
             this.time.timeScale = 1.0;
             const currentRound = this.stateManager.sf.round || 1;
-            const FINAL_ROUND = 2; // ★最終ラウンドを定義
+            const FINAL_ROUND = 10; // ★最終ラウンドを定義
 
             // ★★★ ここからが修正箇所 ★★★
             if (currentRound >= FINAL_ROUND) {
