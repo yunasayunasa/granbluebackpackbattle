@@ -102,6 +102,25 @@ const initialPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.
 
 const round = this.stateManager.sf.round || 1;
 this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
+// ★★★ ここからが追加箇所 ★★★
+// --- 1c. ゲームオーバー判定
+// 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
+if (initialPlayerHp <= 0) {
+    console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
+    
+    // 将来的には GameOverScene に遷移する
+    // 今は暫定的に、データをリセットして同じバトルシーンを再起動する（はじめから）
+    this.stateManager.sf = {}; // メモリ上のsfをリセット
+    localStorage.removeItem('my_novel_engine_system'); // ストレージのsfをリセット
+    this.stateManager.f = {}; // メモリ上のfをリセット
+
+    // SystemSceneにタイトルへの復帰などを依頼するのが理想だが、今は直接リスタート
+    this.scene.start(this.scene.key);
+    
+    return; // create処理をここで中断
+}
+// ★★★ 追加ここまで ★★★
+
 
         // =================================================================
         // STEP 2: シーンのプロパティ初期化
@@ -1545,7 +1564,7 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
         const gameWidth = this.scale.width;
         const inventoryAreaY = 480; // UI領域の開始Y座標
         const inventoryAreaHeight = this.scale.height - inventoryAreaY; // UI領域の高さ
-        const currentRound = this.initialBattleParams.round;
+        const currentRound = this.initialBattleParams.round ||1;
 
         // --- 2. ラウンドに応じた商品数を決定 ---
         let slotCount = 3;
@@ -1735,6 +1754,22 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
         // 4. スローモーション解除とバトル終了処理
         this.time.delayedCall(1500, () => {
             this.time.timeScale = 1.0;
+// const currentRound = this.stateManager.sf.round || 1;
+    const FINAL_ROUND = 10; // ★最終ラウンドを定義
+
+    // ★★★ ここからが修正箇所 ★★★
+    // --- ゲームクリア判定 ---
+    if (currentRound >= FINAL_ROUND) {
+        console.log("★★★★ GAME CLEAR! ★★★★");
+        // 将来的には GameClearScene に遷移
+        // 今は暫定的にデータをリセットして最初から
+        this.stateManager.sf = {};
+        localStorage.removeItem('my_novel_engine_system');
+        this.stateManager.f = {};
+        this.scene.start(this.scene.key);
+        return; // これ以降の処理は行わない
+    }
+    // ★★★ 修正ここまで ★★★
 
             const finalBackpackData = {};
             this.placedItemImages.forEach((item, index) => {
@@ -1751,7 +1786,7 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
             // ★★★ ここからが追加箇所 ★★★
             // 3. コイン獲得処理
             const currentCoins = this.stateManager.sf.coins || 0;
-            const currentRound = this.stateManager.sf.round || 1;
+           // const currentRound = this.stateManager.sf.round || 1;
             const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
 
