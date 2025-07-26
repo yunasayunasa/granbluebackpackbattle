@@ -51,7 +51,7 @@ export default class BattleScene extends Phaser.Scene {
         this.battleEnded = false;
         this.ghostImage = null;
         this.finalizedPlayerItems = [];
-        this.roundStartState = null; /
+        this.roundStartState = null; 
     }
 
     // BattleScene.js の init をこれに置き換え
