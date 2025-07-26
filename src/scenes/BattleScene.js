@@ -1516,86 +1516,83 @@ setupShop() {
 }
 
 /**
- * ショップの商品を抽選し、表示を更新する
+ * ショップの商品を抽選し、表示を更新する (最終確定版)
  */
 refreshShop() {
-    // 既存の商品スロットをクリア
+    // 既存の商品スロットがあれば全て破棄してクリア
     this.shopItemSlots.forEach(slot => slot.destroy());
     this.shopItemSlots = [];
 
+    // --- 1. レイアウトとラウンド数の準備 ---
     const gameWidth = this.scale.width;
-    const inventoryAreaY = 480;
+    const inventoryAreaY = 480; // UI領域の開始Y座標
+    const inventoryAreaHeight = this.scale.height - inventoryAreaY; // UI領域の高さ
     const currentRound = this.initialBattleParams.round;
- const inventoryAreaHeight = this.scale.height - inventoryAreaY;
-    // 1. ラウンドに応じた商品数を決定
+
+    // --- 2. ラウンドに応じた商品数を決定 ---
     let slotCount = 3;
     if (currentRound >= 5) slotCount = 4;
     if (currentRound >= 8) slotCount = 5;
 
-    // 2. ラウンドに応じた抽選プールを作成
+    // --- 3. ラウンドに応じた抽選プールを作成 ---
     const fullPool = Object.keys(ITEM_DATA);
     const shopPool = fullPool.filter(id => {
         const item = ITEM_DATA[id];
-        if (!item.cost) return false; // 価格がないものは除外
-        
-        // ラウンドが進むにつれて高レアリティも抽選対象に加える
-        if (currentRound < 3 && item.rarity > 1) return false; //序盤はコモンのみ
-        if (currentRound < 6 && item.rarity > 2) return false; //中盤はアンコモンまで
+        if (!item.cost || !item.rarity) return false; // costとrarityがないアイテムは除外
+        if (currentRound < 3 && item.rarity > 1) return false;
+        if (currentRound < 6 && item.rarity > 2) return false;
         return true;
     });
 
-    // 3. 商品を抽選
+    // --- 4. 商品をランダムに抽選 ---
     const selectedItems = [];
-    for (let i = 0; i < slotCount; i++) {
-        if (shopPool.length === 0) break;
+    const rewardCount = Math.min(slotCount, shopPool.length); // プールが枯渇しないように
+    for (let i = 0; i < rewardCount; i++) {
         const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
         selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
     }
 
-    // 4. 商品スロットをUIに生成
+    // --- 5. 商品スロットをUIに生成 ---
     const shopContentWidth = gameWidth - 200;
     const itemSpacing = shopContentWidth / slotCount;
     const itemStartX = 100 + (itemSpacing / 2);
 
-       selectedItems.forEach((itemId, index) => {
+    selectedItems.forEach((itemId, index) => {
         const x = itemStartX + (index * itemSpacing);
-        const y = inventoryAreaY + inventoryAreaHeight / 2 - 20; // ★Y座標を中心に少し上に
+        const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
         const itemData = ITEM_DATA[itemId];
         
-       // --- ★★★ ここからがUIと入力の最終修正版 ★★★ ---
-
         const slotWidth = 160;
         const slotHeight = 200;
-        const slotContainer = this.add.container(x, y);
-        
-        // 1. コンテナ自体にインタラクションとサイズを設定
-        slotContainer.setSize(slotWidth, slotHeight);
-        slotContainer.setInteractive();
+        const slotContainer = this.add.container(x, y).setSize(slotWidth, slotHeight).setInteractive();
 
         this.shopContainer.add(slotContainer);
         this.shopItemSlots.push(slotContainer);
 
-           // 1. 画像の位置を少し上にし、サイズを小さくする
-        const itemImage = this.add.image(0, -60, itemData.storage).setInteractive();
-        const imageAreaWidth = 100; // 表示領域を少し小さく
+        // --- UI要素の生成 ---
+        const itemImage = this.add.image(0, -50, itemData.storage);
+        
+        const imageAreaWidth = 100;
         const imageAreaHeight = 80;
         if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
             const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
             itemImage.setScale(scale);
         }
-     
-           
-   slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
+
+        const nameText = this.add.text(0, 30, itemId, { fontSize: '20px', fill: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
+        const costText = this.add.text(0, 55, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
+        const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setStrokeStyle(2, 0xffffff);
+        const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
         
-        // 3. 親コンテナの on('pointerdown') で全ての入力を処理
+        slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
+        
+        // --- 入力処理をコンテナに集約 ---
         slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
-            // ★ event.stopPropagation() をここで呼ぶ
             event.stopPropagation();
-            this.tooltip.hide(); // とりあえずツールチップは隠す
+            this.tooltip.hide();
 
             // 購入ボタンの領域（Y座標が70より下）がクリックされたか判定
             if (localY > 70) {
-                // 購入処理
                 const currentCoins = this.stateManager.sf.coins || 0;
                 if (currentCoins >= itemData.cost) {
                     this.stateManager.setSF('coins', currentCoins - itemData.cost);
@@ -1605,28 +1602,28 @@ refreshShop() {
                     
                     buyButtonText.setText('購入済み');
                     buyButtonBg.setFillStyle(0x555555);
-                    slotContainer.removeInteractive(); // 一度買ったら反応しないようにする
+                    slotContainer.removeInteractive(); // 二重購入防止
                 } else {
-                    // コイン不足のフィードバック
+                    console.log("コインが足りません！");
                     this.tweens.add({ targets: buyButtonBg, scaleX: 1.1, scaleY: 1.1, duration: 80, yoyo: true });
                 }
             } else {
-                 // 上で修正したツールチップ生成ロジックとほぼ同じ
-            const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-            let tooltipText = `【${itemId}】\n`;
-            const sizeH = itemData.shape.length;
-            const sizeW = itemData.shape[0].length;
-            tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-            if(itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
-            if(itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
-            if(itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`;}
-            
-            this.tooltip.show(itemImage, tooltipText);
-      
-     } // それ以外の場所（画像など）がクリックされたらツールチップを表示
+                // 画像領域がクリックされたらツールチップを表示
+                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                let tooltipText = `【${itemId}】\n`;
+                const sizeH = itemData.shape.length;
+                const sizeW = itemData.shape[0].length;
+                tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+                if(itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
+                if(itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
+                if(itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`;}
+                
+                this.tooltip.show(slotContainer, tooltipText);
+            }
         });
     });
 }
+
   /*  // BattleScene.js にこの新しいメソッドを追加してください/**
  * トドメの一撃の演出を再生する (最終確定版)
  * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
