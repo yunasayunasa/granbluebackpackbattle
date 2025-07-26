@@ -693,6 +693,7 @@ if (elementCounts.dark >= 3) {
         // 2. 攻撃アクションの場合
         if (action.type === 'attack') {
             const totalAttack = action.value;
+                 const attackerStats = this[`${attacker}Stats`];
             // ★★★ ここからが追加箇所 ★★★
     // 【闇属性】背水効果の計算
     if (attacker === 'player' && itemData.tags.includes('dark') && attackerStats.darkResonanceLevel > 0) {
