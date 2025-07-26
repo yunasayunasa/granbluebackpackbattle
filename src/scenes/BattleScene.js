@@ -1432,104 +1432,83 @@ updateInventoryLayout() {
         });
     }
 
-    // BattleScene.js にこの新しいメソッドを追加してください
-    playFinishBlowEffects(targetAvatar) {
-        if (!targetAvatar) return;
+    // BattleScene.js にこの新しいメソッドを追加してください/**
+ * トドメの一撃の演出を再生する (最終確定版)
+ * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
+ */
+playFinishBlowEffects(targetAvatar) {
+    if (!targetAvatar) return;
 
-        // 1. スローモーション開始
-        this.time.timeScale = 0.2; // 時間の進みを1/5にする
+    // 1. スローモーション開始
+    this.time.timeScale = 0.2;
 
-        // 2. 派手な斬撃エフェクト（通常とは別）
-        const finishSlash = this.add.graphics().setDepth(2001); // スプライトより手前
-
+    // 2. 中央が太い斬撃エフェクト (Graphics)
+    const finishSlash = this.add.graphics().setDepth(2001);
     const centerX = this.scale.width / 2;
     const centerY = this.scale.height / 2;
     const lineLength = this.scale.width * 1.5;
-
-    // 線の始点と終点を定義
-    const p1 = new Phaser.Math.Vector2(-lineLength / 2, 0);
-    const p2 = new Phaser.Math.Vector2(lineLength / 2, 0);
-
-    // グラデーションを作成
-    // (x0, y0, x1, y1) はグラデーションの方向ベクトル
     const gradient = finishSlash.context.createLinearGradient(-lineLength/2, 0, lineLength/2, 0);
-    gradient.addColorStop(0,   'rgba(255, 255, 255, 0.0)'); // 端: 透明
-    gradient.addColorStop(0.4, 'rgba(255, 255, 180, 1.0)'); // 中央少し手前: 明るい黄色
-    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)'); // 中央: 純白
-    gradient.addColorStop(0.6, 'rgba(255, 255, 180, 1.0)'); // 中央少し先: 明るい黄色
-    gradient.addColorStop(1,   'rgba(255, 255, 255, 0.0)'); // 端: 透明
-
+    gradient.addColorStop(0,   'rgba(255, 255, 255, 0.0)');
+    gradient.addColorStop(0.4, 'rgba(255, 255, 180, 1.0)');
+    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)');
+    gradient.addColorStop(0.6, 'rgba(255, 255, 180, 1.0)');
+    gradient.addColorStop(1,   'rgba(255, 255, 255, 0.0)');
     finishSlash.fillStyle = gradient;
-    finishSlash.lineStyle(2, 0xffff00, 0.5); // 細い輪郭線
-
-    // 複数の三角形を組み合わせて「中央が太い線」を表現
+    finishSlash.lineStyle(2, 0xffff00, 0.5);
     finishSlash.beginPath();
-    finishSlash.moveTo(p1.x, p1.y - 4);
-    finishSlash.lineTo(p2.x, p2.y - 4);
-    finishSlash.lineTo(p2.x, p2.y + 4);
-    finishSlash.lineTo(p1.x, p1.y + 4);
+    finishSlash.moveTo(-lineLength / 2, -4);
+    finishSlash.lineTo(lineLength / 2, -4);
+    finishSlash.lineTo(lineLength / 2, 4);
+    finishSlash.lineTo(-lineLength / 2, 4);
     finishSlash.closePath();
     finishSlash.fillPath();
     finishSlash.strokePath();
-
     const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
     slashContainer.add(finishSlash);
-    
-    // 斬撃アニメーション
     this.tweens.add({
         targets: slashContainer,
         scale: { from: 0.3, to: 1.2 },
         alpha: { from: 1, to: 0 },
-        duration: 400, // 実時間
+        duration: 400,
         ease: 'Cubic.easeOut',
         onComplete: () => {
             slashContainer.destroy();
         }
     });
 
-
-    // =================================================================
     // 3. スプライトシートアニメーション
-    // =================================================================
     const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
-    const desiredWidth = targetAvatar.displayWidth * 2.5; // 通常より大きく派手に
+    const desiredWidth = targetAvatar.displayWidth * 2.5;
     effectSprite.setScale(desiredWidth / effectSprite.width);
     effectSprite.play('finish_anim');
     effectSprite.on('animationcomplete', () => {
         effectSprite.destroy();
     });
 
-        // 3. スローモーション解除とバトル終了処理
-        this.time.delayedCall(1500, () => { // 1.5秒後に実行
-            this.time.timeScale = 1.0; // 時間の進みを元に戻す
-          // 1. 現在の最終的な盤面を取得
-    const finalBackpackData = {};
-    this.placedItemImages.forEach((item, index) => {
-        const gridPos = item.getData('gridPos');
-        if (gridPos) {
-            finalBackpackData[`uid_${index}`] = {
-                itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-            };
-        }
-    });
-    const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-
-    // 2. StateManagerのsf変数を更新して永続化（セーブ）
-    this.stateManager.setSF('player_backpack', finalBackpackData);
-    this.stateManager.setSF('player_inventory', finalInventoryData);
-
-    // 3. ラウンド数を進める
-    const currentRound = this.stateManager.sf.round || 1;
-    this.stateManager.setSF('round', currentRound + 1);
-    
-    // 4. 現在のHPをf変数に保存（次のバトル開始時に読み込むため）
-    this.stateManager.setF('player_hp', this.playerStats.hp);
-
-    // 5. SystemSceneに報酬シーンへの遷移を依頼
-    this.scene.get('SystemScene').events.emit('request-scene-transition', {
-        to: 'RewardScene',
-        from: this.scene.key
-    });
+    // 4. スローモーション解除とバトル終了処理
+    this.time.delayedCall(1500, () => {
+        this.time.timeScale = 1.0;
+        
+        const finalBackpackData = {};
+        this.placedItemImages.forEach((item, index) => {
+            const gridPos = item.getData('gridPos');
+            if (gridPos) {
+                finalBackpackData[`uid_${index}`] = {
+                    itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                };
+            }
+        });
+        const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+        this.stateManager.setSF('player_backpack', finalBackpackData);
+        this.stateManager.setSF('player_inventory', finalInventoryData);
+        const currentRound = this.stateManager.sf.round || 1;
+        this.stateManager.setSF('round', currentRound + 1);
+        this.stateManager.setF('player_hp', this.playerStats.hp);
+        
+        this.scene.get('SystemScene').events.emit('request-scene-transition', {
+            to: 'RewardScene',
+            from: this.scene.key
+        });
     }, [], this);
 }
     shutdown() {
