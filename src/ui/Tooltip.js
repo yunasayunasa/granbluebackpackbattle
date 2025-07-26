@@ -17,7 +17,23 @@ export default class Tooltip extends Phaser.GameObjects.Container {
         
         scene.add.existing(this);
     }
+// in ui/Tooltip.js
 
+// 既存の show(target, text) メソッドの下に追加
+showAt(x, y, text) {
+    this.setText(text);
+    this.setVisible(true);
+    
+    // Y座標を基準に、ツールチップが画面外にはみ出さないように調整
+    const newY = y - this.height; // ツールチップをアンカーポイントの上に表示
+    this.setPosition(x - this.width / 2, newY);
+
+    // X座標も画面外にはみ出さないように
+    if (this.x < 0) this.x = 0;
+    if (this.x + this.width > this.scene.scale.width) {
+        this.x = this.scene.scale.width - this.width;
+    }
+}
     /**
      * ツールチップを表示または更新する
      * @param {Phaser.GameObjects.Image} target - タップされたアイテム

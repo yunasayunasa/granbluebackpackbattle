@@ -51,10 +51,10 @@ export default class BattleScene extends Phaser.Scene {
         this.battleEnded = false;
         this.ghostImage = null;
         this.finalizedPlayerItems = [];
-        this.roundStartState = null; 
+        this.roundStartState = null;
         this.shopContainer = null;      // ★ショップUI全体をまとめるコンテナ
-this.shopItemSlots = [];        // ★商品のスロット（カード）を保持する配列
-this.isShopVisible = false;    
+        this.shopItemSlots = [];        // ★商品のスロット（カード）を保持する配列
+        this.isShopVisible = false;
     }
 
     // BattleScene.js の init をこれに置き換え
@@ -65,250 +65,252 @@ this.isShopVisible = false;
         // 全ての初期化は create で行う。
         console.log("BattleScene: init (空)");
     }
-// BattleScene.js の create を、この最終確定版に置き換えてください
-create() {
-    console.log("BattleScene: create - データ永続化対応版 (sf)");
-const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
-    const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
-    this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
-        .setDisplaySize(this.scale.width, this.scale.height)
-        .setDepth(-1);
-    // =================================================================
-    // STEP 1: マネージャー取得とデータ準備
-    // =================================================================
-    this.stateManager = this.sys.registry.get('stateManager');
-    this.soundManager = this.sys.registry.get('soundManager');
-    this.tooltip = new Tooltip(this);
+    // BattleScene.js の create を、この最終確定版に置き換えてください
+    create() {
+        console.log("BattleScene: create - データ永続化対応版 (sf)");
+        const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
+        const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
+        this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
+            .setDisplaySize(this.scale.width, this.scale.height)
+            .setDepth(-1);
+        // =================================================================
+        // STEP 1: マネージャー取得とデータ準備
+        // =================================================================
+        this.stateManager = this.sys.registry.get('stateManager');
+        this.soundManager = this.sys.registry.get('soundManager');
+        this.tooltip = new Tooltip(this);
 
-    // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
-    if (this.stateManager.sf.player_backpack === undefined) {
-        this.stateManager.setSF('player_backpack', {});
-    }
-    if (this.stateManager.sf.player_inventory === undefined) {
-        this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-    }
-    const backpackData = this.stateManager.sf.player_backpack;
-    const inventoryData = this.stateManager.sf.player_inventory;
-
-    // --- 1b. 戦闘パラメータを決定
-    const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
-    const initialPlayerHp = this.stateManager.f.player_hp || initialPlayerMaxHp;
-    const round = this.stateManager.sf.round || 1;
-    this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
-
-
-    // =================================================================
-    // STEP 2: シーンのプロパティ初期化
-    // =================================================================
-    this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
-    this.finalizedPlayerItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
-    this.playerStats = {}; this.enemyStats = {};
-    this.battleEnded = false; this.gameState = 'prepare';
-    this.cameras.main.setBackgroundColor('#8a2be2');
-
-    // =================================================================
-    // STEP 3: グローバルな状態設定と基本描画
-    // =================================================================
-    this.soundManager.playBgm('ronpa_bgm');
-    this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
-    this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
-    this.stateManager.setF('enemy_max_hp', 100);
-    this.stateManager.setF('enemy_hp', 100);
-
-    // --- 3a. 盤面レイアウトの計算と描画
-    const gameWidth = this.scale.width;
-    const gameHeight = this.scale.height;
-    const gridWidth = this.backpackGridSize * this.cellSize;
-    const gridHeight = this.backpackGridSize * this.cellSize;
-    this.gridX = 100;
-    this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
-    this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
-    this.prepareContainer = this.add.container(0, 0);
-    this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
-
-    // --- 3b. グリッドとアバターの描画
-    this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
-    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,this.gridX,this.gridY+i*this.cellSize,this.gridX+gridWidth,this.gridY+i*this.cellSize,0x666666,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,this.gridX+i*this.cellSize,this.gridY,this.gridX+i*this.cellSize,this.gridY+gridHeight,0x666666,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
-    this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
-    const enemyGridX = gameWidth - 100 - gridWidth;
-    const enemyGridY = this.gridY; 
-    this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,enemyGridX,this.gridY+i*this.cellSize,enemyGridX+gridWidth,this.gridY+i*this.cellSize,0x888888,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,enemyGridX+i*this.cellSize,this.gridY,enemyGridX+i*this.cellSize,this.gridY+gridHeight,0x888888,0.5).setOrigin(0).setDepth(2); } // prettier-ignore
-    this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
-    const maxAvatarHeight = gridHeight * 0.8;
-    [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
-
-    // --- 3c. 敵アイテムの配置
-  // --- 3c. 敵アイテムの配置
-this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
-
-    // =================================================================
-    // STEP 4: プレイヤーのバックパックとインベントリの復元
-    // =================================================================
-    // --- 4a. バックパックのアイテムを復元
-    for (const uid in backpackData) {
-        const itemInfo = backpackData[uid];
-        const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
-        if (itemContainer) {
-            itemContainer.setData('rotation', itemInfo.rotation);
-            itemContainer.setAngle(itemInfo.rotation);
-            this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
+        // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
+        if (this.stateManager.sf.player_backpack === undefined) {
+            this.stateManager.setSF('player_backpack', {});
         }
-    }
-    // --- 4b. インベントリの描画とアイテム復元
-    const inventoryAreaY = 450;
-    const inventoryAreaHeight = gameHeight - inventoryAreaY;
-    const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
-    const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
-    this.prepareContainer.add([invBg, invText]);
-    
-    const inventoryContentWidth = gameWidth - 200;
-    const inventoryCount = inventoryData.length;
-    const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
-    const itemStartX = 100 + (itemSpacing / 2);
-    inventoryData.forEach((itemId, index) => {
-        const x = itemStartX + (index * itemSpacing);
-        const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
-        const itemContainer = this.createItem(itemId, x, y);
-        if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
-    });
-
-
-// =================================================================
-// ★★★ STEP 4.5: ショップのセットアップ ★★★
-// =================================================================
-this.setupShop();
-this.refreshShop();
-  // =================================================================
-    // STEP 5: イベントリスナーと完了通知
-    // =================================================================
-   const shopToggleButton = this.add.text(gameWidth - 640, inventoryAreaY - 400, 'ショップ表示', { fontSize: '20px',
-    fill: '#ffdd00',
-    backgroundColor: '#000000aa',
-    padding: { x: 10, y: 5 }})
-    .setOrigin(0.5).setInteractive().setDepth(11);
-this.prepareContainer.add(shopToggleButton);
-
-shopToggleButton.on('pointerdown', () => {
-    this.isShopVisible = !this.isShopVisible;
-    if (this.isShopVisible) {
-        // インベントリアイテムを隠し、ショップを表示
-        this.inventoryItemImages.forEach(item => item.setVisible(false));
-        this.shopContainer.setVisible(true);
-        shopToggleButton.setText('インベントリ表示');
-      //  this.refreshShop(); // ★ショップを開くたびに品揃えを更新（しなくても良い、仕様による）
-    } else {
-        // ショップを隠し、インベントリアイテムを表示
-        this.shopContainer.setVisible(false);
-        this.inventoryItemImages.forEach(item => item.setVisible(true));
-        shopToggleButton.setText('ショップ表示');
-    }
-});
-    // --- 5a. 暫定リセットボタン ---
-const resetButton = this.add.text(80, 40, '[ リセット ]', {
-    fontSize: '20px',
-    fill: '#ffdd00',
-    backgroundColor: '#000000aa',
-    padding: { x: 10, y: 5 }
-})
-.setOrigin(0.5)
-.setDepth(100)
-.setInteractive();
-
-resetButton.on('pointerdown', () => {
-    // 確認ダイアログを表示
-    if (window.confirm('本当にすべてのデータをリセットして最初から始めますか？')) {
-        // 1. StateManagerのsf変数を空にする
-        this.stateManager.sf = {};
-
-        // 2. localStorageからセーブデータを削除
-        localStorage.removeItem('my_novel_engine_system');
-        console.log("Save data has been reset.");
-
-        // 3. ページをリロードしてゲームを再起動
-        window.location.reload();
-    }
-});
-// ★★★ 追加ここまで ★★★
-
-    // --- 5a. 戦闘開始ボタン ★★★ このブロックが復活しました ★★★
-    this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:20, y:10} }).setOrigin(0.5).setInteractive().setDepth(11);
-    this.prepareContainer.add(this.startBattleButton);
-    
-   // create メソッド内の startBattleButton.on('pointerdown', ...) リスナーを、これに置き換えてください
-this.startBattleButton.on('pointerdown', () => {
-    if (this.gameState !== 'prepare') return;
-// ラウンド開始時の状態を「チェックポイント」としてメモリ上に保存する
-const initialBackpackData = {};
-this.placedItemImages.forEach((item, index) => {
-    const gridPos = item.getData('gridPos');
-    if (gridPos) {
-        initialBackpackData[`uid_${index}`] = {
-            itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-        };
-    }
-});
-const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-
-this.roundStartState = {
-    backpack: initialBackpackData,
-    inventory: initialInventoryData,
-    // 将来的にコインやHPもここに入れる
-    // coins: this.stateManager.sf.coins,
-    // hp: this.stateManager.f.player_hp
-};
-console.log("Round start state checkpoint created.", this.roundStartState);
-// ★★★ 修正箇所ここまで ★★★
-
-// --- 5c. 準備完了をSystemSceneに通知
-this.events.emit('scene-ready');
-console.log("BattleScene: create 完了");
-
-    // --- 戦闘開始処理 ---
-    this.gameState = 'battle';
-    this.prepareForBattle();
-    
-    // 全てのプレイヤーアイテムとボタンの入力を無効化
-    const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-    allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
-    this.startBattleButton.input.enabled = false;
-
-    // ★★★ ここからが修正点 ★★★
-    // prepareContainer (背景や文字) と inventoryItemImages (アイテム画像) の両方を消す
-    this.tweens.add({
-        targets: [this.prepareContainer, ...this.inventoryItemImages],
-        alpha: 0,
-        duration: 300,
-        onComplete: () => {
-            this.prepareContainer.setVisible(false);
-            // inventoryItemImages は Tween で alpha:0 になっているので、
-            // setVisible(false) は必須ではないが、念のためやっておくとより確実
-            this.inventoryItemImages.forEach(item => item.setVisible(false));
+        if (this.stateManager.sf.player_inventory === undefined) {
+            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
         }
-    });
-    
-    this.startBattle();
-});
+        const backpackData = this.stateManager.sf.player_backpack;
+        const inventoryData = this.stateManager.sf.player_inventory;
 
-    // --- 5b. グローバルクリック（ツールチップ非表示用）
-    this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
-this.anims.create({
-    key: 'impact_anim', // このアニメーションの名前
-    // 'effect_impact'のキーを持つスプライトシートの、0コマ目から7コマ目までを使う
-    frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }),
-    frameRate: 24, // 1秒間に24コマ再生
-    repeat: 0      // 繰り返し再生しない
-});
-this.anims.create({
-    key: 'finish_anim', // 新しいアニメーションキー
-    frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 15 }), // フレーム数を合わせる
-    frameRate: 30, // 少し速くして派手さを出す
-    repeat: 0
-});
-    // --- 5c. 準備完了をSystemSceneに通知
-    this.events.emit('scene-ready');
-    console.log("BattleScene: create 完了");
-}
+        // --- 1b. 戦闘パラメータを決定
+        const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
+        const initialPlayerHp = this.stateManager.f.player_hp || initialPlayerMaxHp;
+        const round = this.stateManager.sf.round || 1;
+        this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
+
+
+        // =================================================================
+        // STEP 2: シーンのプロパティ初期化
+        // =================================================================
+        this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
+        this.finalizedPlayerItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
+        this.playerStats = {}; this.enemyStats = {};
+        this.battleEnded = false; this.gameState = 'prepare';
+        this.cameras.main.setBackgroundColor('#8a2be2');
+
+        // =================================================================
+        // STEP 3: グローバルな状態設定と基本描画
+        // =================================================================
+        this.soundManager.playBgm('ronpa_bgm');
+        this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
+        this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
+        this.stateManager.setF('enemy_max_hp', 100);
+        this.stateManager.setF('enemy_hp', 100);
+
+        // --- 3a. 盤面レイアウトの計算と描画
+        const gameWidth = this.scale.width;
+        const gameHeight = this.scale.height;
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const gridHeight = this.backpackGridSize * this.cellSize;
+        this.gridX = 100;
+        this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
+        this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
+        this.prepareContainer = this.add.container(0, 0);
+        this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
+
+        // --- 3b. グリッドとアバターの描画
+        this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
+        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+        this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
+        const enemyGridX = gameWidth - 100 - gridWidth;
+        const enemyGridY = this.gridY;
+        this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
+        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+        this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
+        const maxAvatarHeight = gridHeight * 0.8;
+        [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
+
+        // --- 3c. 敵アイテムの配置
+        // --- 3c. 敵アイテムの配置
+        this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
+
+        // =================================================================
+        // STEP 4: プレイヤーのバックパックとインベントリの復元
+        // =================================================================
+        // --- 4a. バックパックのアイテムを復元
+        for (const uid in backpackData) {
+            const itemInfo = backpackData[uid];
+            const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
+            if (itemContainer) {
+                itemContainer.setData('rotation', itemInfo.rotation);
+                itemContainer.setAngle(itemInfo.rotation);
+                this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
+            }
+        }
+        // --- 4b. インベントリの描画とアイテム復元
+        const inventoryAreaY = 450;
+        const inventoryAreaHeight = gameHeight - inventoryAreaY;
+        const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
+        const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+        this.prepareContainer.add([invBg, invText]);
+
+        const inventoryContentWidth = gameWidth - 200;
+        const inventoryCount = inventoryData.length;
+        const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
+        const itemStartX = 100 + (itemSpacing / 2);
+        inventoryData.forEach((itemId, index) => {
+            const x = itemStartX + (index * itemSpacing);
+            const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
+            const itemContainer = this.createItem(itemId, x, y);
+            if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
+        });
+
+
+        // =================================================================
+        // ★★★ STEP 4.5: ショップのセットアップ ★★★
+        // =================================================================
+        this.setupShop();
+        this.refreshShop();
+        // =================================================================
+        // STEP 5: イベントリスナーと完了通知
+        // =================================================================
+        const shopToggleButton = this.add.text(gameWidth - 640, inventoryAreaY - 400, 'ショップ表示', {
+            fontSize: '20px',
+            fill: '#ffdd00',
+            backgroundColor: '#000000aa',
+            padding: { x: 10, y: 5 }
+        })
+            .setOrigin(0.5).setInteractive().setDepth(11);
+        this.prepareContainer.add(shopToggleButton);
+
+        shopToggleButton.on('pointerdown', () => {
+            this.isShopVisible = !this.isShopVisible;
+            if (this.isShopVisible) {
+                // インベントリアイテムを隠し、ショップを表示
+                this.inventoryItemImages.forEach(item => item.setVisible(false));
+                this.shopContainer.setVisible(true);
+                shopToggleButton.setText('インベントリ表示');
+                //  this.refreshShop(); // ★ショップを開くたびに品揃えを更新（しなくても良い、仕様による）
+            } else {
+                // ショップを隠し、インベントリアイテムを表示
+                this.shopContainer.setVisible(false);
+                this.inventoryItemImages.forEach(item => item.setVisible(true));
+                shopToggleButton.setText('ショップ表示');
+            }
+        });
+        // --- 5a. 暫定リセットボタン ---
+        const resetButton = this.add.text(80, 40, '[ リセット ]', {
+            fontSize: '20px',
+            fill: '#ffdd00',
+            backgroundColor: '#000000aa',
+            padding: { x: 10, y: 5 }
+        })
+            .setOrigin(0.5)
+            .setDepth(100)
+            .setInteractive();
+
+        resetButton.on('pointerdown', () => {
+            // 確認ダイアログを表示
+            if (window.confirm('本当にすべてのデータをリセットして最初から始めますか？')) {
+                // 1. StateManagerのsf変数を空にする
+                this.stateManager.sf = {};
+
+                // 2. localStorageからセーブデータを削除
+                localStorage.removeItem('my_novel_engine_system');
+                console.log("Save data has been reset.");
+
+                // 3. ページをリロードしてゲームを再起動
+                window.location.reload();
+            }
+        });
+        // ★★★ 追加ここまで ★★★
+
+        // --- 5a. 戦闘開始ボタン ★★★ このブロックが復活しました ★★★
+        this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
+        this.prepareContainer.add(this.startBattleButton);
+
+        // create メソッド内の startBattleButton.on('pointerdown', ...) リスナーを、これに置き換えてください
+        this.startBattleButton.on('pointerdown', () => {
+            if (this.gameState !== 'prepare') return;
+            // ラウンド開始時の状態を「チェックポイント」としてメモリ上に保存する
+            const initialBackpackData = {};
+            this.placedItemImages.forEach((item, index) => {
+                const gridPos = item.getData('gridPos');
+                if (gridPos) {
+                    initialBackpackData[`uid_${index}`] = {
+                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                    };
+                }
+            });
+            const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+
+            this.roundStartState = {
+                backpack: initialBackpackData,
+                inventory: initialInventoryData,
+                // 将来的にコインやHPもここに入れる
+                // coins: this.stateManager.sf.coins,
+                // hp: this.stateManager.f.player_hp
+            };
+            console.log("Round start state checkpoint created.", this.roundStartState);
+            // ★★★ 修正箇所ここまで ★★★
+
+            // --- 5c. 準備完了をSystemSceneに通知
+            this.events.emit('scene-ready');
+            console.log("BattleScene: create 完了");
+
+            // --- 戦闘開始処理 ---
+            this.gameState = 'battle';
+            this.prepareForBattle();
+
+            // 全てのプレイヤーアイテムとボタンの入力を無効化
+            const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
+            allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
+            this.startBattleButton.input.enabled = false;
+
+            // ★★★ ここからが修正点 ★★★
+            // prepareContainer (背景や文字) と inventoryItemImages (アイテム画像) の両方を消す
+            this.tweens.add({
+                targets: [this.prepareContainer, ...this.inventoryItemImages],
+                alpha: 0,
+                duration: 300,
+                onComplete: () => {
+                    this.prepareContainer.setVisible(false);
+                    // inventoryItemImages は Tween で alpha:0 になっているので、
+                    // setVisible(false) は必須ではないが、念のためやっておくとより確実
+                    this.inventoryItemImages.forEach(item => item.setVisible(false));
+                }
+            });
+
+            this.startBattle();
+        });
+
+        // --- 5b. グローバルクリック（ツールチップ非表示用）
+        this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
+        this.anims.create({
+            key: 'impact_anim', // このアニメーションの名前
+            // 'effect_impact'のキーを持つスプライトシートの、0コマ目から7コマ目までを使う
+            frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }),
+            frameRate: 24, // 1秒間に24コマ再生
+            repeat: 0      // 繰り返し再生しない
+        });
+        this.anims.create({
+            key: 'finish_anim', // 新しいアニメーションキー
+            frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 15 }), // フレーム数を合わせる
+            frameRate: 30, // 少し速くして派手さを出す
+            repeat: 0
+        });
+        // --- 5c. 準備完了をSystemSceneに通知
+        this.events.emit('scene-ready');
+        console.log("BattleScene: create 完了");
+    }
 
     // --- ヘルパーメソッド群 (ここから下はすべて完成版) ---
 
@@ -680,96 +682,96 @@ this.anims.create({
         }
     }
     // BattleScene.js の endBattle メソッドを、これに置き換えてください
-endBattle(result) {
-    if (this.battleEnded) return;
-    this.battleEnded = true;
-    console.log(`バトル終了。結果: ${result}`);
+    endBattle(result) {
+        if (this.battleEnded) return;
+        this.battleEnded = true;
+        console.log(`バトル終了。結果: ${result}`);
 
-    if (result === 'win') {
-        // 勝利時の処理は playFinishBlowEffects に移動したので、ここはシンプルにする
-        // もしスローモーションを使わない場合の勝利処理が必要ならここに書く
-    } else {
-        // 敗北時の処理
-        this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, 'GAME OVER', { 
-            fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4 
-        }).setOrigin(0.5).setDepth(999);
-        
-        const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 50, 'もう一度挑戦', { 
-            fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
-        }).setOrigin(0.5).setInteractive().setDepth(999);
-        
-        retryButton.on('pointerdown', () => { 
-            // ★★★ ここが修正点 ★★★
-            // SystemSceneを介さず、現在のシーンを直接リスタートする
-            // これにより、createメソッドが必ず再実行され、詰みセーブを回避できる
-            this.scene.start(this.scene.key, { params: this.receivedParams });
-        });
+        if (result === 'win') {
+            // 勝利時の処理は playFinishBlowEffects に移動したので、ここはシンプルにする
+            // もしスローモーションを使わない場合の勝利処理が必要ならここに書く
+        } else {
+            // 敗北時の処理
+            this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, 'GAME OVER', {
+                fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
+            }).setOrigin(0.5).setDepth(999);
+
+            const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 50, 'もう一度挑戦', {
+                fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
+            }).setOrigin(0.5).setInteractive().setDepth(999);
+
+            retryButton.on('pointerdown', () => {
+                // ★★★ ここが修正点 ★★★
+                // SystemSceneを介さず、現在のシーンを直接リスタートする
+                // これにより、createメソッドが必ず再実行され、詰みセーブを回避できる
+                this.scene.start(this.scene.key, { params: this.receivedParams });
+            });
+        }
     }
-}
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
-// BattleScene.js にこの新しいメソッドを追加してください
-/**
- * 現在のラウンドに応じて敵の盤面をセットアップする
- */
-// BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
-setupEnemy(gridY) {
-    const gameWidth = this.scale.width;
-    const gridWidth = this.backpackGridSize * this.cellSize;
-    const enemyGridX = gameWidth - 100 - gridWidth;
-    const enemyGridY = gridY;
+    // BattleScene.js にこの新しいメソッドを追加してください
+    /**
+     * 現在のラウンドに応じて敵の盤面をセットアップする
+     */
+    // BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
+    setupEnemy(gridY) {
+        const gameWidth = this.scale.width;
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const enemyGridX = gameWidth - 100 - gridWidth;
+        const enemyGridY = gridY;
 
-    // 以前の敵オブジェクトが残っていれば全て破棄する
-    this.enemyItemImages.forEach(item => item.destroy());
-    this.enemyItemImages = [];
+        // 以前の敵オブジェクトが残っていれば全て破棄する
+        this.enemyItemImages.forEach(item => item.destroy());
+        this.enemyItemImages = [];
 
-    // ★将来的には、このenemyLayoutsをラウンドに応じて動的に生成する
-    const enemyLayouts = { 
-        1: { 'sword': { pos: [2, 2], angle: 0 } },
-        2: { 'berserker_axe': { pos: [1, 2], angle: 0 }, 'shield': { pos: [3, 3], angle: 0 } }
-    };
-    const currentLayout = enemyLayouts[this.initialBattleParams.round] || enemyLayouts[1]; // ラウンド2以降も仮で表示
+        // ★将来的には、このenemyLayoutsをラウンドに応じて動的に生成する
+        const enemyLayouts = {
+            1: { 'sword': { pos: [2, 2], angle: 0 } },
+            2: { 'berserker_axe': { pos: [1, 2], angle: 0 }, 'shield': { pos: [3, 3], angle: 0 } }
+        };
+        const currentLayout = enemyLayouts[this.initialBattleParams.round] || enemyLayouts[1]; // ラウンド2以降も仮で表示
 
-    for (const itemId in currentLayout) {
-        const itemData = ITEM_DATA[itemId];
-        if (!itemData) continue;
-        const pos = currentLayout[itemId].pos;
-
-        const containerWidth = itemData.shape[0].length * this.cellSize;
-        // ★★★ この一行が修正された最終版です ★★★
-        const containerHeight = itemData.shape.length * this.cellSize;
-
-        const itemContainer = this.add.container(
-            enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
-            enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
-        ).setSize(containerWidth, containerHeight);
-        
-        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
-        const maskGraphics = this.add.graphics().setVisible(false);
-        recastOverlay.setMask(maskGraphics.createGeometryMask());
-        
-        itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-        itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
-
-        if (itemData.recast > 0) { recastOverlay.setVisible(true); }
-
-        itemContainer.setDepth(3).setInteractive({ draggable: false });
-        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+        for (const itemId in currentLayout) {
             const itemData = ITEM_DATA[itemId];
-            if (!itemData) return;
-            let tooltipText = `【${itemId}】\n\n`;
-            if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-            if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
-            if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-            if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
-            this.tooltip.show(itemContainer, tooltipText);
-            event.stopPropagation();
-        });
-        
-        this.enemyItemImages.push(itemContainer);
+            if (!itemData) continue;
+            const pos = currentLayout[itemId].pos;
+
+            const containerWidth = itemData.shape[0].length * this.cellSize;
+            // ★★★ この一行が修正された最終版です ★★★
+            const containerHeight = itemData.shape.length * this.cellSize;
+
+            const itemContainer = this.add.container(
+                enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
+                enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
+            ).setSize(containerWidth, containerHeight);
+
+            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
+            const maskGraphics = this.add.graphics().setVisible(false);
+            recastOverlay.setMask(maskGraphics.createGeometryMask());
+
+            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
+            itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
+
+            if (itemData.recast > 0) { recastOverlay.setVisible(true); }
+
+            itemContainer.setDepth(3).setInteractive({ draggable: false });
+            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+                const itemData = ITEM_DATA[itemId];
+                if (!itemData) return;
+                let tooltipText = `【${itemId}】\n\n`;
+                if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+                if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+                if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+                if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
+                this.tooltip.show(itemContainer, tooltipText);
+                event.stopPropagation();
+            });
+
+            this.enemyItemImages.push(itemContainer);
+        }
     }
-}
     // BattleScene.js の createItem メソッド (イベントリスナー完全版)
 
 
@@ -925,21 +927,21 @@ setupEnemy(gridY) {
 
                 // --- ★★★ ツールチップ生成ロジック Start ★★★ ---
 
-                 // --- ★★★ ツールチップ生成ロジック Start (改) ★★★ ---
-    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-    let tooltipText = `【${itemId}】\n`;
+                // --- ★★★ ツールチップ生成ロジック Start (改) ★★★ ---
+                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                let tooltipText = `【${itemId}】\n`;
 
-    // 属性の表示
-    const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-    if (itemElements.length > 0) {
-        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-    }
-    
-    // ★追加: サイズの表示
-    const sizeH = baseItemData.shape.length;
-    const sizeW = baseItemData.shape[0].length;
-    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-              
+                // 属性の表示
+                const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+                if (itemElements.length > 0) {
+                    tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
+                }
+
+                // ★追加: サイズの表示
+                const sizeH = baseItemData.shape.length;
+                const sizeW = baseItemData.shape[0].length;
+                tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+
 
                 // Recast
                 if (baseItemData.recast && baseItemData.recast > 0) {
@@ -971,7 +973,7 @@ setupEnemy(gridY) {
                     tooltipText += `    効果: ${effectType} +${effect.value}\n`;
                 }
 
-               
+
                 // --- ★★★ ツールチップ生成ロジック End ★★★ ---
 
                 this.tooltip.show(itemContainer, tooltipText);
@@ -1072,52 +1074,52 @@ setupEnemy(gridY) {
             }
         }
         const index = this.inventoryItemImages.indexOf(itemContainer);
-    if (index > -1) this.inventoryItemImages.splice(index, 1);
-    
-    // 配置済みリストに追加（重複しないように）
-    if (!this.placedItemImages.includes(itemContainer)) {
-        this.placedItemImages.push(itemContainer);
+        if (index > -1) this.inventoryItemImages.splice(index, 1);
+
+        // 配置済みリストに追加（重複しないように）
+        if (!this.placedItemImages.includes(itemContainer)) {
+            this.placedItemImages.push(itemContainer);
+        }
+
+        this.updateArrowVisibility(itemContainer);
+
+        // ★★★ 修正箇所 ★★★
+        // アイテムが1つ減ったので、インベントリのレイアウトを更新する
+        this.updateInventoryLayout();
     }
 
-    this.updateArrowVisibility(itemContainer);
-    
-    // ★★★ 修正箇所 ★★★
-    // アイテムが1つ減ったので、インベントリのレイアウトを更新する
-    this.updateInventoryLayout();
-}
+    // removeItemFromBackpack をこれに置き換え
+    removeItemFromBackpack(itemContainer) {
+        const gridPos = itemContainer.getData('gridPos');
+        if (!gridPos) return;
 
-  // removeItemFromBackpack をこれに置き換え
-removeItemFromBackpack(itemContainer) {
-    const gridPos = itemContainer.getData('gridPos');
-    if (!gridPos) return;
-
-    const itemId = itemContainer.getData('itemId');
-    const rotation = itemContainer.getData('rotation') || 0;
-    let shape = this.getRotatedShape(itemId, rotation);
-    for (let r = 0; r < shape.length; r++) {
-        for (let c = 0; c < shape[r].length; c++) {
-            if (shape[r][c] === 1) {
-                this.backpack[gridPos.row + r][gridPos.col + c] = 0;
+        const itemId = itemContainer.getData('itemId');
+        const rotation = itemContainer.getData('rotation') || 0;
+        let shape = this.getRotatedShape(itemId, rotation);
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] === 1) {
+                    this.backpack[gridPos.row + r][gridPos.col + c] = 0;
+                }
             }
         }
-    }
 
-    itemContainer.setData('gridPos', null);
-    
-    const index = this.placedItemImages.indexOf(itemContainer);
-    if (index > -1) this.placedItemImages.splice(index, 1);
-    
-    // インベントリリストに追加（まだ重複の可能性がある）
-    if (!this.inventoryItemImages.includes(itemContainer)) {
-        this.inventoryItemImages.push(itemContainer);
-    }
-    
-    this.updateArrowVisibility(itemContainer);
+        itemContainer.setData('gridPos', null);
 
-    // ★★★ 修正箇所 ★★★
-    // インベントリ全体のレイアウトを更新する
-    this.updateInventoryLayout();
-}
+        const index = this.placedItemImages.indexOf(itemContainer);
+        if (index > -1) this.placedItemImages.splice(index, 1);
+
+        // インベントリリストに追加（まだ重複の可能性がある）
+        if (!this.inventoryItemImages.includes(itemContainer)) {
+            this.inventoryItemImages.push(itemContainer);
+        }
+
+        this.updateArrowVisibility(itemContainer);
+
+        // ★★★ 修正箇所 ★★★
+        // インベントリ全体のレイアウトを更新する
+        this.updateInventoryLayout();
+    }
 
     // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
     getRotatedShape(itemId, rotation) {
@@ -1191,158 +1193,158 @@ removeItemFromBackpack(itemContainer) {
         } else {
             arrowContainer.setVisible(false);
         }
-        }
-
-// playDamageEffects を、この構文修正済みのバージョンに置き換えてください
-
-/**
- * ダメージ発生時のすべての視覚エfectsを再生する (スプライトシート版)
- * @param {string} targetSide - 'player' または 'enemy'
- * @param {number} amount - ダメージ量
- */
-playDamageEffects(targetSide, amount) {
-    if (amount <= 0) return;
-    
-    const damage = Math.floor(amount);
-    const targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
-    if (!targetAvatar) return;
-
-    // --- 1. ダメージ数字のポップアップ ---
-    let fontSize = 24;
-    let fill = '#ffffff';
-    let stroke = '#000000';
-    let strokeThickness = 4;
-    if (damage >= 50) {
-        fontSize = 48;
-        fill = '#ff0000';
-        stroke = '#ffffff';
-        strokeThickness = 6;
-    } else if (damage >= 20) {
-        fontSize = 36;
-        fill = '#ffdd00';
     }
-    const damageText = this.add.text(0, 0, damage.toString(), {
-        fontSize: `${fontSize}px`, fill, stroke, strokeThickness, fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(1002);
-    
-    const initialX = targetAvatar.x;
-    const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
-    damageText.setPosition(initialX, initialY);
-    this.tweens.add({
-        targets: damageText,
-        x: initialX + Phaser.Math.Between(-40, 40),
-        y: initialY - 100,
-        alpha: 0,
-        duration: 1500,
-        ease: 'Power1',
-        onComplete: () => damageText.destroy()
-    });
 
-    // --- 2. 画面シェイク ---
-    const shakeIntensity = Math.min(0.015, 0.002 + damage * 0.0002);
-    const shakeDuration = Math.min(200, 100 + damage * 2);
-    this.cameras.main.shake(shakeDuration, shakeIntensity);
+    // playDamageEffects を、この構文修正済みのバージョンに置き換えてください
 
-    // --- 3. 赤点滅ティント ---
-    let blinkCount = 0;
-    targetAvatar.clearTint();
-    const blinkTimer = this.time.addEvent({
-        delay: 80,
-        callback: () => {
-            if (targetAvatar && targetAvatar.active) {
-                targetAvatar.setTint(blinkCount % 2 === 0 ? 0xff0000 : 0xffffff);
-                blinkCount++;
-            }
-        },
-        repeat: 3,
-        callbackScope: this
-    });
-    this.time.delayedCall(80 * 4 + 10, () => {
-        if (targetAvatar && targetAvatar.active) targetAvatar.clearTint();
-        if (blinkTimer) blinkTimer.remove();
-    });
+    /**
+     * ダメージ発生時のすべての視覚エfectsを再生する (スプライトシート版)
+     * @param {string} targetSide - 'player' または 'enemy'
+     * @param {number} amount - ダメージ量
+     */
+    playDamageEffects(targetSide, amount) {
+        if (amount <= 0) return;
 
-    // --- 4. 斬撃ラインエフェクト (復活) ---
-    const slashGraphics = this.add.graphics().setDepth(1001); // 煙より手前
-    slashGraphics.lineStyle(8, 0xffffff, 1.0); // 太い白線
+        const damage = Math.floor(amount);
+        const targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
+        if (!targetAvatar) return;
 
-    const lineLength = targetAvatar.displayWidth * 1.2;
-    const centerX = targetAvatar.x;
-    const centerY = targetAvatar.y;
-
-    const slashContainer = this.add.container(centerX, centerY).setDepth(1001);
-    slashContainer.add(slashGraphics);
-
-    // 2本の線を交差させて描画
-    slashGraphics.beginPath();
-    slashGraphics.moveTo(-lineLength / 2, -lineLength / 2);
-    slashGraphics.lineTo(lineLength / 2, lineLength / 2);
-    slashGraphics.moveTo(lineLength / 2, -lineLength / 2);
-    slashGraphics.lineTo(-lineLength / 2, lineLength / 2);
-    slashGraphics.strokePath();
-
-    slashContainer.setAlpha(0.8);
-    slashContainer.setScale(0.3);
-    slashContainer.setAngle(Phaser.Math.DegToRad(Phaser.Math.Between(-25, 25)));
-
-    this.tweens.add({
-        targets: slashContainer,
-        scale: 1.0,
-        alpha: 0,
-        duration: 250,
-        ease: 'Cubic.easeOut',
-        onComplete: () => {
-            slashContainer.destroy();
+        // --- 1. ダメージ数字のポップアップ ---
+        let fontSize = 24;
+        let fill = '#ffffff';
+        let stroke = '#000000';
+        let strokeThickness = 4;
+        if (damage >= 50) {
+            fontSize = 48;
+            fill = '#ff0000';
+            stroke = '#ffffff';
+            strokeThickness = 6;
+        } else if (damage >= 20) {
+            fontSize = 36;
+            fill = '#ffdd00';
         }
-    });
+        const damageText = this.add.text(0, 0, damage.toString(), {
+            fontSize: `${fontSize}px`, fill, stroke, strokeThickness, fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(1002);
 
-    // --- 5. スプライトシートによるインパクトアニメーション (サイズ調整付き) ---
-    const effectSprite = this.add.sprite(centerX, centerY, 'effect_impact').setDepth(1000); // 斬撃より奥
-    
-    // アバターの表示幅を基準に、エフェクトのスケールを動的に調整
-    // (例: エフェクトの幅がアバターの幅の1.5倍になるように)
-    const desiredWidth = targetAvatar.displayWidth * 1.5;
-    const scale = desiredWidth / effectSprite.width;
-    effectSprite.setScale(scale);
-    
-    effectSprite.play('impact_anim');
-    effectSprite.on('animationcomplete', () => {
-        effectSprite.destroy();
-    });
-}
-      // BattleScene.js にこの新しいメソッドを追加してください
-/**
- * インベントリ内のアイテムのレイアウトを更新し、再配置する
- */
-updateInventoryLayout() {
-    const gameWidth = this.scale.width;
-    const inventoryAreaY = 520;
-    const inventoryAreaHeight = 500; // createから値を参照できないため、ここで仮定義
-
-    const inventoryContentWidth = gameWidth - 200;
-    const itemCount = this.inventoryItemImages.length;
-    if (itemCount === 0) return;
-
-    const itemSpacing = inventoryContentWidth / itemCount;
-    const itemStartX = 100 + (itemSpacing / 2);
-
-    this.inventoryItemImages.forEach((itemContainer, index) => {
-        const targetX = itemStartX + (index * itemSpacing);
-        const targetY = inventoryAreaY + 140; // createから値を参照できないため、ここで仮定義
-        
-        // 新しい「帰るべき場所」として origin データを更新
-        itemContainer.setData({ originX: targetX, originY: targetY });
-
-        // Tweenでスムーズに移動させる
+        const initialX = targetAvatar.x;
+        const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
+        damageText.setPosition(initialX, initialY);
         this.tweens.add({
-            targets: itemContainer,
-            x: targetX,
-            y: targetY,
-            duration: 200,
-            ease: 'Power2'
+            targets: damageText,
+            x: initialX + Phaser.Math.Between(-40, 40),
+            y: initialY - 100,
+            alpha: 0,
+            duration: 1500,
+            ease: 'Power1',
+            onComplete: () => damageText.destroy()
         });
-    });
-}
+
+        // --- 2. 画面シェイク ---
+        const shakeIntensity = Math.min(0.015, 0.002 + damage * 0.0002);
+        const shakeDuration = Math.min(200, 100 + damage * 2);
+        this.cameras.main.shake(shakeDuration, shakeIntensity);
+
+        // --- 3. 赤点滅ティント ---
+        let blinkCount = 0;
+        targetAvatar.clearTint();
+        const blinkTimer = this.time.addEvent({
+            delay: 80,
+            callback: () => {
+                if (targetAvatar && targetAvatar.active) {
+                    targetAvatar.setTint(blinkCount % 2 === 0 ? 0xff0000 : 0xffffff);
+                    blinkCount++;
+                }
+            },
+            repeat: 3,
+            callbackScope: this
+        });
+        this.time.delayedCall(80 * 4 + 10, () => {
+            if (targetAvatar && targetAvatar.active) targetAvatar.clearTint();
+            if (blinkTimer) blinkTimer.remove();
+        });
+
+        // --- 4. 斬撃ラインエフェクト (復活) ---
+        const slashGraphics = this.add.graphics().setDepth(1001); // 煙より手前
+        slashGraphics.lineStyle(8, 0xffffff, 1.0); // 太い白線
+
+        const lineLength = targetAvatar.displayWidth * 1.2;
+        const centerX = targetAvatar.x;
+        const centerY = targetAvatar.y;
+
+        const slashContainer = this.add.container(centerX, centerY).setDepth(1001);
+        slashContainer.add(slashGraphics);
+
+        // 2本の線を交差させて描画
+        slashGraphics.beginPath();
+        slashGraphics.moveTo(-lineLength / 2, -lineLength / 2);
+        slashGraphics.lineTo(lineLength / 2, lineLength / 2);
+        slashGraphics.moveTo(lineLength / 2, -lineLength / 2);
+        slashGraphics.lineTo(-lineLength / 2, lineLength / 2);
+        slashGraphics.strokePath();
+
+        slashContainer.setAlpha(0.8);
+        slashContainer.setScale(0.3);
+        slashContainer.setAngle(Phaser.Math.DegToRad(Phaser.Math.Between(-25, 25)));
+
+        this.tweens.add({
+            targets: slashContainer,
+            scale: 1.0,
+            alpha: 0,
+            duration: 250,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                slashContainer.destroy();
+            }
+        });
+
+        // --- 5. スプライトシートによるインパクトアニメーション (サイズ調整付き) ---
+        const effectSprite = this.add.sprite(centerX, centerY, 'effect_impact').setDepth(1000); // 斬撃より奥
+
+        // アバターの表示幅を基準に、エフェクトのスケールを動的に調整
+        // (例: エフェクトの幅がアバターの幅の1.5倍になるように)
+        const desiredWidth = targetAvatar.displayWidth * 1.5;
+        const scale = desiredWidth / effectSprite.width;
+        effectSprite.setScale(scale);
+
+        effectSprite.play('impact_anim');
+        effectSprite.on('animationcomplete', () => {
+            effectSprite.destroy();
+        });
+    }
+    // BattleScene.js にこの新しいメソッドを追加してください
+    /**
+     * インベントリ内のアイテムのレイアウトを更新し、再配置する
+     */
+    updateInventoryLayout() {
+        const gameWidth = this.scale.width;
+        const inventoryAreaY = 520;
+        const inventoryAreaHeight = 500; // createから値を参照できないため、ここで仮定義
+
+        const inventoryContentWidth = gameWidth - 200;
+        const itemCount = this.inventoryItemImages.length;
+        if (itemCount === 0) return;
+
+        const itemSpacing = inventoryContentWidth / itemCount;
+        const itemStartX = 100 + (itemSpacing / 2);
+
+        this.inventoryItemImages.forEach((itemContainer, index) => {
+            const targetX = itemStartX + (index * itemSpacing);
+            const targetY = inventoryAreaY + 140; // createから値を参照できないため、ここで仮定義
+
+            // 新しい「帰るべき場所」として origin データを更新
+            itemContainer.setData({ originX: targetX, originY: targetY });
+
+            // Tweenでスムーズに移動させる
+            this.tweens.add({
+                targets: itemContainer,
+                x: targetX,
+                y: targetY,
+                duration: 200,
+                ease: 'Power2'
+            });
+        });
+    }
 
     // BattleScene.js にこの新しいメソッドを追加してください
     playAttackAnimation(sourceObject, attackerType) {
@@ -1485,241 +1487,261 @@ updateInventoryLayout() {
             onComplete: () => healText.destroy()
         });
     }
-// BattleScene.js にこの2つのメソッドを追加
+    // BattleScene.js にこの2つのメソッドを追加
 
-/**
- * ショップUIの骨格を作成する
- */
-setupShop() {
-    const gameWidth = this.scale.width;
-    const inventoryAreaY = 520;
-    const inventoryAreaHeight = 500; // 仮
+    /**
+     * ショップUIの骨格を作成する
+     */
+    setupShop() {
+        const gameWidth = this.scale.width;
+        const inventoryAreaY = 520;
+        const inventoryAreaHeight = 500; // 仮
 
-    // ショップUI全体をまとめるコンテナ（最初は非表示）
-    this.shopContainer = this.add.container(0, 0).setVisible(false);
-    this.prepareContainer.add(this.shopContainer); // prepareContainerの子にする
+        // ショップUI全体をまとめるコンテナ（最初は非表示）
+        this.shopContainer = this.add.container(0, 0).setVisible(false);
+        this.prepareContainer.add(this.shopContainer); // prepareContainerの子にする
 
-    // リロールボタン
-    const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY + 30, 'リロール (1 coin)', { /* ... style ... */})
-        .setOrigin(0.5).setInteractive().setDepth(12);
-    rerollButton.on('pointerdown', () => {
-        const rerollCost = 1;
-        const currentCoins = this.stateManager.sf.coins || 0;
-        if (currentCoins >= rerollCost) {
-            this.stateManager.setSF('coins', currentCoins - rerollCost);
-            this.refreshShop(); // 商品を再抽選
-        } else {
-            console.log("コインが足りません！"); // 将来的にはポップアップ表示
-        }
-    });
-    this.shopContainer.add(rerollButton);
-}
-
-/**
- * ショップの商品を抽選し、表示を更新する (最終確定版)
- */
-refreshShop() {
-    // 既存の商品スロットがあれば全て破棄してクリア
-    this.shopItemSlots.forEach(slot => slot.destroy());
-    this.shopItemSlots = [];
-
-    // --- 1. レイアウトとラウンド数の準備 ---
-    const gameWidth = this.scale.width;
-    const inventoryAreaY = 480; // UI領域の開始Y座標
-    const inventoryAreaHeight = this.scale.height - inventoryAreaY; // UI領域の高さ
-    const currentRound = this.initialBattleParams.round;
-
-    // --- 2. ラウンドに応じた商品数を決定 ---
-    let slotCount = 3;
-    if (currentRound >= 5) slotCount = 4;
-    if (currentRound >= 8) slotCount = 5;
-
-    // --- 3. ラウンドに応じた抽選プールを作成 ---
-    const fullPool = Object.keys(ITEM_DATA);
-    const shopPool = fullPool.filter(id => {
-        const item = ITEM_DATA[id];
-        if (!item.cost || !item.rarity) return false; // costとrarityがないアイテムは除外
-        if (currentRound < 3 && item.rarity > 1) return false;
-        if (currentRound < 6 && item.rarity > 2) return false;
-        return true;
-    });
-
-    // --- 4. 商品をランダムに抽選 ---
-    const selectedItems = [];
-    const rewardCount = Math.min(slotCount, shopPool.length); // プールが枯渇しないように
-    for (let i = 0; i < rewardCount; i++) {
-        const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
-        selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
-    }
-
-    // --- 5. 商品スロットをUIに生成 ---
-    const shopContentWidth = gameWidth - 200;
-    const itemSpacing = shopContentWidth / slotCount;
-    const itemStartX = 100 + (itemSpacing / 2);
-
-    selectedItems.forEach((itemId, index) => {
-        const x = itemStartX + (index * itemSpacing);
-        const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
-        const itemData = ITEM_DATA[itemId];
-        
-        const slotWidth = 160;
-        const slotHeight = 200;
-        const slotContainer = this.add.container(x, y).setSize(slotWidth, slotHeight).setInteractive();
-
-        this.shopContainer.add(slotContainer);
-        this.shopItemSlots.push(slotContainer);
-
-        // --- UI要素の生成 ---
-        const itemImage = this.add.image(0, -50, itemData.storage);
-        
-        const imageAreaWidth = 100;
-        const imageAreaHeight = 80;
-        if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
-            const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
-            itemImage.setScale(scale);
-        }
-
-        const nameText = this.add.text(0, 30, itemId, { fontSize: '20px', fill: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
-        const costText = this.add.text(0, 55, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
-        const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setStrokeStyle(2, 0xffffff);
-        const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
-        
-        slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
-        
-        // --- 入力処理をコンテナに集約 ---
-        slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
-            event.stopPropagation();
-            this.tooltip.hide();
-
-            // 購入ボタンの領域（Y座標が70より下）がクリックされたか判定
-            if (localY > 70) {
-                const currentCoins = this.stateManager.sf.coins || 0;
-                if (currentCoins >= itemData.cost) {
-                    this.stateManager.setSF('coins', currentCoins - itemData.cost);
-                    const currentInventory = this.stateManager.sf.player_inventory;
-                    currentInventory.push(itemId);
-                    this.stateManager.setSF('player_inventory', currentInventory);
-                    
-                    buyButtonText.setText('購入済み');
-                    buyButtonBg.setFillStyle(0x555555);
-                    slotContainer.removeInteractive(); // 二重購入防止
-                } else {
-                    console.log("コインが足りません！");
-                    this.tweens.add({ targets: buyButtonBg, scaleX: 1.1, scaleY: 1.1, duration: 80, yoyo: true });
-                }
+        // リロールボタン
+        const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY + 30, 'リロール (1 coin)', { /* ... style ... */ })
+            .setOrigin(0.5).setInteractive().setDepth(12);
+        rerollButton.on('pointerdown', () => {
+            const rerollCost = 1;
+            const currentCoins = this.stateManager.sf.coins || 0;
+            if (currentCoins >= rerollCost) {
+                this.stateManager.setSF('coins', currentCoins - rerollCost);
+                this.refreshShop(); // 商品を再抽選
             } else {
-                // 画像領域がクリックされたらツールチップを表示
-                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                let tooltipText = `【${itemId}】\n`;
-                const sizeH = itemData.shape.length;
-                const sizeW = itemData.shape[0].length;
-                tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-                if(itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
-                if(itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
-                if(itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`;}
-                
-                this.tooltip.show(slotContainer, tooltipText);
+                console.log("コインが足りません！"); // 将来的にはポップアップ表示
             }
         });
-    });
-}
-
-  /*  // BattleScene.js にこの新しいメソッドを追加してください/**
- * トドメの一撃の演出を再生する (最終確定版)
- * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
- */
-playFinishBlowEffects(targetAvatar) {
-    if (!targetAvatar) return;
-
-    // 1. スローモーション開始
-    this.time.timeScale = 0.2;
-
-    // 2. 「中央が太く、両端が細い」斬撃エフェクト (Graphics)
-    const finishSlash = this.add.graphics().setDepth(2001);
-    const centerX = this.scale.width / 2;
-    const centerY = this.scale.height / 2;
-    const lineLength = this.scale.width;
-    const centerWidth = 30; // 中央の太さ
-
-    // 塗りつぶしの色と、輪郭線のスタイルを設定
-    finishSlash.fillStyle(0xffffff, 1.0);   // 塗りは純白
-    finishSlash.lineStyle(2, 0xffff00, 1.0); // 輪郭は黄色
-
-    // ひし形（中央が太く、両端が細い多角形）の4つの頂点を定義
-    const points = [
-        { x: -lineLength / 2, y: 0 },              // 左端
-        { x: 0,               y: -centerWidth / 2 }, // 中央上
-        { x: lineLength / 2,  y: 0 },              // 右端
-        { x: 0,               y: centerWidth / 2 }  // 中央下
-    ];
-
-    // 多角形を描画
-    finishSlash.beginPath();
-    finishSlash.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-        finishSlash.lineTo(points[i].x, points[i].y);
+        this.shopContainer.add(rerollButton);
     }
-    finishSlash.closePath();
-    finishSlash.fillPath();
-    finishSlash.strokePath();
 
-    const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
-    slashContainer.add(finishSlash);
-    
-    // 斬撃アニメーション
-    this.tweens.add({
-        targets: slashContainer,
-        scale: { from: 0.3, to: 1.5 },
-        alpha: { from: 1, to: 0 },
-        duration: 400, // 実時間
-        ease: 'Cubic.easeOut',
-        onComplete: () => {
-            slashContainer.destroy();
+    /**
+     * ショップの商品を抽選し、表示を更新する (最終確定版)
+     */
+    refreshShop() {
+        // 既存の商品スロットがあれば全て破棄してクリア
+        this.shopItemSlots.forEach(slot => slot.destroy());
+        this.shopItemSlots = [];
+
+        // --- 1. レイアウトとラウンド数の準備 ---
+        const gameWidth = this.scale.width;
+        const inventoryAreaY = 480; // UI領域の開始Y座標
+        const inventoryAreaHeight = this.scale.height - inventoryAreaY; // UI領域の高さ
+        const currentRound = this.initialBattleParams.round;
+
+        // --- 2. ラウンドに応じた商品数を決定 ---
+        let slotCount = 3;
+        if (currentRound >= 5) slotCount = 4;
+        if (currentRound >= 8) slotCount = 5;
+
+        // --- 3. ラウンドに応じた抽選プールを作成 ---
+        const fullPool = Object.keys(ITEM_DATA);
+        const shopPool = fullPool.filter(id => {
+            const item = ITEM_DATA[id];
+            if (!item.cost || !item.rarity) return false; // costとrarityがないアイテムは除外
+            if (currentRound < 3 && item.rarity > 1) return false;
+            if (currentRound < 6 && item.rarity > 2) return false;
+            return true;
+        });
+
+        // --- 4. 商品をランダムに抽選 ---
+        const selectedItems = [];
+        const rewardCount = Math.min(slotCount, shopPool.length); // プールが枯渇しないように
+        for (let i = 0; i < rewardCount; i++) {
+            const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
+            selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
         }
-    });
+
+        // --- 5. 商品スロットをUIに生成 ---
+        const shopContentWidth = gameWidth - 200;
+        const itemSpacing = shopContentWidth / slotCount;
+        const itemStartX = 100 + (itemSpacing / 2);
+
+        selectedItems.forEach((itemId, index) => {
+            const x = itemStartX + (index * itemSpacing);
+            const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
+            const itemData = ITEM_DATA[itemId];
+
+            const slotWidth = 160;
+            const slotHeight = 200;
+            const slotContainer = this.add.container(x, y).setSize(slotWidth, slotHeight).setInteractive();
+
+            this.shopContainer.add(slotContainer);
+            this.shopItemSlots.push(slotContainer);
+
+            // --- UI要素の生成 ---
+            const itemImage = this.add.image(0, -50, itemData.storage);
+
+            const imageAreaWidth = 100;
+            const imageAreaHeight = 80;
+            if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
+                const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
+                itemImage.setScale(scale);
+            }
+
+            const nameText = this.add.text(0, 30, itemId, { fontSize: '20px', fill: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
+            const costText = this.add.text(0, 55, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
+            const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setStrokeStyle(2, 0xffffff);
+            const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
+
+            slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
+            const currentCoins = this.stateManager.sf.coins || 0;
+            if (currentCoins < itemData.cost) {
+                buyButtonText.setText('コイン不足');
+                buyButtonBg.setFillStyle(0x888888);
+                slotContainer.setData('canBuy', false);
+            } else {
+                slotContainer.setData('canBuy', true);
+            }
 
 
-    // 3. スプライトシートアニメーション
-    const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
-    const desiredWidth = targetAvatar.displayWidth * 2.5;
-    effectSprite.setScale(desiredWidth / effectSprite.width);
-    effectSprite.play('finish_anim');
-    effectSprite.on('animationcomplete', () => {
-        effectSprite.destroy();
-    });
+            // --- 入力処理をコンテナに集約 ---
+            slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
+                event.stopPropagation();
+                this.tooltip.hide();
 
-    // 4. スローモーション解除とバトル終了処理
-    this.time.delayedCall(1500, () => {
-        this.time.timeScale = 1.0;
-        
-        const finalBackpackData = {};
-        this.placedItemImages.forEach((item, index) => {
-            const gridPos = item.getData('gridPos');
-            if (gridPos) {
-                finalBackpackData[`uid_${index}`] = {
-                    itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                };
+                // 購入ボタンの領域（Y座標が70より下）がクリックされたか判定
+                if (localY > 70) {
+                    const currentCoins = this.stateManager.sf.coins || 0;
+                    if (currentCoins >= itemData.cost) {
+                        this.stateManager.setSF('coins', currentCoins - itemData.cost);
+                        const currentInventory = this.stateManager.sf.player_inventory;
+                        currentInventory.push(itemId);
+                        this.stateManager.setSF('player_inventory', currentInventory);
+                        // ★★★ 3. 【重要】画面上のインベントリにもアイテムを追加 ★★★
+                        // createItemで新しいGameObjectを作成 (画面外の適当な位置でOK)
+                        const newItemContainer = this.createItem(itemId, -100, -100);
+                        if (newItemContainer) {
+                            this.inventoryItemImages.push(newItemContainer);
+                            // インベントリのレイアウトを更新して、新しいアイテムを正しい位置に移動させる
+                            this.updateInventoryLayout();
+                        }
+                        buyButtonText.setText('購入済み');
+                        buyButtonBg.setFillStyle(0x555555);
+                        slotContainer.removeInteractive(); // 二重購入防止
+                    } else {
+                        console.log("コインが足りません！");
+                        this.tweens.add({ targets: buyButtonBg, scaleX: 1.1, scaleY: 1.1, duration: 80, yoyo: true });
+                    }
+                } else {
+                    // 画像領域がクリックされたらツールチップを表示
+                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                    let tooltipText = `【${itemId}】\n`;
+                    const sizeH = itemData.shape.length;
+                    const sizeW = itemData.shape[0].length;
+                    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+                    if (itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
+                    if (itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
+                    if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`; }
+
+                    this.tooltip.show(slotContainer, tooltipText);
+                       const matrix = slotContainer.getWorldTransformMatrix();
+                const worldX = matrix.tx;
+                const worldY = matrix.ty;
+                this.tooltip.showAt(worldX, worldY - slotContainer.height/2 - 10, tooltipText);
             }
         });
-        const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-        this.stateManager.setSF('player_backpack', finalBackpackData);
-        this.stateManager.setSF('player_inventory', finalInventoryData);
-          // ★★★ ここからが追加箇所 ★★★
-    // 3. コイン獲得処理
-    const currentCoins = this.stateManager.sf.coins || 0;
-    const currentRound = this.stateManager.sf.round || 1;
-    const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
-    this.stateManager.setSF('coins', currentCoins + rewardCoins);
-       
-        this.stateManager.setSF('round', currentRound + 1);
-        this.stateManager.setF('player_hp', this.playerStats.hp);
-        
-        this.scene.get('SystemScene').events.emit('request-scene-transition', {
-            to: 'RewardScene',
-            from: this.scene.key
-        });
-    }, [], this);
+    });
 }
+
+    /*  // BattleScene.js にこの新しいメソッドを追加してください/**
+   * トドメの一撃の演出を再生する (最終確定版)
+   * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
+   */
+    playFinishBlowEffects(targetAvatar) {
+        if (!targetAvatar) return;
+
+        // 1. スローモーション開始
+        this.time.timeScale = 0.2;
+
+        // 2. 「中央が太く、両端が細い」斬撃エフェクト (Graphics)
+        const finishSlash = this.add.graphics().setDepth(2001);
+        const centerX = this.scale.width / 2;
+        const centerY = this.scale.height / 2;
+        const lineLength = this.scale.width;
+        const centerWidth = 30; // 中央の太さ
+
+        // 塗りつぶしの色と、輪郭線のスタイルを設定
+        finishSlash.fillStyle(0xffffff, 1.0);   // 塗りは純白
+        finishSlash.lineStyle(2, 0xffff00, 1.0); // 輪郭は黄色
+
+        // ひし形（中央が太く、両端が細い多角形）の4つの頂点を定義
+        const points = [
+            { x: -lineLength / 2, y: 0 },              // 左端
+            { x: 0, y: -centerWidth / 2 }, // 中央上
+            { x: lineLength / 2, y: 0 },              // 右端
+            { x: 0, y: centerWidth / 2 }  // 中央下
+        ];
+
+        // 多角形を描画
+        finishSlash.beginPath();
+        finishSlash.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            finishSlash.lineTo(points[i].x, points[i].y);
+        }
+        finishSlash.closePath();
+        finishSlash.fillPath();
+        finishSlash.strokePath();
+
+        const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
+        slashContainer.add(finishSlash);
+
+        // 斬撃アニメーション
+        this.tweens.add({
+            targets: slashContainer,
+            scale: { from: 0.3, to: 1.5 },
+            alpha: { from: 1, to: 0 },
+            duration: 400, // 実時間
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                slashContainer.destroy();
+            }
+        });
+
+
+        // 3. スプライトシートアニメーション
+        const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
+        const desiredWidth = targetAvatar.displayWidth * 2.5;
+        effectSprite.setScale(desiredWidth / effectSprite.width);
+        effectSprite.play('finish_anim');
+        effectSprite.on('animationcomplete', () => {
+            effectSprite.destroy();
+        });
+
+        // 4. スローモーション解除とバトル終了処理
+        this.time.delayedCall(1500, () => {
+            this.time.timeScale = 1.0;
+
+            const finalBackpackData = {};
+            this.placedItemImages.forEach((item, index) => {
+                const gridPos = item.getData('gridPos');
+                if (gridPos) {
+                    finalBackpackData[`uid_${index}`] = {
+                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                    };
+                }
+            });
+            const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+            this.stateManager.setSF('player_backpack', finalBackpackData);
+            this.stateManager.setSF('player_inventory', finalInventoryData);
+            // ★★★ ここからが追加箇所 ★★★
+            // 3. コイン獲得処理
+            const currentCoins = this.stateManager.sf.coins || 0;
+            const currentRound = this.stateManager.sf.round || 1;
+            const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
+            this.stateManager.setSF('coins', currentCoins + rewardCoins);
+
+            this.stateManager.setSF('round', currentRound + 1);
+            this.stateManager.setF('player_hp', this.playerStats.hp);
+
+            this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                to: 'RewardScene',
+                from: this.scene.key
+            });
+        }, [], this);
+    }
     shutdown() {
         console.log("BattleScene: shutdown されました。");
     }
