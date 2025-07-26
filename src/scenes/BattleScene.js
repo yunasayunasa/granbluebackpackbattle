@@ -446,7 +446,7 @@ export default class BattleScene extends Phaser.Scene {
                         const targetObject = item.gameObject;
                         const flashColor = ELEMENT_COLORS[element];
                         if (targetObject && flashColor) {
-                            this.playResonanceFlash(targetObject, flashColor);
+                            this.playResonanceAura(targetObject, flashColor);
                         }
                     }
                 });
