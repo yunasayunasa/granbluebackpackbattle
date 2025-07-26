@@ -18,7 +18,7 @@ export default class CoinHud extends Phaser.GameObjects.Container {
         this.stateManager = stateManager;
 
         // アイコンとテキストの作成
-        const icon = scene.add.image(0, 0, 'coin_icon'); // アイコンのアセットキーを仮定
+        const icon = scene.add.image(0, 0, 'coin_icon'||'💰'); // アイコンのアセットキーを仮定
         this.add(icon);
         this.coinText = scene.add.text(40, 0, '0', {
             fontSize: '32px',
