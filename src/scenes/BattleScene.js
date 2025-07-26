@@ -178,11 +178,11 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
 // ★★★ STEP 4.5: ショップのセットアップ ★★★
 // =================================================================
 this.setupShop();
-
+this.refreshShop();
   // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
-   const shopToggleButton = this.add.text(gameWidth - 150, inventoryAreaY - 40, 'ショップ表示', { fontSize: '20px',
+   const shopToggleButton = this.add.text(gameWidth - 540, inventoryAreaY - 100, 'ショップ表示', { fontSize: '20px',
     fill: '#ffdd00',
     backgroundColor: '#000000aa',
     padding: { x: 10, y: 5 }})
@@ -196,7 +196,7 @@ shopToggleButton.on('pointerdown', () => {
         this.inventoryItemImages.forEach(item => item.setVisible(false));
         this.shopContainer.setVisible(true);
         shopToggleButton.setText('インベントリ表示');
-        this.refreshShop(); // ★ショップを開くたびに品揃えを更新（しなくても良い、仕様による）
+      //  this.refreshShop(); // ★ショップを開くたびに品揃えを更新（しなくても良い、仕様による）
     } else {
         // ショップを隠し、インベントリアイテムを表示
         this.shopContainer.setVisible(false);
@@ -1572,7 +1572,14 @@ refreshShop() {
         // カード、画像、テキストなどを生成
         const card = this.add.rectangle(0, 0, 150, 200, 0xe0e0e0);
         const itemImage = this.add.image(0, -30, itemData.storage);
-        // ... (画像のリサイズ処理) ...
+         // 画像の表示領域サイズを定義
+    const imageAreaWidth = 120;
+    const imageAreaHeight = 100;
+    // アスペクト比を保ったままリサイズ
+    if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
+        const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
+        itemImage.setScale(scale);
+    }
         const nameText = this.add.text(0, 50, itemId, { /* ... */ });
         const costText = this.add.text(0, 80, `${itemData.cost} coins`, { /* ... */ });
         const buyButton = this.add.text(0, 115, '購入', { /* ... */ }).setInteractive();
