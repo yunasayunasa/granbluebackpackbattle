@@ -1539,7 +1539,13 @@ playFinishBlowEffects(targetAvatar) {
         const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
         this.stateManager.setSF('player_backpack', finalBackpackData);
         this.stateManager.setSF('player_inventory', finalInventoryData);
-        const currentRound = this.stateManager.sf.round || 1;
+          // ★★★ ここからが追加箇所 ★★★
+    // 3. コイン獲得処理
+    const currentCoins = this.stateManager.sf.coins || 0;
+    const currentRound = this.stateManager.sf.round || 1;
+    const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
+    this.stateManager.setSF('coins', currentCoins + rewardCoins);
+       
         this.stateManager.setSF('round', currentRound + 1);
         this.stateManager.setF('player_hp', this.playerStats.hp);
         
