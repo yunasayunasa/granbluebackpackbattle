@@ -1,7 +1,7 @@
 {
   "images": {
     "message_window": "assets/message_window.png",
-       "particle_white": "assets/effects/particle.png",
+       "particle_white": "assets/particle.png",
 
      "yuna_normal": "assets/yuna_smile.png",
       "kaito_normal": "assets/kaito_normal.png" ,
