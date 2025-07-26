@@ -1526,7 +1526,7 @@ refreshShop() {
     const gameWidth = this.scale.width;
     const inventoryAreaY = 480;
     const currentRound = this.initialBattleParams.round;
-
+ const inventoryAreaHeight = this.scale.height - inventoryAreaY;
     // 1. ラウンドに応じた商品数を決定
     let slotCount = 3;
     if (currentRound >= 5) slotCount = 4;
