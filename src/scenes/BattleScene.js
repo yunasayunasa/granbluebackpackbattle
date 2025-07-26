@@ -90,12 +90,18 @@ export default class BattleScene extends Phaser.Scene {
         const backpackData = this.stateManager.sf.player_backpack;
         const inventoryData = this.stateManager.sf.player_inventory;
 
-        // --- 1b. 戦闘パラメータを決定
-        const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
-        const initialPlayerHp = this.stateManager.f.player_hp || initialPlayerMaxHp;
-        const round = this.stateManager.sf.round || 1;
-        this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
+       // in create() -> STEP 1-b
 
+// --- 1b. 戦闘パラメータを決定 ---
+const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
+
+// ★★★ ここからが修正箇所 ★★★
+// 前のラウンドからHPを引き継ぐ。ただし初回（f.player_hpが存在しない場合）は最大HPから開始。
+const initialPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : initialPlayerMaxHp;
+// ★★★ 修正箇所ここまで ★★★
+
+const round = this.stateManager.sf.round || 1;
+this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
 
         // =================================================================
         // STEP 2: シーンのプロパティ初期化
