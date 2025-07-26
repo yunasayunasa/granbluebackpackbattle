@@ -1202,15 +1202,54 @@ playDamageEffects(targetSide, amount) {
         if (blinkTimer) blinkTimer.remove();
     });
 
-    // --- 4. スプライトシートによるインパクトアニメーション ---
-    const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_impact').setDepth(1001);
+    // --- 4. 斬撃ラインエフェクト (復活) ---
+    const slashGraphics = this.add.graphics().setDepth(1001); // 煙より手前
+    slashGraphics.lineStyle(8, 0xffffff, 1.0); // 太い白線
+
+    const lineLength = targetAvatar.displayWidth * 1.2;
+    const centerX = targetAvatar.x;
+    const centerY = targetAvatar.y;
+
+    const slashContainer = this.add.container(centerX, centerY).setDepth(1001);
+    slashContainer.add(slashGraphics);
+
+    // 2本の線を交差させて描画
+    slashGraphics.beginPath();
+    slashGraphics.moveTo(-lineLength / 2, -lineLength / 2);
+    slashGraphics.lineTo(lineLength / 2, lineLength / 2);
+    slashGraphics.moveTo(lineLength / 2, -lineLength / 2);
+    slashGraphics.lineTo(-lineLength / 2, lineLength / 2);
+    slashGraphics.strokePath();
+
+    slashContainer.setAlpha(0.8);
+    slashContainer.setScale(0.3);
+    slashContainer.setAngle(Phaser.Math.DegToRad(Phaser.Math.Between(-25, 25)));
+
+    this.tweens.add({
+        targets: slashContainer,
+        scale: 1.0,
+        alpha: 0,
+        duration: 250,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+            slashContainer.destroy();
+        }
+    });
+
+    // --- 5. スプライトシートによるインパクトアニメーション (サイズ調整付き) ---
+    const effectSprite = this.add.sprite(centerX, centerY, 'effect_impact').setDepth(1000); // 斬撃より奥
+    
+    // アバターの表示幅を基準に、エフェクトのスケールを動的に調整
+    // (例: エフェクトの幅がアバターの幅の1.5倍になるように)
+    const desiredWidth = targetAvatar.displayWidth * 1.5;
+    const scale = desiredWidth / effectSprite.width;
+    effectSprite.setScale(scale);
+    
     effectSprite.play('impact_anim');
     effectSprite.on('animationcomplete', () => {
         effectSprite.destroy();
     });
-    // ★★★ 修正箇所：余分な }); を削除し、メソッドの閉じカッコ } を正しく配置 ★★★
-} // ← これが playDamageEffects を閉じる正しいカッコです
-    
+}
       // BattleScene.js にこの新しいメソッドを追加してください
 /**
  * インベントリ内のアイテムのレイアウトを更新し、再配置する
