@@ -51,6 +51,7 @@ export default class BattleScene extends Phaser.Scene {
         this.battleEnded = false;
         this.ghostImage = null;
         this.finalizedPlayerItems = [];
+        this.roundStartState = null; /
     }
 
     // BattleScene.js の init をこれに置き換え
@@ -176,20 +177,31 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
    // create メソッド内の startBattleButton.on('pointerdown', ...) リスナーを、これに置き換えてください
 this.startBattleButton.on('pointerdown', () => {
     if (this.gameState !== 'prepare') return;
-    
-    // 現在の盤面をsf変数に保存 (このセーブタイミングで詰みは回避できている)
-    const newBackpackData = {};
-    this.placedItemImages.forEach((item, index) => {
-        const gridPos = item.getData('gridPos');
-        if (gridPos) {
-            newBackpackData[`uid_${index}`] = {
-                itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-            };
-        }
-    });
-    const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-    this.stateManager.setSF('player_backpack', newBackpackData);
-    this.stateManager.setSF('player_inventory', newInventoryData);
+// ラウンド開始時の状態を「チェックポイント」としてメモリ上に保存する
+const initialBackpackData = {};
+this.placedItemImages.forEach((item, index) => {
+    const gridPos = item.getData('gridPos');
+    if (gridPos) {
+        initialBackpackData[`uid_${index}`] = {
+            itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+        };
+    }
+});
+const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+
+this.roundStartState = {
+    backpack: initialBackpackData,
+    inventory: initialInventoryData,
+    // 将来的にコインやHPもここに入れる
+    // coins: this.stateManager.sf.coins,
+    // hp: this.stateManager.f.player_hp
+};
+console.log("Round start state checkpoint created.", this.roundStartState);
+// ★★★ 修正箇所ここまで ★★★
+
+// --- 5c. 準備完了をSystemSceneに通知
+this.events.emit('scene-ready');
+console.log("BattleScene: create 完了");
 
     // --- 戦闘開始処理 ---
     this.gameState = 'battle';
@@ -1440,22 +1452,34 @@ updateInventoryLayout() {
         // 3. スローモーション解除とバトル終了処理
         this.time.delayedCall(1500, () => { // 1.5秒後に実行
             this.time.timeScale = 1.0; // 時間の進みを元に戻す
-             // ★★★ ここからが修正箇所 ★★★
-        
-        // ラウンド数を進める
-        const currentRound = this.stateManager.sf.round || 1;
-        this.stateManager.setSF('round', currentRound + 1);
-        
-        // 現在のHPを保存
-        this.stateManager.setF('player_hp', this.playerStats.hp);
+          // 1. 現在の最終的な盤面を取得
+    const finalBackpackData = {};
+    this.placedItemImages.forEach((item, index) => {
+        const gridPos = item.getData('gridPos');
+        if (gridPos) {
+            finalBackpackData[`uid_${index}`] = {
+                itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+            };
+        }
+    });
+    const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
 
-        // SystemSceneに報酬シーンへの遷移を依頼
-        this.scene.get('SystemScene').events.emit('request-scene-transition', {
-            to: 'RewardScene',
-            from: this.scene.key
-        });
+    // 2. StateManagerのsf変数を更新して永続化（セーブ）
+    this.stateManager.setSF('player_backpack', finalBackpackData);
+    this.stateManager.setSF('player_inventory', finalInventoryData);
 
-        // ★★★ 修正ここまで ★★★
+    // 3. ラウンド数を進める
+    const currentRound = this.stateManager.sf.round || 1;
+    this.stateManager.setSF('round', currentRound + 1);
+    
+    // 4. 現在のHPをf変数に保存（次のバトル開始時に読み込むため）
+    this.stateManager.setF('player_hp', this.playerStats.hp);
+
+    // 5. SystemSceneに報酬シーンへの遷移を依頼
+    this.scene.get('SystemScene').events.emit('request-scene-transition', {
+        to: 'RewardScene',
+        from: this.scene.key
+    });
     }, [], this);
 }
     shutdown() {
