@@ -156,7 +156,7 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
         }
     }
     // --- 4b. インベントリの描画とアイテム復元
-    const inventoryAreaY = 520;
+    const inventoryAreaY = 450;
     const inventoryAreaHeight = gameHeight - inventoryAreaY;
     const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
     const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
@@ -168,7 +168,7 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
     const itemStartX = 100 + (itemSpacing / 2);
     inventoryData.forEach((itemId, index) => {
         const x = itemStartX + (index * itemSpacing);
-        const y = inventoryAreaY + inventoryAreaHeight / 2 + 20;
+        const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
         const itemContainer = this.createItem(itemId, x, y);
         if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
     });
@@ -182,7 +182,7 @@ this.refreshShop();
   // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
-   const shopToggleButton = this.add.text(gameWidth - 620, inventoryAreaY - 400, 'ショップ表示', { fontSize: '20px',
+   const shopToggleButton = this.add.text(gameWidth - 640, inventoryAreaY - 400, 'ショップ表示', { fontSize: '20px',
     fill: '#ffdd00',
     backgroundColor: '#000000aa',
     padding: { x: 10, y: 5 }})
@@ -1524,7 +1524,7 @@ refreshShop() {
     this.shopItemSlots = [];
 
     const gameWidth = this.scale.width;
-    const inventoryAreaY = 520;
+    const inventoryAreaY = 450;
     const currentRound = this.initialBattleParams.round;
 
     // 1. ラウンドに応じた商品数を決定
@@ -1559,12 +1559,12 @@ refreshShop() {
 
     selectedItems.forEach((itemId, index) => {
         const x = itemStartX + (index * itemSpacing);
-        const y = inventoryAreaY + 140;
+        const y = inventoryAreaY / 2;
         const itemData = ITEM_DATA[itemId];
         
           // 1. slotContainerのサイズを定義
         const slotWidth = 150;
-        const slotHeight = 200;
+        const slotHeight = 250;
         const slotContainer = this.add.container(x, y);
         // setSizeでインタラクション領域を設定しないと、中のボタンがクリックできない
         slotContainer.setSize(slotWidth, slotHeight);
@@ -1573,7 +1573,7 @@ refreshShop() {
         this.shopItemSlots.push(slotContainer);
 
            // 1. 画像の位置を少し上にし、サイズを小さくする
-        const itemImage = this.add.image(0, -55, itemData.storage);
+        const itemImage = this.add.image(0, -60, itemData.storage).setInteractive();
         const imageAreaWidth = 100; // 表示領域を少し小さく
         const imageAreaHeight = 80;
         if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
@@ -1583,7 +1583,7 @@ refreshShop() {
         
         // ★画像にインタラクションを設定し、ツールチップを表示
         itemImage.setInteractive();
-        itemImage.on('pointerdown', (pointer) => {
+        itemImage.on('pointerdown', (pointer, localX, localY, event) => {
             pointer.stopPropagation();
             // 上で修正したツールチップ生成ロジックとほぼ同じ
             const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
@@ -1606,7 +1606,7 @@ refreshShop() {
         
         slotContainer.add([itemImage, nameText, costText, buyButton]);
         
-        buyButton.on('pointerdown', (pointer) => {
+        buyButton.on('pointerdown', (pointer, localX, localY, event) => {
             pointer.stopPropagation();
             this.tooltip.hide();
             const currentCoins = this.stateManager.sf.coins || 0;
