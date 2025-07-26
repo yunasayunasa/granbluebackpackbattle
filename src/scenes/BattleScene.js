@@ -1,7 +1,7 @@
 // BattleScene.js (最終決定版・完全体)
 import { ITEM_DATA } from '../core/ItemData.js';
 import Tooltip from '../ui/Tooltip.js';
-// BattleScene.js の上部に追加
+import { EnemyGenerator } from '../core/EnemyGenerator.js';
 // BattleScene.js の上部に追加
 
 const ELEMENT_COLORS = {
