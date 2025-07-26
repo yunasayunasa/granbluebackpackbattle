@@ -411,6 +411,8 @@ prepareForBattle() {
     console.log("敵最終ステータス:", this.enemyStats);
 }
 
+// BattleScene.js の calculateFinalBattleState を、この完全なコードで置き換えてください
+
 /**
  * 指定されたアイテムリストから、シナジーと属性共鳴を計算し、最終的な戦闘状態を返す
  * @param {Array} initialItems - 戦闘用のアイテムコピーの配列
@@ -431,23 +433,24 @@ calculateFinalBattleState(initialItems, initialStats) {
         const rule = ELEMENT_RESONANCE_RULES[element];
         const count = elementCounts[element] || 0;
         if (count >= rule.threshold) {
+            // ★★★ このループの中身が、前回は空でした ★★★
             initialItems.forEach(item => {
                 // 【火属性】
-                if (item.tags.includes('fire') && element === 'fire' && item.action) {
+                if (element === 'fire' && item.tags.includes('fire') && item.action) {
                     item.action.value += Math.floor(count / 2);
                 }
                 // 【風属性】
-                if (item.tags.includes('wind') && element === 'wind' && item.recast) {
+                if (element === 'wind' && item.tags.includes('wind') && item.recast) {
                     item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2)));
                 }
                 // 【土属性】
-                if (item.tags.includes('earth') && element === 'earth') {
+                if (element === 'earth' && item.tags.includes('earth')) {
                     const bonus = count * 2;
                     if (item.action && item.action.type === 'block') item.action.value += bonus;
                     if (item.synergy && item.synergy.effect.type.includes('block')) item.synergy.effect.value += bonus;
                 }
                 // 【光属性】
-                if (item.tags.includes('light') && element === 'light') {
+                if (element === 'light' && item.tags.includes('light')) {
                     const bonus = count * 2;
                     if (item.action && item.action.type === 'heal') item.action.value += bonus;
                     if (item.synergy && item.synergy.effect.type.includes('heal')) item.synergy.effect.value += bonus;
@@ -455,7 +458,11 @@ calculateFinalBattleState(initialItems, initialStats) {
                 // 【水属性】
                 if (element === 'water' && item.synergy && typeof item.synergy.effect.value === 'number') {
                     const bonus = count - 2;
-                    item.synergy.effect.value += (item.synergy.effect.value > 0) ? bonus : -bonus;
+                    if (item.synergy.effect.value > 0) {
+                        item.synergy.effect.value += bonus;
+                    } else {
+                        item.synergy.effect.value -= bonus;
+                    }
                 }
             });
         }
@@ -467,24 +474,19 @@ calculateFinalBattleState(initialItems, initialStats) {
 
         initialItems.forEach((targetItem, targetIndex) => {
             if (sourceIndex === targetIndex) return;
-            
-            // row/colを持たないアイテム（＝現在の敵）はシナジーを発動も受信もできない
             if (sourceItem.row === undefined || targetItem.row === undefined) return;
 
-            let synergyAppliedForThisPair = false;
+            let synergyApplied = false;
             const sourceShape = this.getRotatedShape(sourceItem.id, sourceItem.rotation);
             const targetShape = this.getRotatedShape(targetItem.id, targetItem.rotation);
 
-            for (let sr = 0; sr < sourceShape.length; sr++) {
-                if (synergyAppliedForThisPair) break;
-                for (let sc = 0; sc < sourceShape[sr].length; sc++) {
-                    if (synergyAppliedForThisPair) break;
+            for (let sr = 0; sr < sourceShape.length && !synergyApplied; sr++) {
+                for (let sc = 0; sc < sourceShape[sr].length && !synergyApplied; sc++) {
                     if (sourceShape[sr][sc] === 0) continue;
                     const sourceCellPos = { r: sourceItem.row + sr, c: sourceItem.col + sc };
 
-                    for (let tr = 0; tr < targetShape.length; tr++) {
-                        if (synergyAppliedForThisPair) break;
-                        for (let tc = 0; tc < targetShape[tr].length; tc++) {
+                    for (let tr = 0; tr < targetShape.length && !synergyApplied; tr++) {
+                        for (let tc = 0; tc < targetShape[tr].length && !synergyApplied; tc++) {
                             if (targetShape[tr][tc] === 0) continue;
                             const targetCellPos = { r: targetItem.row + tr, c: targetItem.col + tc };
                             let isMatch = false;
@@ -492,31 +494,28 @@ calculateFinalBattleState(initialItems, initialStats) {
                             if (sourceItem.synergy.direction === 'adjacent') {
                                 isMatch = Math.abs(sourceCellPos.r - targetCellPos.r) + Math.abs(sourceCellPos.c - targetCellPos.c) === 1;
                             } else {
-                                let targetDir = {r: 0, c: 0};
+                                let dir = {r: 0, c: 0};
                                 switch(sourceItem.synergy.direction) {
-                                    case 'up': targetDir = {r: -1, c: 0}; break;
-                                    case 'down': targetDir = {r: 1, c: 0}; break;
-                                    case 'left': targetDir = {r: 0, c: -1}; break;
-                                    case 'right': targetDir = {r: 0, c: 1}; break;
+                                    case 'up': dir = {r: -1, c: 0}; break; case 'down': dir = {r: 1, c: 0}; break;
+                                    case 'left': dir = {r: 0, c: -1}; break; case 'right': dir = {r: 0, c: 1}; break;
                                 }
                                 const rad = Phaser.Math.DegToRad(sourceItem.rotation);
-                                const rotatedC = Math.round(targetDir.c * Math.cos(rad) - targetDir.r * Math.sin(rad));
-                                const rotatedR = Math.round(targetDir.c * Math.sin(rad) + targetDir.r * Math.cos(rad));
-                                if (sourceCellPos.r + rotatedR === targetCellPos.r && sourceCellPos.c + rotatedC === targetCellPos.c) {
-                                    isMatch = true;
-                                }
+                                const rotC = Math.round(dir.c * Math.cos(rad) - dir.r * Math.sin(rad));
+                                const rotR = Math.round(dir.c * Math.sin(rad) + dir.r * Math.cos(rad));
+                                if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) { isMatch = true; }
                             }
 
                             if (isMatch) {
+                                // ★★★ この効果適用部分も、前回は空でした ★★★
                                 const effect = sourceItem.synergy.effect;
+                                console.log(`★ シナジー適用: [${sourceItem.id}] -> [${targetItem.id}]`);
                                 if (effect.type === 'add_attack' && targetItem.action) {
                                     targetItem.action.value += effect.value;
                                 }
                                 if (effect.type === 'add_recast' && targetItem.recast > 0) {
                                     targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
                                 }
-                                synergyAppliedForThisPair = true;
-                                break;
+                                synergyApplied = true;
                             }
                         }
                     }
