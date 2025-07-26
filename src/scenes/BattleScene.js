@@ -1432,7 +1432,7 @@ updateInventoryLayout() {
         });
     }
 
-    // BattleScene.js にこの新しいメソッドを追加してください/**
+  /*  // BattleScene.js にこの新しいメソッドを追加してください/**
  * トドメの一撃の演出を再生する (最終確定版)
  * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
  */
