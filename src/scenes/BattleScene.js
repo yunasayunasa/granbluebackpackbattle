@@ -182,7 +182,7 @@ this.refreshShop();
   // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
-   const shopToggleButton = this.add.text(gameWidth - 600, inventoryAreaY - 300, 'ショップ表示', { fontSize: '20px',
+   const shopToggleButton = this.add.text(gameWidth - 620, inventoryAreaY - 4^_^00, 'ショップ表示', { fontSize: '20px',
     fill: '#ffdd00',
     backgroundColor: '#000000aa',
     padding: { x: 10, y: 5 }})
@@ -925,17 +925,21 @@ setupEnemy(gridY) {
 
                 // --- ★★★ ツールチップ生成ロジック Start ★★★ ---
 
-                // 日本語変換ヘルパー関数
-                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                 // --- ★★★ ツールチップ生成ロジック Start (改) ★★★ ---
+    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+    let tooltipText = `【${itemId}】\n`;
 
-                let tooltipText = `【${itemId}】\n`;
-
-                // 属性の表示
-                const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                if (itemElements.length > 0) {
-                    tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-                }
-                tooltipText += '\n';
+    // 属性の表示
+    const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+    if (itemElements.length > 0) {
+        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
+    }
+    
+    // ★追加: サイズの表示
+    const sizeH = baseItemData.shape.length;
+    const sizeW = baseItemData.shape[0].length;
+    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+              
 
                 // Recast
                 if (baseItemData.recast && baseItemData.recast > 0) {
@@ -967,14 +971,7 @@ setupEnemy(gridY) {
                     tooltipText += `    効果: ${effectType} +${effect.value}\n`;
                 }
 
-                // 属性共鳴ルールの表示
-                tooltipText += `\n--- 属性共鳴 ---\n`;
-                for (const element in ELEMENT_RESONANCE_RULES) {
-                    const rule = ELEMENT_RESONANCE_RULES[element];
-                    const effectText = rule.description(rule.threshold); // 閾値時点での効果を表示
-                    tooltipText += `[${t(element)}] ${rule.threshold}体以上: ${effectText}\n`;
-                }
-
+               
                 // --- ★★★ ツールチップ生成ロジック End ★★★ ---
 
                 this.tooltip.show(itemContainer, tooltipText);
@@ -1575,31 +1572,43 @@ refreshShop() {
         this.shopContainer.add(slotContainer);
         this.shopItemSlots.push(slotContainer);
 
-        // 2. 各UI要素の座標を、slotContainerの中心(0,0)からの相対座標で指定
-        const itemImage = this.add.image(0, -40, itemData.storage); // 上の方
-    // 画像の表示領域サイズを定義
-const imageAreaWidth = 120;
-const imageAreaHeight = 100;
+           // 1. 画像の位置を少し上にし、サイズを小さくする
+        const itemImage = this.add.image(0, -55, itemData.storage);
+        const imageAreaWidth = 100; // 表示領域を少し小さく
+        const imageAreaHeight = 80;
+        if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
+            const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
+            itemImage.setScale(scale);
+        }
+        
+        // ★画像にインタラクションを設定し、ツールチップを表示
+        itemImage.setInteractive();
+        itemImage.on('pointerdown', (pointer) => {
+            pointer.stopPropagation();
+            // 上で修正したツールチップ生成ロジックとほぼ同じ
+            const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+            let tooltipText = `【${itemId}】\n`;
+            const sizeH = itemData.shape.length;
+            const sizeW = itemData.shape[0].length;
+            tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+            if(itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
+            if(itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
+            if(itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`;}
+            
+            this.tooltip.show(itemImage, tooltipText);
+        });
 
-// アスペクト比を保ったままリサイズ
-if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
-    const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
-    itemImage.setScale(scale);
-}
-            const nameText = this.add.text(0, 40, itemId, { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
-        const costText = this.add.text(0, 65, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700' }).setOrigin(0.5);
-        
-        // 購入ボタンもコンテナの中心からの相対座標で配置
+        // 2. テキストとボタンの位置を全体的に下にずらす
+        const nameText = this.add.text(0, 35, itemId, { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
+        const costText = this.add.text(0, 60, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700' }).setOrigin(0.5);
         const buyButton = this.add.text(0, 95, '購入', { fontSize: '22px', backgroundColor: '#3399ff', padding: { x: 10, y: 5 } }).setOrigin(0.5);
-        
-        // 3. ボタンにインタラクションを設定
         buyButton.setInteractive();
         
-        // 4. 全ての要素をコンテナに追加
         slotContainer.add([itemImage, nameText, costText, buyButton]);
         
-        // ★★★ 修正箇所ここまで ★★★
-        buyButton.on('pointerdown', () => {
+        buyButton.on('pointerdown', (pointer) => {
+            pointer.stopPropagation();
+            this.tooltip.hide();
             const currentCoins = this.stateManager.sf.coins || 0;
             if (currentCoins >= itemData.cost) {
                 // 購入処理
