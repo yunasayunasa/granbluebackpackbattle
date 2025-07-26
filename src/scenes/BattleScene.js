@@ -1754,7 +1754,7 @@ console.log("プレイヤー最終ステータス:", this.playerStats);
         // 4. スローモーション解除とバトル終了処理
         this.time.delayedCall(1500, () => {
             this.time.timeScale = 1.0;
-// const currentRound = this.stateManager.sf.round || 1;
+            const currentRound = this.stateManager.sf.round || 1;
     const FINAL_ROUND = 10; // ★最終ラウンドを定義
 
     // ★★★ ここからが修正箇所 ★★★
