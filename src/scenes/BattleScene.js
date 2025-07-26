@@ -182,7 +182,7 @@ this.refreshShop();
   // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
-   const shopToggleButton = this.add.text(gameWidth - 620, inventoryAreaY - 4^_^00, 'ショップ表示', { fontSize: '20px',
+   const shopToggleButton = this.add.text(gameWidth - 620, inventoryAreaY - 400, 'ショップ表示', { fontSize: '20px',
     fill: '#ffdd00',
     backgroundColor: '#000000aa',
     padding: { x: 10, y: 5 }})
