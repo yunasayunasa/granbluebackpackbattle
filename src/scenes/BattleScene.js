@@ -56,6 +56,7 @@ export default class BattleScene extends Phaser.Scene {
     // BattleScene.js の init をこれに置き換え
     // BattleScene.js の init をこのシンプルなバージョンに置き換えてください
     init(data) {
+        this.enemyItemImages = [];
         // データ受け渡しに起因するバグをなくすため、ここでは何もしない。
         // 全ての初期化は create で行う。
         console.log("BattleScene: init (空)");
@@ -130,43 +131,9 @@ create() {
     [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
 
     // --- 3c. 敵アイテムの配置
-    const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
-    const currentLayout = enemyLayouts[this.initialBattleParams.round] || {};
-    for (const itemId in currentLayout) {
-        const itemData = ITEM_DATA[itemId];
-        if (!itemData) continue;
-        const pos = currentLayout[itemId].pos;
-        const containerWidth = itemData.shape[0].length * this.cellSize;
-        const containerHeight = itemData.shape.length * this.cellSize;
-        const itemContainer = this.add.container(
-            enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
-            enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
-        ).setSize(containerWidth, containerHeight);
-
-        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.3).setVisible(false);
-        const maskGraphics = this.add.graphics().setVisible(false);
-        recastOverlay.setMask(maskGraphics.createGeometryMask());
-        
-        itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-        itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
-
-        if (itemData.recast > 0) { recastOverlay.setVisible(true); }
-
-        itemContainer.setDepth(3).setInteractive({ draggable: false });
-        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-            const itemData = ITEM_DATA[itemId];
-            if (!itemData) return;
-            let tooltipText = `【${itemId}】\n\n`;
-            if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-            if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
-            if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-            if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
-            this.tooltip.show(itemContainer, tooltipText);
-            event.stopPropagation();
-        });
-        this.enemyItemImages.push(itemContainer);
-    }
+  // --- 3c. 敵アイテムの配置
+this.setupEnemy(); // ★ごっそり置き換える
+   
 
     // =================================================================
     // STEP 4: プレイヤーのバックパックとインベントリの復元
@@ -640,7 +607,61 @@ create() {
     }
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
+// BattleScene.js にこの新しいメソッドを追加してください
+/**
+ * 現在のラウンドに応じて敵の盤面をセットアップする
+ */
+setupEnemy() {
+    const gameWidth = this.scale.width;
+    const gridWidth = this.backpackGridSize * this.cellSize;
+    const enemyGridX = gameWidth - 100 - gridWidth;
+    const enemyGridY = this.gridY;
 
+    // 以前の敵オブジェクトが残っていれば全て破棄する
+    this.enemyItemImages.forEach(item => item.destroy());
+    this.enemyItemImages = [];
+
+    const enemyLayouts = { 1: { 'sword': { pos: [2, 2], angle: 0 } } };
+    const currentLayout = enemyLayouts[this.initialBattleParams.round] || {};
+
+    for (const itemId in currentLayout) {
+        // ... (敵アイテムのGameObjectを生成し、this.enemyItemImagesに追加するロジックは create からそのまま移動) ...
+        const itemData = ITEM_DATA[itemId];
+        if (!itemData) continue;
+        const pos = currentLayout[itemId].pos;
+        const containerWidth = itemData.shape[0].length * this.cellSize;
+        const containerHeight = itemData.shape[0].length * this.cellSize;
+        const itemContainer = this.add.container(
+            enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
+            enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
+        ).setSize(containerWidth, containerHeight);
+        
+            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.3).setVisible(false);
+        const maskGraphics = this.add.graphics().setVisible(false);
+        recastOverlay.setMask(maskGraphics.createGeometryMask());
+        
+        itemContainer.add([itemImage, recastOverlay, maskGraphics]);
+        itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
+
+        if (itemData.recast > 0) { recastOverlay.setVisible(true); }
+
+        itemContainer.setDepth(3).setInteractive({ draggable: false });
+        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+            const itemData = ITEM_DATA[itemId];
+            if (!itemData) return;
+            let tooltipText = `【${itemId}】\n\n`;
+            if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
+            if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+            if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+            if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
+            this.tooltip.show(itemContainer, tooltipText);
+            event.stopPropagation();
+        });
+        this.enemyItemImages.push(itemContainer);
+    }
+   
+}
     // BattleScene.js の createItem メソッド (イベントリスナー完全版)
 
 
