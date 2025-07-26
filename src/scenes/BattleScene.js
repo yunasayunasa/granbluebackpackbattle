@@ -1629,8 +1629,14 @@ export default class BattleScene extends Phaser.Scene {
                     // 画像領域がクリックされたらツールチップを表示
                     const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
                     let tooltipText = `【${itemId}】\n`;
+                     // 属性の表示
+    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+    if (itemElements.length > 0) {
+        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
+    }
                     const sizeH = itemData.shape.length;
                     const sizeW = itemData.shape[0].length;
+
                     tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
                     if (itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
                     if (itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
