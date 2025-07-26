@@ -628,8 +628,8 @@ setupEnemy(gridY) { // ★引数 gridY を追加
         if (!itemData) continue;
         const pos = currentLayout[itemId].pos;
         const containerWidth = itemData.shape[0].length * this.cellSize;
-        const containerHeight = itemData.shape[0].length * this.cellSize;
-        const itemContainer = this.add.container(
+          // ★★★ この一行を修正 ★★★
+        const containerHeight = itemData.shape.length * this.cellSize; // shape.length を使う        const itemContainer = this.add.container(
             enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
             enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
         ).setSize(containerWidth, containerHeight);
