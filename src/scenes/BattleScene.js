@@ -65,7 +65,11 @@ export default class BattleScene extends Phaser.Scene {
 // BattleScene.js の create を、この最終確定版に置き換えてください
 create() {
     console.log("BattleScene: create - データ永続化対応版 (sf)");
-
+const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
+    const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
+    this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
+        .setDisplaySize(this.scale.width, this.scale.height)
+        .setDepth(-1);
     // =================================================================
     // STEP 1: マネージャー取得とデータ準備
     // =================================================================

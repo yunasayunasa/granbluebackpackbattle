@@ -17,6 +17,9 @@ export default class RewardScene extends Phaser.Scene {
   // RewardScene.js の create メソッドを、これに置き換えてください
 create() {
     console.log("RewardScene: create");
+    this.add.image(this.scale.width / 2, this.scale.height / 2, 'reward_background')
+        .setDisplaySize(this.scale.width, this.scale.height)
+        .setDepth(-1);
     this.cameras.main.setBackgroundColor('#2c3e50');
 
     this.stateManager = this.sys.registry.get('stateManager');
