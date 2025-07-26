@@ -54,29 +54,40 @@ create() {
 
 
     // 報酬を画面に表示 (rewards -> selectedRewards に変更)
-    selectedRewards.forEach((itemId, index) => {
-        const x = (this.scale.width / 4) * (index + 1);
-        const y = this.scale.height / 2;
+    // in RewardScene.js -> create()
 
-        const card = this.add.rectangle(x, y, 150, 200, 0xbdc3c7).setInteractive();
-        card.setStrokeStyle(4, 0x7f8c8d);
+selectedRewards.forEach((itemId, index) => {
+    const x = (this.scale.width / 4) * (index + 1);
+    const y = this.scale.height / 2;
 
-        // ★ ITEM_DATAからstorageキーを取得するように修正 ★
-        const itemData = ITEM_DATA[itemId];
-        if (itemData && itemData.storage) {
-            this.add.image(x, y - 20, itemData.storage).setScale(1.5);
+    const card = this.add.rectangle(x, y, 150, 200, 0xbdc3c7).setInteractive();
+    card.setStrokeStyle(4, 0x7f8c8d);
+
+    const itemData = ITEM_DATA[itemId];
+    if (itemData && itemData.storage) {
+        // ★★★ ここからが修正箇所 ★★★
+        const itemImage = this.add.image(x, y - 20, itemData.storage);
+
+        // 画像の幅か高さのどちらかが、カードの表示領域より大きい場合にリサイズ
+        const imageAreaWidth = 120;
+        const imageAreaHeight = 120;
+        if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
+            // アスペクト比を保ったまま、領域に収まるようにスケールを調整
+            const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
+            itemImage.setScale(scale);
         }
+        // ★★★ 修正箇所ここまで ★★★
+    }
 
-        this.add.text(x, y + 80, itemId, {
-            fontSize: '20px',
-            fill: '#2c3e50'
-        }).setOrigin(0.5);
+    this.add.text(x, y + 80, itemId, {
+        fontSize: '20px',
+        fill: '#2c3e50'
+    }).setOrigin(0.5);
 
-        card.on('pointerdown', () => {
-            this.selectReward(itemId);
-        });
+    card.on('pointerdown', () => {
+        this.selectReward(itemId);
     });
-    
+});
     this.events.emit('scene-ready');
 }
 
