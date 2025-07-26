@@ -174,7 +174,34 @@ this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
   // =================================================================
     // STEP 5: イベントリスナーと完了通知
     // =================================================================
-      // --- 5a. 戦闘開始ボタン ★★★ このブロックが復活しました ★★★
+    // --- 5a. 暫定リセットボタン ---
+const resetButton = this.add.text(80, 40, '[ リセット ]', {
+    fontSize: '20px',
+    fill: '#ffdd00',
+    backgroundColor: '#000000aa',
+    padding: { x: 10, y: 5 }
+})
+.setOrigin(0.5)
+.setDepth(100)
+.setInteractive();
+
+resetButton.on('pointerdown', () => {
+    // 確認ダイアログを表示
+    if (window.confirm('本当にすべてのデータをリセットして最初から始めますか？')) {
+        // 1. StateManagerのsf変数を空にする
+        this.stateManager.sf = {};
+
+        // 2. localStorageからセーブデータを削除
+        localStorage.removeItem('my_novel_engine_system');
+        console.log("Save data has been reset.");
+
+        // 3. ページをリロードしてゲームを再起動
+        window.location.reload();
+    }
+});
+// ★★★ 追加ここまで ★★★
+
+    // --- 5a. 戦闘開始ボタン ★★★ このブロックが復活しました ★★★
     this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: {x:20, y:10} }).setOrigin(0.5).setInteractive().setDepth(11);
     this.prepareContainer.add(this.startBattleButton);
     
