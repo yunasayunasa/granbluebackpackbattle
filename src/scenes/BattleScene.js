@@ -911,42 +911,60 @@ if (elementCounts.dark >= 3) {
 
     // BattleScene.js にこの新しいメソッドを追加
 
-    /**
-     * 属性共鳴が発動したキャラクターを光らせる
-     * @param {Phaser.GameObjects.Container} targetObject - 対象のキャラクターオブジェクト
-     * @param {number} color - 光らせる色の16進数カラーコード
-     */
-    playResonanceFlash(targetObject, color) {
-        if (!targetObject) return;
+/**
+ * 属性共鳴が発動したキャラクターにオーラとパーティクルエフェクトを表示する
+ * @param {Phaser.GameObjects.Container} targetObject - 対象のキャラクターオブジェクト
+ * @param {number} color - エフェクトの色の16進数カラーコード
+ */
+playResonanceAura(targetObject, color) {
+    if (!targetObject || !targetObject.active) return;
 
-        // オーバーレイ用の画像（ベース画像と同じもの）を取得または生成
-        // createItemで既にrecastOverlayがあるので、それを流用するのが効率的
-        const overlay = targetObject.getData('recastOverlay');
-        if (!overlay) return;
+    const centerX = targetObject.x;
+    const bottomY = targetObject.y + targetObject.displayHeight / 2;
+    const effectDuration = 1500; // エフェクトの表示時間 (ミリ秒)
 
-        // 色とアルファ値を設定して表示
-        overlay.setTint(color);
-        overlay.setAlpha(0.7);
-        overlay.setVisible(true);
+    // --- 1. オーラエフェクト (Graphics) ---
+    const aura = this.add.graphics().setDepth(targetObject.depth - 1); // キャラクターのすぐ後ろ
+    // Y座標が下に行くほど透明になるグラデーション
+    aura.fillGradientStyle(color, color, color, color, 1, 1, 0, 0);
+    aura.fillRect(
+        centerX - targetObject.displayWidth / 2,
+        bottomY - targetObject.displayHeight,
+        targetObject.displayWidth,
+        targetObject.displayHeight
+    );
+    // オーラをゆっくりフェードアウト
+    this.tweens.add({
+        targets: aura,
+        alpha: 0,
+        duration: effectDuration,
+        ease: 'Cubic.easeOut',
+        onComplete: () => { aura.destroy(); }
+    });
 
-        // 短いTweenでフェードアウトさせる
-        this.tweens.add({
-            targets: overlay,
-            alpha: 0,
-            duration: 800, // 0.8秒かけてゆっくり消える
-            ease: 'Cubic.easeOut',
-            onComplete: () => {
-                // recastを持つキャラの場合、リキャスト表示が消えないように
-                const itemData = ITEM_DATA[targetObject.getData('itemId')];
-                if (itemData && itemData.recast > 0) {
-                    overlay.setTint(0x00aaff, 0.7); // リキャスト用の色に戻す
-                    overlay.setAlpha(1.0); // マスクで制御するのでアルファは1に戻す
-                } else {
-                    overlay.setVisible(false); // recastがなければ非表示に
-                }
-            }
-        });
-    }
+
+    // --- 2. パーティクルエフェクト ---
+    const particles = this.add.particles(0, 0, 'particle_white', {
+        x: { min: centerX - targetObject.displayWidth/2, max: centerX + targetObject.displayWidth/2 },
+        y: bottomY,
+        lifespan: effectDuration,
+        speedY: { min: -50, max: -150 }, // 上昇速度
+        scale: { start: 0.8, end: 0 },
+        gravityY: 100,
+        blendMode: 'ADD', // 光が重なるような表現
+        tint: color,      // パーティクルを属性色に染める
+        quantity: 2       // 一度に出る量
+    }).setDepth(targetObject.depth + 1); // キャラクターの少し手前
+
+    // 一定時間後にパーティクルの放出を停止
+    this.time.delayedCall(effectDuration - 200, () => {
+        particles.stop();
+    });
+    // 全てのパーティクルが消えたら、エミッター自体を破棄
+    this.time.delayedCall(effectDuration * 2, () => {
+        particles.destroy();
+    });
+}
     // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
     createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
