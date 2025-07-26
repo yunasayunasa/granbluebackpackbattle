@@ -235,7 +235,13 @@ console.log("BattleScene: create 完了");
 
     // --- 5b. グローバルクリック（ツールチップ非表示用）
     this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
-
+this.anims.create({
+    key: 'impact_anim', // このアニメーションの名前
+    // 'effect_impact'のキーを持つスプライトシートの、0コマ目から7コマ目までを使う
+    frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }),
+    frameRate: 24, // 1秒間に24コマ再生
+    repeat: 0      // 繰り返し再生しない
+});
     // --- 5c. 準備完了をSystemSceneに通知
     this.events.emit('scene-ready');
     console.log("BattleScene: create 完了");
@@ -1125,123 +1131,87 @@ removeItemFromBackpack(itemContainer) {
         } else {
             arrowContainer.setVisible(false);
         }
-    }
-
-    /**
-   * ダメージ発生時のすべての視覚エフェクトを再生する
-   * @param {string} targetSide - 'player' または 'enemy'
-   * @param {number} amount - ダメージ量
-   */
-    playDamageEffects(targetSide, amount) {
-        if (amount <= 0) return;
-
-        const damage = Math.floor(amount);
-        let targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
-        if (!targetAvatar) return;
-        // ダメージ量に応じてスタイルを決定
-        let fontSize = 24;
-        let fill = '#ffffff'; // 通常ダメージの色 (白)
-        let stroke = '#000000';
-        let strokeThickness = 4;
-
-        if (amount >= 50) { // 大ダメージ
-            fontSize = 48;
-            fill = '#ff0000'; // 赤色
-            stroke = '#ffffff';
-            strokeThickness = 6;
-        } else if (amount >= 20) { // 中ダメージ
-            fontSize = 36;
-            fill = '#ffdd00'; // 黄色
         }
 
-        // 表示テキストを作成
-        const damageText = this.add.text(0, 0, amount.toString(), {
-            fontSize: `${fontSize}px`,
-            fill: fill,
-            stroke: stroke,
-            strokeThickness: strokeThickness,
-            fontStyle: 'bold'
-        }).setOrigin(0.5).setDepth(999);
+// playDamageEffects を、この構文修正済みのバージョンに置き換えてください
 
-        // ★★★ ここからが修正箇所 ★★★
-        const initialX = targetAvatar.x;
-        const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
-        damageText.setPosition(initialX, initialY);
-        this.tweens.add({
-            targets: damageText,
-            x: initialX + Phaser.Math.Between(-40, 40),
-            y: initialY - 100,
-            alpha: 0,
-            duration: 1500,
-            ease: 'Power1',
-            onComplete: () => damageText.destroy()
-        });
-        // --- 2. 画面シェイク ---
-        // ダメージ量に応じて揺れの強さと時間を変える
-        const shakeIntensity = Math.min(0.015, 0.002 + damage * 0.0002);
-        const shakeDuration = Math.min(200, 100 + damage * 2);
-        this.cameras.main.shake(shakeDuration, shakeIntensity);
+/**
+ * ダメージ発生時のすべての視覚エfectsを再生する (スプライトシート版)
+ * @param {string} targetSide - 'player' または 'enemy'
+ * @param {number} amount - ダメージ量
+ */
+playDamageEffects(targetSide, amount) {
+    if (amount <= 0) return;
+    
+    const damage = Math.floor(amount);
+    const targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
+    if (!targetAvatar) return;
 
-        // --- 3. 赤点滅ティント ---
-        // 4回点滅させる (白 -> 赤 -> 白 -> 赤)
-        let blinkCount = 0;
-        this.time.addEvent({
-            delay: 80, // 点滅の間隔
-            callback: () => {
+    // --- 1. ダメージ数字のポップアップ ---
+    let fontSize = 24;
+    let fill = '#ffffff';
+    let stroke = '#000000';
+    let strokeThickness = 4;
+    if (damage >= 50) {
+        fontSize = 48;
+        fill = '#ff0000';
+        stroke = '#ffffff';
+        strokeThickness = 6;
+    } else if (damage >= 20) {
+        fontSize = 36;
+        fill = '#ffdd00';
+    }
+    const damageText = this.add.text(0, 0, damage.toString(), {
+        fontSize: `${fontSize}px`, fill, stroke, strokeThickness, fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(1002);
+    
+    const initialX = targetAvatar.x;
+    const initialY = targetAvatar.y - (targetAvatar.displayHeight / 2) - 10;
+    damageText.setPosition(initialX, initialY);
+    this.tweens.add({
+        targets: damageText,
+        x: initialX + Phaser.Math.Between(-40, 40),
+        y: initialY - 100,
+        alpha: 0,
+        duration: 1500,
+        ease: 'Power1',
+        onComplete: () => damageText.destroy()
+    });
+
+    // --- 2. 画面シェイク ---
+    const shakeIntensity = Math.min(0.015, 0.002 + damage * 0.0002);
+    const shakeDuration = Math.min(200, 100 + damage * 2);
+    this.cameras.main.shake(shakeDuration, shakeIntensity);
+
+    // --- 3. 赤点滅ティント ---
+    let blinkCount = 0;
+    targetAvatar.clearTint();
+    const blinkTimer = this.time.addEvent({
+        delay: 80,
+        callback: () => {
+            if (targetAvatar && targetAvatar.active) {
                 targetAvatar.setTint(blinkCount % 2 === 0 ? 0xff0000 : 0xffffff);
                 blinkCount++;
-            },
-            repeat: 3, // (最初の1回 + repeat 3回 = 合計4回)
-            onComplete: () => {
-                targetAvatar.clearTint(); // 最後に必ずティントをクリア
             }
-        });
+        },
+        repeat: 3,
+        callbackScope: this
+    });
+    this.time.delayedCall(80 * 4 + 10, () => {
+        if (targetAvatar && targetAvatar.active) targetAvatar.clearTint();
+        if (blinkTimer) blinkTimer.remove();
+    });
 
-        // --- 4. 斬撃ラインエフェクト (演出修正版) ---
-        const centerX = targetAvatar.x;
-        const centerY = targetAvatar.y;
-
-        // エフェクト全体をまとめるコンテナを作成し、アバターの位置に配置
-        const effectContainer = this.add.container(centerX, centerY).setDepth(1001);
-
-        const slashGraphics = this.add.graphics();
-        effectContainer.add(slashGraphics); // Graphicsをコンテナに入れる
-
-        const lineLength = targetAvatar.displayWidth * 1.2;
-
-        // 線の色と太さをここで明確に指定
-        slashGraphics.lineStyle(8, 0xffffff, 1.0); // 太い白線
-
-        // 2本の線を交差させて「斬」の形を作る
-        // 1本目（＼）
-        slashGraphics.beginPath();
-        slashGraphics.moveTo(-lineLength / 2, -lineLength / 2);
-        slashGraphics.lineTo(lineLength / 2, lineLength / 2);
-        slashGraphics.strokePath();
-        // 2本目（／）
-        slashGraphics.beginPath();
-        slashGraphics.moveTo(lineLength / 2, -lineLength / 2);
-        slashGraphics.lineTo(-lineLength / 2, lineLength / 2);
-        slashGraphics.strokePath();
-
-        // アニメーションは、Graphicsではなく、親のコンテナに対してかける
-        effectContainer.setAlpha(0.8);
-        effectContainer.setScale(0.3);
-        effectContainer.setAngle(Phaser.Math.DegToRad(Phaser.Math.Between(-25, 25))); // 少しランダムに傾ける
-
-        this.tweens.add({
-            targets: effectContainer,
-            scale: 1.0,
-            alpha: 0,
-            duration: 250,
-            ease: 'Cubic.easeOut',
-            onComplete: () => {
-                effectContainer.destroy(); // コンテナごと破棄
-            }
-        });
-    }
-
-    // BattleScene.js にこの新しいメソッドを追加してください
+    // --- 4. スプライトシートによるインパクトアニメーション ---
+    const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_impact').setDepth(1001);
+    effectSprite.play('impact_anim');
+    effectSprite.on('animationcomplete', () => {
+        effectSprite.destroy();
+    });
+    // ★★★ 修正箇所：余分な }); を削除し、メソッドの閉じカッコ } を正しく配置 ★★★
+} // ← これが playDamageEffects を閉じる正しいカッコです
+    
+      // BattleScene.js にこの新しいメソッドを追加してください
 /**
  * インベントリ内のアイテムのレイアウトを更新し、再配置する
  */

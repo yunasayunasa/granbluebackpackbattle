@@ -24,6 +24,13 @@
     "background4": "assets/bg4.png",
     "reward_background": "assets/reward_bg.jpg"
   },
+   "spritesheets": {
+    "effect_impact": {
+      "path": "assets/effect_impact.png",
+      "frameWidth": 750,
+      "frameHeight": 1000
+    }
+  },
   "sounds": {
 "popopo": "assets/gyakuten_popopo.mp3",
 "cafe": "assets/cafe.mp3",
