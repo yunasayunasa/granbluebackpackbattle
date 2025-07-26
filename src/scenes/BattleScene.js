@@ -464,35 +464,45 @@ this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialP
         });
         console.log("シナジー計算完了。");
 
-        // ★★★ STEP 3: 最終ステータスの計算 ★★★ (ここは変更なし)
-        let finalMaxHp = this.initialBattleParams.playerMaxHp;
-        let finalDefense = 0;
-        this.playerBattleItems = [];
+        // ★★★ STEP 3: 最終ステータスの計算 ★★★
+let finalMaxHp = this.initialBattleParams.playerMaxHp;
+let finalDefense = 0;
+this.playerBattleItems = [];
 
-
-        for (const item of playerFinalItems) {
-            if (item.passive && item.passive.effects) {
-                for (const effect of item.passive.effects) {
-                    if (effect.type === 'defense') finalDefense += effect.value;
-                    if (effect.type === 'max_hp') finalMaxHp += effect.value;
-                }
-            }
-            if (item.recast > 0) {
-                this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
-            }
+// パッシブ効果によるステータス変動を計算
+for (const item of playerFinalItems) {
+    if (item.passive && item.passive.effects) {
+        for(const effect of item.passive.effects){
+            if (effect.type === 'defense') finalDefense += effect.value;
+            if (effect.type === 'max_hp') finalMaxHp += effect.value;
         }
-        finalMaxHp = Math.max(1, finalMaxHp);
-        this.stateManager.setF('player_max_hp', finalMaxHp);
-        this.stateManager.setF('player_hp', finalMaxHp);
-        this.playerStats = {
-            max_hp: finalMaxHp, // ★追加
-            hp: finalMaxHp,
-            defense: finalDefense,
-            block: 0,
-            attack: 0 // attackは0のまま
-        };
-        this.finalizedPlayerItems = playerFinalItems; // ★★★ この行を追加 ★★★
-        console.log("プレイヤー最終ステータス:", this.playerStats);
+    }
+    if (item.recast > 0) {
+        this.playerBattleItems.push({ data: item, nextActionTime: item.recast });
+    }
+}
+finalMaxHp = Math.max(1, finalMaxHp);
+
+// ★★★ ここからが修正箇所 ★★★
+// 1. 引き継いだHPを取得。ただし、新しい最大HPを超えないようにする。
+const inheritedHp = Math.min(this.initialBattleParams.playerHp, finalMaxHp);
+
+// 2. StateManagerの値をセット
+this.stateManager.setF('player_max_hp', finalMaxHp);
+this.stateManager.setF('player_hp', inheritedHp); // ★最大HPではなく、引き継いだHPをセット
+
+// 3. 戦闘用の内部ステータスも、引き継いだHPで初期化
+this.playerStats = { 
+    max_hp: finalMaxHp, 
+    hp: inheritedHp, // ★最大HPではなく、引き継いだHPで開始
+    defense: finalDefense, 
+    block: 0,
+    attack: 0
+};
+// ★★★ 修正箇所ここまで ★★★
+
+this.finalizedPlayerItems = playerFinalItems;
+console.log("プレイヤー最終ステータス:", this.playerStats);
 
         // 4. 敵のステータス初期化
         const enemyMaxHp = this.stateManager.f.enemy_max_hp; // ★敵の最大HPも取得
