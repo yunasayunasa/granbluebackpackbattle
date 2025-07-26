@@ -1442,39 +1442,50 @@ playFinishBlowEffects(targetAvatar) {
     // 1. スローモーション開始
     this.time.timeScale = 0.2;
 
-    // 2. 中央が太い斬撃エフェクト (Graphics)
+    // 2. 「中央が太く、両端が細い」斬撃エフェクト (Graphics)
     const finishSlash = this.add.graphics().setDepth(2001);
     const centerX = this.scale.width / 2;
     const centerY = this.scale.height / 2;
-    const lineLength = this.scale.width * 1.5;
-    const gradient = finishSlash.context.createLinearGradient(-lineLength/2, 0, lineLength/2, 0);
-    gradient.addColorStop(0,   'rgba(255, 255, 255, 0.0)');
-    gradient.addColorStop(0.4, 'rgba(255, 255, 180, 1.0)');
-    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)');
-    gradient.addColorStop(0.6, 'rgba(255, 255, 180, 1.0)');
-    gradient.addColorStop(1,   'rgba(255, 255, 255, 0.0)');
-    finishSlash.fillStyle = gradient;
-    finishSlash.lineStyle(2, 0xffff00, 0.5);
+    const lineLength = this.scale.width;
+    const centerWidth = 30; // 中央の太さ
+
+    // 塗りつぶしの色と、輪郭線のスタイルを設定
+    finishSlash.fillStyle(0xffffff, 1.0);   // 塗りは純白
+    finishSlash.lineStyle(2, 0xffff00, 1.0); // 輪郭は黄色
+
+    // ひし形（中央が太く、両端が細い多角形）の4つの頂点を定義
+    const points = [
+        { x: -lineLength / 2, y: 0 },              // 左端
+        { x: 0,               y: -centerWidth / 2 }, // 中央上
+        { x: lineLength / 2,  y: 0 },              // 右端
+        { x: 0,               y: centerWidth / 2 }  // 中央下
+    ];
+
+    // 多角形を描画
     finishSlash.beginPath();
-    finishSlash.moveTo(-lineLength / 2, -4);
-    finishSlash.lineTo(lineLength / 2, -4);
-    finishSlash.lineTo(lineLength / 2, 4);
-    finishSlash.lineTo(-lineLength / 2, 4);
+    finishSlash.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        finishSlash.lineTo(points[i].x, points[i].y);
+    }
     finishSlash.closePath();
     finishSlash.fillPath();
     finishSlash.strokePath();
+
     const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
     slashContainer.add(finishSlash);
+    
+    // 斬撃アニメーション
     this.tweens.add({
         targets: slashContainer,
-        scale: { from: 0.3, to: 1.2 },
+        scale: { from: 0.3, to: 1.5 },
         alpha: { from: 1, to: 0 },
-        duration: 400,
+        duration: 400, // 実時間
         ease: 'Cubic.easeOut',
         onComplete: () => {
             slashContainer.destroy();
         }
     });
+
 
     // 3. スプライトシートアニメーション
     const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
