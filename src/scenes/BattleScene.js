@@ -851,22 +851,20 @@ if (elementCounts.dark >= 3) {
      */
     // BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
     setupEnemy(gridY) {
-        const gameWidth = this.scale.width;
-        const gridWidth = this.backpackGridSize * this.cellSize;
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = gridY;
+    const gameWidth = this.scale.width;
+    const gridWidth = this.backpackGridSize * this.cellSize;
+    const enemyGridX = gameWidth - 100 - gridWidth;
+    const enemyGridY = gridY;
 
-        // 以前の敵オブジェクトが残っていれば全て破棄する
-        this.enemyItemImages.forEach(item => item.destroy());
-        this.enemyItemImages = [];
+    // 以前の敵オブジェクトが残っていれば全て破棄する
+    this.enemyItemImages.forEach(item => item.destroy());
+    this.enemyItemImages = [];
 
-        // ★将来的には、このenemyLayoutsをラウンドに応じて動的に生成する
-        const enemyLayouts = {
-            1: { 'sword': { pos: [2, 2], angle: 0 } },
-            2: { 'berserker_axe': { pos: [1, 2], angle: 0 }, 'shield': { pos: [3, 3], angle: 0 } }
-        };
-        const currentLayout = enemyLayouts[this.initialBattleParams.round] || enemyLayouts[1]; // ラウンド2以降も仮で表示
-
+    // ★★★ ここからが修正箇所 ★★★
+    // EnemyGeneratorから現在のラウンドのレイアウトを取得
+    const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+    console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
+    // ★★★ 修正箇所ここまで ★★★
         for (const itemId in currentLayout) {
             const itemData = ITEM_DATA[itemId];
             if (!itemData) continue;
