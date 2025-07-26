@@ -949,7 +949,7 @@ playResonanceAura(targetObject, color) {
         y: bottomY,
         lifespan: effectDuration,
         speedY: { min: -50, max: -150 }, // 上昇速度
-        scale: { start: 0.8, end: 0 },
+        scale: { start: 0.5, end: 0 },
         gravityY: 100,
         blendMode: 'ADD', // 光が重なるような表現
         tint: color,      // パーティクルを属性色に染める
