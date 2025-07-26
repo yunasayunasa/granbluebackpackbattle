@@ -242,6 +242,12 @@ this.anims.create({
     frameRate: 24, // 1秒間に24コマ再生
     repeat: 0      // 繰り返し再生しない
 });
+this.anims.create({
+    key: 'finish_anim', // 新しいアニメーションキー
+    frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 15 }), // フレーム数を合わせる
+    frameRate: 30, // 少し速くして派手さを出す
+    repeat: 0
+});
     // --- 5c. 準備完了をSystemSceneに通知
     this.events.emit('scene-ready');
     console.log("BattleScene: create 完了");
@@ -1434,33 +1440,64 @@ updateInventoryLayout() {
         this.time.timeScale = 0.2; // 時間の進みを1/5にする
 
         // 2. 派手な斬撃エフェクト（通常とは別）
-        const centerX = this.scale.width / 2;
-        const centerY = this.scale.height / 2;
+        const finishSlash = this.add.graphics().setDepth(2001); // スプライトより手前
 
-        const finishEffect = this.add.graphics().setDepth(2000);
-        finishEffect.lineStyle(15, 0xffdd00, 1.0); // 金色で太い線
+    const centerX = this.scale.width / 2;
+    const centerY = this.scale.height / 2;
+    const lineLength = this.scale.width * 1.5;
 
-        const w = this.scale.width * 1.2;
-        finishEffect.beginPath();
-        finishEffect.moveTo(centerX - w, centerY - w);
-        finishEffect.lineTo(centerX + w, centerY + w);
-        finishEffect.strokePath();
+    // 線の始点と終点を定義
+    const p1 = new Phaser.Math.Vector2(-lineLength / 2, 0);
+    const p2 = new Phaser.Math.Vector2(lineLength / 2, 0);
 
-        finishEffect.setAngle(Phaser.Math.DegToRad(-20));
-        finishEffect.setAlpha(0);
-        finishEffect.setScale(2.0);
+    // グラデーションを作成
+    // (x0, y0, x1, y1) はグラデーションの方向ベクトル
+    const gradient = finishSlash.context.createLinearGradient(-lineLength/2, 0, lineLength/2, 0);
+    gradient.addColorStop(0,   'rgba(255, 255, 255, 0.0)'); // 端: 透明
+    gradient.addColorStop(0.4, 'rgba(255, 255, 180, 1.0)'); // 中央少し手前: 明るい黄色
+    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)'); // 中央: 純白
+    gradient.addColorStop(0.6, 'rgba(255, 255, 180, 1.0)'); // 中央少し先: 明るい黄色
+    gradient.addColorStop(1,   'rgba(255, 255, 255, 0.0)'); // 端: 透明
 
-        this.tweens.add({
-            targets: finishEffect,
-            alpha: 1.0,
-            scale: 1.0,
-            duration: 200, // スロー中でもここは実時間
-            ease: 'Cubic.easeIn',
-            yoyo: true, // 表示された後、逆再生で消える
-            onComplete: () => {
-                finishEffect.destroy();
-            }
-        });
+    finishSlash.fillStyle = gradient;
+    finishSlash.lineStyle(2, 0xffff00, 0.5); // 細い輪郭線
+
+    // 複数の三角形を組み合わせて「中央が太い線」を表現
+    finishSlash.beginPath();
+    finishSlash.moveTo(p1.x, p1.y - 4);
+    finishSlash.lineTo(p2.x, p2.y - 4);
+    finishSlash.lineTo(p2.x, p2.y + 4);
+    finishSlash.lineTo(p1.x, p1.y + 4);
+    finishSlash.closePath();
+    finishSlash.fillPath();
+    finishSlash.strokePath();
+
+    const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
+    slashContainer.add(finishSlash);
+    
+    // 斬撃アニメーション
+    this.tweens.add({
+        targets: slashContainer,
+        scale: { from: 0.3, to: 1.2 },
+        alpha: { from: 1, to: 0 },
+        duration: 400, // 実時間
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+            slashContainer.destroy();
+        }
+    });
+
+
+    // =================================================================
+    // 3. スプライトシートアニメーション
+    // =================================================================
+    const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
+    const desiredWidth = targetAvatar.displayWidth * 2.5; // 通常より大きく派手に
+    effectSprite.setScale(desiredWidth / effectSprite.width);
+    effectSprite.play('finish_anim');
+    effectSprite.on('animationcomplete', () => {
+        effectSprite.destroy();
+    });
 
         // 3. スローモーション解除とバトル終了処理
         this.time.delayedCall(1500, () => { // 1.5秒後に実行
