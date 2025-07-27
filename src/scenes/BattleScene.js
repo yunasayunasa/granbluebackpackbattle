@@ -360,7 +360,18 @@ prepareForBattle() {
     this.playerStats = playerResult.finalStats;
     this.playerBattleItems = playerResult.battleItems;
     this.finalizedPlayerItems = playerResult.finalizedItems;
-
+  // 発動した属性共鳴のエフェクトを再生
+    playerResult.activatedResonances.forEach(element => {
+        const flashColor = ELEMENT_COLORS[element];
+        if (flashColor) {
+            // その属性を持つアイテム全てを光らせる
+            this.finalizedPlayerItems.forEach(item => {
+                if (item.tags.includes(element) && item.gameObject) {
+                    this.playResonanceAura(item.gameObject, flashColor);
+                }
+            });
+        }
+    });
     this.stateManager.setF('player_max_hp', this.playerStats.max_hp);
     this.stateManager.setF('player_hp', this.playerStats.hp);
     console.log("プレイヤー最終ステータス:", this.playerStats);
@@ -382,7 +393,17 @@ prepareForBattle() {
     const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
     this.enemyStats = enemyResult.finalStats;
     this.enemyBattleItems = enemyResult.battleItems;
-    
+     // ★★★ 敵側にもエフェクト再生を追加 ★★★
+    enemyResult.activatedResonances.forEach(element => {
+        const flashColor = ELEMENT_COLORS[element];
+        if (flashColor) {
+            enemyResult.finalizedItems.forEach(item => {
+                if (item.tags.includes(element) && item.gameObject) {
+                    this.playResonanceAura(item.gameObject, flashColor);
+                }
+            });
+        }
+    });
     this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
     this.stateManager.setF('enemy_hp', this.enemyStats.hp);
     console.log("敵最終ステータス:", this.enemyStats);
@@ -530,6 +551,13 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     });
 
     const darkResonanceLevel = (elementCounts.dark >= 3) ? 1 : 0;
+ // 発動した属性共鳴のリストを作成
+    const activatedResonances = [];
+    for (const element in elementCounts) {
+        if (elementCounts[element] >= ELEMENT_RESONANCE_RULES[element].threshold) {
+            activatedResonances.push(element);
+        }
+    }
 
     return {
         finalStats: {
@@ -541,7 +569,8 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             darkResonanceLevel: darkResonanceLevel
         },
         battleItems: battleItems,
-        finalizedItems: initialItems
+        finalizedItems: initialItems,
+              activatedResonances: activatedResonances // ★この情報を戻り値に追加
     };
 }
 
