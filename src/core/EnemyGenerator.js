@@ -136,10 +136,12 @@ getLayoutForRound(round) {
     const backpack = Array(gridSize).fill(0).map(() => Array(gridSize).fill(false));
 
     // --- 4a. アイテムを「シナジー持ち」と「その他」に分離 ---
-    const synergyItems = team.filter(id => ITEM_DATA[id.split('_')[0]].synergy);
-    const otherItems = team.filter(id => !ITEM_DATA[id.split('_')[0]].synergy);
-    // シナジー持ちを先に配置するため、配列を結合
-    const sortedTeam = [...synergyItems, ...otherItems];
+    // まずはサイズの大きいものから配置すると、隙間が生まれにくい
+const sortedTeam = team.sort((a, b) => {
+    const sizeA = ITEM_DATA[a.split('_')[0]].shape.length * ITEM_DATA[a.split('_')[0]].shape[0].length;
+    const sizeB = ITEM_DATA[b.split('_')[0]].shape.length * ITEM_DATA[b.split('_')[0]].shape[0].length;
+    return sizeB - sizeA;
+});
 
     // --- 4b. ヘルパー関数: 指定した位置にアイテムを配置可能かチェック ---
     const canPlace = (itemShape, r, c) => {
@@ -163,78 +165,69 @@ getLayoutForRound(round) {
         }
     };
 
-    // --- 4d. 配置実行 ---
-    sortedTeam.forEach(uniqueId => {
-        const baseId = uniqueId.split('_')[0];
-        const itemData = ITEM_DATA[baseId];
-        const shape = itemData.shape;
-        
-        let bestPosition = null;
+    // --- 4c. 配置実行 ---
+sortedTeam.forEach(uniqueId => {
+    const baseId = uniqueId.split('_')[0];
+    const itemData = ITEM_DATA[baseId];
+    const shape = itemData.shape;
+    
+    let bestPosition = null;
+    let maxScore = -1;
 
-        // --- 4d-1. シナジー持ちアイテムの場合、最適な場所を探す ---
-        if (itemData.synergy) {
-            let maxSynergyScore = -1;
-            
-            // 全てのグリッドと全ての隣接マスをチェック
-            for (let r = 0; r < gridSize; r++) {
-                for (let c = 0; c < gridSize; c++) {
-                    // 既に配置済みのアイテム(targetId)が(r,c)にあるか
-                    const targetUniqueId = Object.keys(layout).find(key => {
-                        const targetLayout = layout[key];
-                        const targetShape = ITEM_DATA[key.split('_')[0]].shape;
-                        return  r >= targetLayout.row && r < targetLayout.row + targetShape.length &&
-                                c >= targetLayout.col && c < targetLayout.col + targetShape[0].length;
-                    });
+    // グリッド上の全ての空きマスを、配置候補として試す
+    for (let r = 0; r <= gridSize - shape.length; r++) {
+        for (let c = 0; c <= gridSize - shape[0].length; c++) {
+            if (canPlace(shape, r, c)) {
+                let currentScore = 0;
+                
+                // --- この配置が、どれだけ良いシナジーを生むかスコアリング ---
+                
+                // 1. このアイテムが「与える」シナジーの評価
+                if (itemData.synergy) {
+                    // (将来的に、このアイテムのシナジー方向に、適合する配置済みアイテムがあれば加点)
+                }
 
-                    if (targetUniqueId) {
-                        const targetData = ITEM_DATA[targetUniqueId.split('_')[0]];
-                        // 隣接する4方向に、このシナジーアイテムを置けるか試す
-                        const directions = [{r:-shape.length, c:0}, {r:1, c:0}, {r:0, c:-shape[0].length}, {r:0, c:1}];
-                        directions.forEach(dir => {
-                            const placeR = r + dir.r;
-                            const placeC = c + dir.c;
-                            if (canPlace(shape, placeR, placeC)) {
-                                let currentScore = 0;
-                                // シナジーが発動する相手か？ (タグをチェック)
-                                if (targetData.tags && targetData.tags.includes(itemData.synergy.targetTag)) {
-                                    currentScore = 1; // とりあえずスコアを1とする
-                                }
-                                if (currentScore > maxSynergyScore) {
-                                    maxSynergyScore = currentScore;
-                                    bestPosition = { r: placeR, c: placeC };
-                                }
-                            }
-                        });
+                // 2. このアイテムが、配置済みのアイテムから「受ける」シナジーの評価
+                Object.keys(layout).forEach(placedId => {
+                    const placedItemData = ITEM_DATA[placedId.split('_')[0]];
+                    if (placedItemData.synergy) {
+                        // 配置済みのアイテム(placedItem)が、今置こうとしているアイテム(itemData)に
+                        // シナジーを与えられるかチェックする
+                        const sourceLayout = layout[placedId];
+                        const sourceShape = ITEM_DATA[placedId.split('_')[0]].shape;
+                        
+                        // (ここに、非常に複雑な相対位置チェックのロジックが入る)
+                        // 今回は、よりシンプルで効果的なアプローチを取る
                     }
+                });
+
+                // ★★★ シンプルかつ効果的な新スコアリングロジック ★★★
+                // ランダム性を加えることで、毎回違う配置になるようにする
+                // 0.5は「とりあえず置ける」という基本スコア
+                currentScore = 0.5 + Math.random(); 
+
+                // もしこのアイテムがシナジー持ちなら、中央に近いほど高スコア
+                if(itemData.synergy){
+                    const distanceFromCenter = Math.abs(r - 2.5) + Math.abs(c - 2.5);
+                    currentScore += 5 - distanceFromCenter; // 中央に近いほど高い
+                }
+
+                if (currentScore > maxScore) {
+                    maxScore = currentScore;
+                    bestPosition = { r, c };
                 }
             }
         }
+    }
+    
+    // --- 4d. 最終的な配置 ---
+    if (bestPosition) {
+        placeItem(uniqueId, bestPosition.r, bestPosition.c);
+    } else {
+        console.warn(`[EnemyGenerator] アイテム'${uniqueId}'を配置するスペースがありませんでした。`);
+    }
+});
 
-        // --- 4d-2. 最適な場所が見つからなかった場合、またはシナジーがない場合 ---
-        if (!bestPosition) {
-            // ランダムな空きマスを探す
-            const emptyCells = [];
-            for (let r = 0; r < gridSize; r++) {
-                for (let c = 0; c < gridSize; c++) {
-                    if (canPlace(shape, r, c)) {
-                        emptyCells.push({ r, c });
-                    }
-                }
-            }
-            if (emptyCells.length > 0) {
-                bestPosition = Phaser.Utils.Array.GetRandom(emptyCells);
-            }
-        }
-        
-        // --- 4d-3. 最終的な配置 ---
-        if (bestPosition) {
-            placeItem(uniqueId, bestPosition.r, bestPosition.c);
-        } else {
-            console.warn(`[EnemyGenerator] アイテム'${uniqueId}'を配置するスペースがありませんでした。`);
-        }
-    });
-
-    console.log("[EnemyGenerator] Final Intelligent Layout:", layout);
-    return layout;
-}
+console.log("[EnemyGenerator] Final Intelligent Layout:", layout);
+return layout;}
 };
