@@ -79,8 +79,9 @@ export const EnemyGenerator = {
         let uniqueCounter = 1;
 
         // ボスがいれば確定で追加
-        if (theme.boss && ITEM_DATA[theme.boss]) {
-            team.push(theme.boss);
+       if (theme.boss && ITEM_DATA[theme.boss]) {
+    const uniqueId = `${theme.boss}_${uniqueCounter++}`; // ★ボスにも接尾辞を付ける
+    team.push(uniqueId);
             budget -= ITEM_DATA[theme.boss].cost;
             count--;
             // 候補リストからボスと同じキャラは削除

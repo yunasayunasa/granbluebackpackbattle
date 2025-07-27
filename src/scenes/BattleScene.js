@@ -66,6 +66,7 @@ export default class BattleScene extends Phaser.Scene {
         this.shopContainer = null;      // ★ショップUI全体をまとめるコンテナ
         this.shopItemSlots = [];        // ★商品のスロット（カード）を保持する配列
         this.isShopVisible = false;
+        this.currentEnemyLayout = null;
     }
 
     // BattleScene.js の init をこれに置き換え
@@ -180,10 +181,11 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
         const maxAvatarHeight = gridHeight * 0.8;
         [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
 
-        // --- 3c. 敵アイテムの配置
-        // --- 3c. 敵アイテムの配置
-        this.setupEnemy(this.gridY); // ★引数として this.gridY を渡す
-
+        // in create()
+// ...
+// --- 3c. 敵アイテムの配置 ---
+this.currentEnemyLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round); // ★ここで一度だけ生成
+this.setupEnemy(this.gridY, this.currentEnemyLayout); // ★引数として渡す
         // =================================================================
         // STEP 4: プレイヤーのバックパックとインベントリの復元
         // =================================================================
@@ -380,7 +382,8 @@ prepareForBattle() {
 
 // --- 敵側の準備 ---
 const enemyInitialItems = [];
-const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+// const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+const currentLayout = this.currentEnemyLayout; // ★保持しているレイアウトを使う
 
 // ★★★ ここからが修正箇所 ★★★
 // 画面上のGameObject(enemyItemImages)を基準にループし、
@@ -904,7 +907,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
 
 // setupEnemy を、この最終確定版に置き換えてください
 
-setupEnemy(gridY) {
+setupEnemy(gridY, currentLayout) {
     const gameWidth = this.scale.width;
     const gridWidth = this.backpackGridSize * this.cellSize;
     const enemyGridX = gameWidth - 100 - gridWidth;
@@ -913,7 +916,7 @@ setupEnemy(gridY) {
     this.enemyItemImages.forEach(item => item.destroy());
     this.enemyItemImages = [];
 
-    const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+    // const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
     console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
 
     // ★★★ for...in ループの中を全面的に修正 ★★★
