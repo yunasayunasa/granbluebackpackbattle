@@ -105,16 +105,28 @@ export default class BattleScene extends Phaser.Scene {
         // in create() -> STEP 1-b
 
         // --- 1b. 戦闘パラメータを決定 ---
-        const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
+// ★★★ ここからが修正箇所 ★★★
 
-        // ★★★ ここからが修正箇所 ★★★
-        // 前のラウンドからHPを引き継ぐ。ただし初回（f.player_hpが存在しない場合）は最大HPから開始。
-        const initialPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : initialPlayerMaxHp;
-        // ★★★ 修正箇所ここまで ★★★
+// 1. 素の最大HPをsf変数で管理（なければ初期化）
+if (this.stateManager.sf.player_base_max_hp === undefined) {
+    this.stateManager.setSF('player_base_max_hp', 100);
+}
+const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
 
-        const round = this.stateManager.sf.round || 1;
-        this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
-        // ★★★ ここからが追加箇所 ★★★
+// 2. 前のラウンドから現在HPを引き継ぐ (f変数から)
+//    初回やデータがない場合は、素の最大HPから開始
+const inheritedPlayerHp = this.stateManager.f.player_hp > 0 
+    ? this.stateManager.f.player_hp 
+    : basePlayerMaxHp;
+
+const round = this.stateManager.sf.round || 1;
+
+// 3. このシーンで使うパラメータを設定
+this.initialBattleParams = { 
+    playerMaxHp: basePlayerMaxHp,  // ★基準は「素の最大HP」
+    playerHp: inheritedPlayerHp,   // ★基準は「引き継いだHP」
+    round: round 
+};
         // --- 1c. ゲームオーバー判定
         // 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
         if (initialPlayerHp <= 0) {
@@ -2057,7 +2069,7 @@ saveBackpackState() {
             this.time.timeScale = 1.0;
             const currentRound = this.stateManager.sf.round || 1;
             const FINAL_ROUND = 10; // ★最終ラウンドを定義
-
+this.stateManager.setF('player_hp', this.playerStats.hp);
             // ★★★ ここからが修正箇所 ★★★
             if (currentRound >= FINAL_ROUND) {
                 // --- ゲームクリア処理 ---
