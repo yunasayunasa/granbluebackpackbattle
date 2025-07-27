@@ -430,8 +430,17 @@ const enemyInitialStats = {
 
 const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
 this.enemyStats = enemyResult.finalStats;
-this.enemyBattleItems = enemyResult.battleItems;
-
+this.enemyBattleItems = [];
+enemyResult.finalizedItems.forEach(itemData => {
+    // アクティブスキルを持つアイテムのみをリストに追加
+    if (itemData.recast > 0) {
+        this.enemyBattleItems.push({
+            data: itemData,
+            nextActionTime: itemData.recast,
+            gameObject: itemData.gameObject // ★ GameObjectへの参照を直接持たせる
+        });
+    }
+});
 this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
 this.stateManager.setF('enemy_hp', this.enemyStats.hp);
 console.log("敵最終ステータス:", this.enemyStats);
@@ -692,16 +701,19 @@ for (const element in ELEMENT_RESONANCE_RULES) {
         if (this.gameState !== 'battle') return;
 
         // --- Enemy's items ---
-        this.enemyBattleItems.forEach((item, index) => {
-            item.nextActionTime -= delta / 1000;
-            const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
-            updateRecastMask(this.enemyItemImages[index], progress);
+        this.enemyBattleItems.forEach(item => { // ★ index を削除
+    item.nextActionTime -= delta / 1000;
 
-            if (item.nextActionTime <= 0) {
-                this.executeAction(item.data, 'enemy', 'player', this.enemyItemImages[index]);
-                item.nextActionTime += item.data.recast;
-            }
-        });
+    const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
+    // ★ gameObject を直接参照
+    updateRecastMask(item.gameObject, progress);
+
+    if (item.nextActionTime <= 0) {
+        // ★ gameObject を直接参照
+        this.executeAction(item.data, 'enemy', 'player', item.gameObject);
+        item.nextActionTime += item.data.recast;
+    }
+});
     }
     // BattleScene.js の executeAction メソッド (ブロック対応版)
 
@@ -960,8 +972,8 @@ setupEnemy(gridY, currentLayout) {
         // ★ itemContainer には、ユニークID を 'uniqueId' として保存する
         itemContainer.setData({ itemId: baseItemId, uniqueId: uniqueId, recastOverlay, recastMask: maskGraphics });
 
-        if (itemData.recast > 0) { recastOverlay.setVisible(true); }
-
+         const hasRecast = itemData.recast && itemData.recast > 0;
+    recastOverlay.setVisible(hasRecast);
         itemContainer.setDepth(3).setInteractive({ draggable: false });
         
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
