@@ -430,6 +430,8 @@ initialItems.forEach(item => {
         if (elementKeys.includes(tag)) elementCounts[tag]++;
     });
 });
+  // ★★★ この一行を追加 ★★★
+    console.log("%c属性カウント結果:", "color: yellow; font-weight: bold;", elementCounts);
 
 for (const element in ELEMENT_RESONANCE_RULES) {
     const rule = ELEMENT_RESONANCE_RULES[element];
