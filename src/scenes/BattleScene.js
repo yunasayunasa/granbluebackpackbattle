@@ -1342,20 +1342,38 @@ playResonanceAura(targetObject, color) {
         this.updateInventoryLayout();
     }
 
-    // BattleScene.js にこのメソッドを貼り付けて、既存のものと置き換えてください
-    getRotatedShape(itemId, rotation) {
-        // JSONから取得したデータを直接変更しないようにディープコピーする
-        let shape = JSON.parse(JSON.stringify(ITEM_DATA[itemId].shape));
+// getRotatedShape を、この安全なバージョンに置き換えてください
 
-        // rotation の値（0, 90, 180, 270）に応じて、90度回転を適用する回数を計算
-        const rotations = Math.round(rotation / 90);
-
-        for (let i = 0; i < rotations; i++) {
-            shape = this._rotateMatrix(shape);
-        }
-
-        return shape;
+getRotatedShape(itemId, rotation) {
+    // ★★★ 1. 安全チェックの追加 ★★★
+    // itemIdが不正な値（undefined, nullなど）の場合は、空の形状を返して処理を中断
+    if (!itemId) {
+        console.warn("getRotatedShape: 不正なitemIdが渡されました。", itemId);
+        return [[]]; // 1x1の空アイテムとして扱う
     }
+    
+    // ユニークID ('shield_1') からベースID ('shield') を抽出
+    const baseItemId = itemId.split('_')[0];
+    
+    // ITEM_DATAにベースIDが存在するかチェック
+    if (!ITEM_DATA[baseItemId] || !ITEM_DATA[baseItemId].shape) {
+        console.error(`getRotatedShape: ITEM_DATAに'${baseItemId}'の定義またはshapeがありません。`);
+        return [[]];
+    }
+    // ★★★ 安全チェックここまで ★★★
+
+    // JSONから取得したデータを直接変更しないようにディープコピーする
+    let shape = JSON.parse(JSON.stringify(ITEM_DATA[baseItemId].shape));
+
+    // rotation の値（0, 90, 180, 270）に応じて、90度回転を適用する回数を計算
+    const rotations = Math.round(rotation / 90);
+
+    for (let i = 0; i < rotations; i++) {
+        shape = this._rotateMatrix(shape);
+    }
+
+    return shape;
+}
 
     // BattleScene.js の updateArrowVisibility をこれに置き換え
     updateArrowVisibility(itemContainer) {
