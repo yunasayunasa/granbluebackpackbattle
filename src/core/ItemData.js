@@ -28,7 +28,7 @@ export const ITEM_DATA = {
         tags: ["gem", "fire"], // ★属性タグ
         passive: { effects: [{ type: "defense", value: 1 }] }
     },
-    'spiky_shield': { // トゲの盾
+    'spikyshield': { // トゲの盾
         storage: 'item_spiky_shield', // ★ 新しい画像アセットキー
           shape: [[1]],
         tags: ["support","light"],
@@ -41,7 +41,7 @@ export const ITEM_DATA = {
         }
     
     },
-     'leather_armor': { // 革鎧
+     'leatherarmor': { // 革鎧
         storage: 'item_potion', // ★ 新しい画像アセットキー
         shape: [[1, 1], [1, 1]], // 2x2マス
         tags: ["support","water"],
@@ -52,15 +52,15 @@ export const ITEM_DATA = {
         }
     },
     
-    'berserker_axe': { // バーサーカーアックス
-        storage: 'item_sword', // ★ 新しい画像アセットキー
+    'berserkeraxe': { // バーサーカーアックス
+        storage: "item_sword", // ★ 新しい画像アセットキー
         shape: [[1], [1], [1]], // 3x1マス
         "cost": 15,
         "rarity": 3,
          tags: ["gem", "fire"], // ★属性タグ
         passive: { effects: [{ type: "defense", value: 1 }] }
     },
-   "potion_of_life": {
+   "potionoflife": {
         "imageFile": "item_sword",
         "storage": "item_sword",
         "shape": [[1]],
@@ -82,7 +82,7 @@ export const ITEM_DATA = {
         "recast": 2.5
     },
 
-    "berserker_axe": {
+    "berserkeraxe": {
         "imageFile": "item_potion",
         "storage": "item_potion",
         "shape": [[1], [1], [1]],
