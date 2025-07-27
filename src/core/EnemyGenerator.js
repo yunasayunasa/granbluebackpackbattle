@@ -128,58 +128,113 @@ getLayoutForRound(round) {
     }
     console.log("[EnemyGenerator] Generated Team:", team);
 
-    // =================================================================
-    // STEP 4: 自動配置アルゴリズム
+     // =================================================================
+    // STEP 4: インテリジェント自動配置アルゴリズム
     // =================================================================
     const layout = {};
     const gridSize = 6;
     const backpack = Array(gridSize).fill(0).map(() => Array(gridSize).fill(false));
 
-    team.forEach(uniqueId => {
+    // --- 4a. アイテムを「シナジー持ち」と「その他」に分離 ---
+    const synergyItems = team.filter(id => ITEM_DATA[id.split('_')[0]].synergy);
+    const otherItems = team.filter(id => !ITEM_DATA[id.split('_')[0]].synergy);
+    // シナジー持ちを先に配置するため、配列を結合
+    const sortedTeam = [...synergyItems, ...otherItems];
+
+    // --- 4b. ヘルパー関数: 指定した位置にアイテムを配置可能かチェック ---
+    const canPlace = (itemShape, r, c) => {
+        if (r < 0 || c < 0 || r + itemShape.length > gridSize || c + itemShape[0].length > gridSize) return false;
+        for (let sr = 0; sr < itemShape.length; sr++) {
+            for (let sc = 0; sc < itemShape[0].length; sc++) {
+                if (itemShape[sr][sc] === 1 && backpack[r + sr][c + sc]) return false;
+            }
+        }
+        return true;
+    };
+
+    // --- 4c. ヘルパー関数: 実際にアイテムを配置する ---
+    const placeItem = (uniqueId, r, c) => {
+        const shape = ITEM_DATA[uniqueId.split('_')[0]].shape;
+        layout[uniqueId] = { row: r, col: c, rotation: 0 };
+        for (let sr = 0; sr < shape.length; sr++) {
+            for (let sc = 0; sc < shape[0].length; sc++) {
+                if (shape[sr][sc] === 1) backpack[r + sr][c + sc] = true;
+            }
+        }
+    };
+
+    // --- 4d. 配置実行 ---
+    sortedTeam.forEach(uniqueId => {
         const baseId = uniqueId.split('_')[0];
         const itemData = ITEM_DATA[baseId];
         const shape = itemData.shape;
-        const shapeHeight = shape.length;
-        const shapeWidth = shape[0].length;
         
-        let placed = false;
-        // グリッドの左上から右下へ、空いている場所を探す
-        for (let r = 0; r <= gridSize - shapeHeight && !placed; r++) {
-            for (let c = 0; c <= gridSize - shapeWidth && !placed; c++) {
-                
-                // (r, c)を基点として、このアイテムを配置可能かチェック
-                let canPlace = true;
-                for (let sr = 0; sr < shapeHeight; sr++) {
-                    for (let sc = 0; sc < shapeWidth; sc++) {
-                        // アイテムの形状部分が、グリッド上の既に埋まっているマスと重なったらNG
-                        if (shape[sr][sc] === 1 && backpack[r + sr][c + sc] === true) {
-                            canPlace = false;
-                            break;
-                        }
-                    }
-                    if (!canPlace) break;
-                }
+        let bestPosition = null;
 
-                // 配置可能なら、レイアウトを決定し、グリッドを埋める
-                if (canPlace) {
-                    layout[uniqueId] = { row: r, col: c, rotation: 0 };
-                    for (let sr = 0; sr < shapeHeight; sr++) {
-                        for (let sc = 0; sc < shapeWidth; sc++) {
-                            if (shape[sr][sc] === 1) {
-                                backpack[r + sr][c + sc] = true;
+        // --- 4d-1. シナジー持ちアイテムの場合、最適な場所を探す ---
+        if (itemData.synergy) {
+            let maxSynergyScore = -1;
+            
+            // 全てのグリッドと全ての隣接マスをチェック
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    // 既に配置済みのアイテム(targetId)が(r,c)にあるか
+                    const targetUniqueId = Object.keys(layout).find(key => {
+                        const targetLayout = layout[key];
+                        const targetShape = ITEM_DATA[key.split('_')[0]].shape;
+                        return  r >= targetLayout.row && r < targetLayout.row + targetShape.length &&
+                                c >= targetLayout.col && c < targetLayout.col + targetShape[0].length;
+                    });
+
+                    if (targetUniqueId) {
+                        const targetData = ITEM_DATA[targetUniqueId.split('_')[0]];
+                        // 隣接する4方向に、このシナジーアイテムを置けるか試す
+                        const directions = [{r:-shape.length, c:0}, {r:1, c:0}, {r:0, c:-shape[0].length}, {r:0, c:1}];
+                        directions.forEach(dir => {
+                            const placeR = r + dir.r;
+                            const placeC = c + dir.c;
+                            if (canPlace(shape, placeR, placeC)) {
+                                let currentScore = 0;
+                                // シナジーが発動する相手か？ (タグをチェック)
+                                if (targetData.tags && targetData.tags.includes(itemData.synergy.targetTag)) {
+                                    currentScore = 1; // とりあえずスコアを1とする
+                                }
+                                if (currentScore > maxSynergyScore) {
+                                    maxSynergyScore = currentScore;
+                                    bestPosition = { r: placeR, c: placeC };
+                                }
                             }
-                        }
+                        });
                     }
-                    placed = true; // このアイテムの配置は完了
                 }
             }
         }
-        if (!placed) {
+
+        // --- 4d-2. 最適な場所が見つからなかった場合、またはシナジーがない場合 ---
+        if (!bestPosition) {
+            // ランダムな空きマスを探す
+            const emptyCells = [];
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    if (canPlace(shape, r, c)) {
+                        emptyCells.push({ r, c });
+                    }
+                }
+            }
+            if (emptyCells.length > 0) {
+                bestPosition = Phaser.Utils.Array.GetRandom(emptyCells);
+            }
+        }
+        
+        // --- 4d-3. 最終的な配置 ---
+        if (bestPosition) {
+            placeItem(uniqueId, bestPosition.r, bestPosition.c);
+        } else {
             console.warn(`[EnemyGenerator] アイテム'${uniqueId}'を配置するスペースがありませんでした。`);
         }
     });
-    
-    console.log("[EnemyGenerator] Final Layout:", layout);
+
+    console.log("[EnemyGenerator] Final Intelligent Layout:", layout);
     return layout;
 }
 };
