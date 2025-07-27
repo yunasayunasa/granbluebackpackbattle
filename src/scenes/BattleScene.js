@@ -435,7 +435,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     const rule = ELEMENT_RESONANCE_RULES[element];
     const count = elementCounts[element] || 0;
     if (count >= rule.threshold) {
-        
+              console.log(`%c🔥 属性共鳴発動！ [${element.toUpperCase()}] (${count}体) - ${rule.description(count)}`, "color: cyan; font-weight: bold;");
         // ★★★ ここからが修正箇所 ★★★
         if (element === 'water') {
             // 水属性は特別：属性に関係なく全アイテムのシナジーを強化
@@ -445,6 +445,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                     if (item.synergy.effect.value > 0) item.synergy.effect.value += bonus;
                     else item.synergy.effect.value -= bonus;
                 }
+                 console.log(`  -> [${item.id}] のシナジー効果がアップ`);
             });
         } else {
             // 水属性以外：その属性を持つアイテムだけを強化
@@ -470,7 +471,9 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                         if (item.action && item.action.type === 'heal') item.action.value += bonus;
                         if (item.synergy && item.synergy.effect.type.includes('heal')) item.synergy.effect.value += bonus;
                     }
+    console.log(`  -> [${item.id}] が強化されました`);
                 }
+
             });
         }
         // ★★★ 修正箇所ここまで ★★★
@@ -514,18 +517,26 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                                 if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) { isMatch = true; }
                             }
 
-                            if (isMatch) {
-                                // ★★★ この効果適用部分も、前回は空でした ★★★
-                                const effect = sourceItem.synergy.effect;
-                                console.log(`★ シナジー適用: [${sourceItem.id}] -> [${targetItem.id}]`);
-                                if (effect.type === 'add_attack' && targetItem.action) {
-                                    targetItem.action.value += effect.value;
-                                }
-                                if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                                    targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
-                                }
-                                synergyApplied = true;
-                            }
+                             if (isMatch) {
+        const effect = sourceItem.synergy.effect;
+        let logMessage = `★ シナジー適用: [${sourceItem.id}] -> [${targetItem.id}]`;
+        
+        if (effect.type === 'add_attack' && targetItem.action) {
+            const oldValue = targetItem.action.value;
+            targetItem.action.value += effect.value;
+            // ★★★ ログ改善 ★★★
+            logMessage += ` (攻撃力 ${oldValue} -> ${targetItem.action.value})`;
+        }
+        if (effect.type === 'add_recast' && targetItem.recast > 0) {
+            const oldValue = targetItem.recast;
+            targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
+            // ★★★ ログ改善 ★★★
+            logMessage += ` (リキャスト ${oldValue.toFixed(1)} -> ${targetItem.recast.toFixed(1)})`;
+        }
+        console.log(logMessage); // ログを出力
+        
+        synergyApplied = true;
+    }
                         }
                     }
                 }
