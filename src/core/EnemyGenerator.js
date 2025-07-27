@@ -103,7 +103,7 @@ getLayoutForRound(round) {
             budget -= ITEM_DATA[bossId].cost;
             count--;
             // 候補リストから、同じ種類のキャラクターは削除（ボスは1体のみ）
-            candidatePool = candidatePool.filter(id => id !== bossId);
+           // candidatePool = candidatePool.filter(id => id !== bossId);
         }
     }
 
