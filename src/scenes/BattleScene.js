@@ -376,50 +376,47 @@ prepareForBattle() {
     this.stateManager.setF('player_hp', this.playerStats.hp);
     console.log("プレイヤー最終ステータス:", this.playerStats);
 
+// in prepareForBattle()
+
 // --- 敵側の準備 ---
 const enemyInitialItems = [];
 const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
 
-// ★★★ 敵アイテムのデータ生成とGameObjectの紐付けをここで行う ★★★
+// ★★★ ここからが修正箇所 ★★★
+// 画面上のGameObject(enemyItemImages)を基準にループし、
+// それぞれに対応するデータを生成・紐付けする
 this.enemyItemImages.forEach(itemContainer => {
-    const uniqueId = itemContainer.getData('uniqueId'); // 'shield_2' など
+    const uniqueId = itemContainer.getData('uniqueId'); // 'golem_1' など
     if (!uniqueId) return;
 
-    const baseItemId = uniqueId.split('_')[0]; // 'shield'
+    const baseItemId = uniqueId.split('_')[0]; // 'golem'
     const itemData = ITEM_DATA[baseItemId];
     const layoutInfo = currentLayout[uniqueId];
 
     if (itemData && layoutInfo) {
         const itemInstance = JSON.parse(JSON.stringify(itemData));
-        itemInstance.id = uniqueId; // ユニークIDをインスタンスのIDとする
+        itemInstance.id = uniqueId;
         itemInstance.row = layoutInfo.row;
         itemInstance.col = layoutInfo.col;
         itemInstance.rotation = layoutInfo.rotation || 0;
         itemInstance.gameObject = itemContainer; // GameObjectと直接紐付け
         
         enemyInitialItems.push(itemInstance);
+    } else {
+        console.warn(`敵アイテム[${uniqueId}]のデータが見つからないため、戦闘から除外されます。`);
     }
 });
+// ★★★ 修正箇所ここまで ★★★
 
 const enemyInitialStats = {
     max_hp: this.stateManager.f.enemy_max_hp,
     hp: this.stateManager.f.enemy_max_hp
 };
+
 const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
 this.enemyStats = enemyResult.finalStats;
 this.enemyBattleItems = enemyResult.battleItems;
-     // ★★★ 敵側にもエフェクト再生を追加 ★★★
-    enemyResult.activatedResonances.forEach(element => {
-        const flashColor = ELEMENT_COLORS[element];
-        if (flashColor) {
-            enemyResult.finalizedItems.forEach(item => {
-                if (item.tags.includes(element) && item.gameObject) {
-                    this.playResonanceAura(item.gameObject, flashColor);
-                }
-            });
-        }
-    });
-  
+
 this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
 this.stateManager.setF('enemy_hp', this.enemyStats.hp);
 console.log("敵最終ステータス:", this.enemyStats);
