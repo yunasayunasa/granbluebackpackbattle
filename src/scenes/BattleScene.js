@@ -129,7 +129,7 @@ this.initialBattleParams = {
 };
         // --- 1c. ゲームオーバー判定
         // 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
-        if (initialPlayerHp <= 0) {
+    if (inheritedPlayerHp <= 0) {
             console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
 
             // 将来的には GameOverScene に遷移する
