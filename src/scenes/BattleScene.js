@@ -420,17 +420,27 @@ prepareForBattle() {
  * @returns {object} 計算後の最終的なステータスと、アクティブアイテムのリスト
  */
 calculateFinalBattleState(initialItems, initialStats) {
-  // calculateFinalBattleState メソッドの STEP 1 を、これに置き換えてください
-
-// === STEP 1: 属性共鳴の計算 ===
-const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
-const elementKeys = Object.keys(elementCounts);
-initialItems.forEach(item => {
-    item.tags.forEach(tag => {
-        if (elementKeys.includes(tag)) elementCounts[tag]++;
+    console.log("--- calculateFinalBattleState 開始 ---");
+    
+    // === STEP 1: 属性共鳴の計算 ===
+    const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
+    const elementKeys = Object.keys(elementCounts);
+    
+    initialItems.forEach(item => {
+        // ★★★ ここからが修正箇所 ★★★
+        // item.tagsが存在し、かつ配列であることを確認してからループを回す
+        if (item.tags && Array.isArray(item.tags)) {
+            item.tags.forEach(tag => {
+                if (elementKeys.includes(tag)) {
+                    elementCounts[tag]++;
+                }
+            });
+        } else {
+            // tagsがないアイテムがあれば、警告を出す
+            console.warn(`アイテム[${item.id}]に 'tags' プロパティがありません、または配列ではありません。`);
+        }
+        // ★★★ 修正箇所ここまで ★★★
     });
-});
-  // ★★★ この一行を追加 ★★★
     console.log("%c属性カウント結果:", "color: yellow; font-weight: bold;", elementCounts);
 
 for (const element in ELEMENT_RESONANCE_RULES) {
