@@ -923,26 +923,32 @@ for (const element in ELEMENT_RESONANCE_RULES) {
 
 // setupEnemy を、この最終確定版に置き換えてください
 
-setupEnemy(gridY, currentLayout) {
+/**
+ * 現在のラウンドに応じて敵の盤面をセットアップする
+ */
+setupEnemy(gridY) {
     const gameWidth = this.scale.width;
     const gridWidth = this.backpackGridSize * this.cellSize;
     const enemyGridX = gameWidth - 100 - gridWidth;
     const enemyGridY = gridY;
 
+    // 以前の敵オブジェクトが残っていれば全て破棄する
     this.enemyItemImages.forEach(item => item.destroy());
     this.enemyItemImages = [];
 
-    // const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+    // EnemyGeneratorから現在のラウンドのレイアウトを取得
+    const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
     console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
 
-    // ★★★ for...in ループの中を全面的に修正 ★★★
     for (const uniqueId in currentLayout) {
         const layoutInfo = currentLayout[uniqueId];
-        const baseItemId = uniqueId.split('_')[0]; // 'shield_2' -> 'shield'
+        // 'golem_1' のようなユニークIDから、'_'を取り除いたベースID ('golem') を取得
+        const baseItemId = uniqueId.split('_')[0];
+        // ITEM_DATAからは、必ずベースIDを使ってデータを取得する
         const itemData = ITEM_DATA[baseItemId];
 
         if (!itemData) {
-            console.warn(`ITEM_DATAに'${baseItemId}'が見つかりません。`);
+            console.warn(`ITEM_DATAに'${baseItemId}' (from '${uniqueId}')が見つかりません。`);
             continue;
         }
 
@@ -961,8 +967,8 @@ setupEnemy(gridY, currentLayout) {
         
         itemContainer.add([itemImage, recastOverlay, maskGraphics]);
         
-        // ★ itemContainer には、ユニークID を 'uniqueId' として保存する
-        itemContainer.setData({ itemId: baseItemId, uniqueId: uniqueId, recastOverlay, recastMask: maskGraphics });
+        // itemContainerには、後で参照できるようにユニークIDを保存しておく
+        itemContainer.setData({ uniqueId: uniqueId, recastOverlay, recastMask: maskGraphics });
 
         if (itemData.recast > 0) { recastOverlay.setVisible(true); }
 
