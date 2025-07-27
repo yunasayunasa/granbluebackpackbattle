@@ -531,24 +531,33 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                                 if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) { isMatch = true; }
                             }
 
-                             if (isMatch) {
-        const effect = sourceItem.synergy.effect;
-        let logMessage = `★ シナジー適用: [${sourceItem.id}] -> [${targetItem.id}]`;
-        
-        if (effect.type === 'add_attack' && targetItem.action) {
-            const oldValue = targetItem.action.value;
-            targetItem.action.value += effect.value;
-            // ★★★ ログ改善 ★★★
-            logMessage += ` (攻撃力 ${oldValue} -> ${targetItem.action.value})`;
-        }
-        if (effect.type === 'add_recast' && targetItem.recast > 0) {
-            const oldValue = targetItem.recast;
-            targetItem.recast = Math.max(0.1, targetItem.recast + effect.value);
-            // ★★★ ログ改善 ★★★
-            logMessage += ` (リキャスト ${oldValue.toFixed(1)} -> ${targetItem.recast.toFixed(1)})`;
-        }
-        console.log(logMessage); // ログを出力
-        
+                          if (isMatch) {
+            const effect = sourceItem.synergy.effect;
+            console.log(`★ シナジー関係検出: [${sourceItem.id}] -> [${targetItem.id}]`);
+
+            // ★★★ ここからが修正箇所 ★★★
+            // シナジーの種類によって処理を分岐
+            
+            if (effect.type === 'add_attack' || effect.type === 'add_recast') {
+                // 即時反映型シナジー（従来通り）
+                if (effect.type === 'add_attack' && targetItem.action) {
+                    targetItem.action.value += effect.value;
+                }
+                if (effect.type === 'add_recast' && targetItem.recast > 0) {
+                    targetItem.recast = Math.max(0.1, targetItem.recast + (effect.value));
+                }
+            } 
+            else if (effect.type === 'add_block_on_activate' || effect.type === 'heal_on_activate') {
+                // 起動時トリガー型シナジー
+                // ターゲット側に「誰からどんな効果を受けるか」を記録する
+                if (!targetItem.appliedTriggers) {
+                    targetItem.appliedTriggers = [];
+                }
+                targetItem.appliedTriggers.push({
+                    sourceId: sourceItem.id,
+                    effect: effect // 効果オブジェクトを丸ごと保存
+                });
+            }
         synergyApplied = true;
     }
                         }
@@ -794,17 +803,37 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             }
         }
             // --- このアクションを発動したことによる、他者へのシナジー効果を適用 ---
-    if (itemData.appliedSynergies && itemData.appliedSynergies.length > 0) {
-        itemData.appliedSynergies.forEach(syn => {
-            if (syn.type === 'add_block_on_activate') {
-                const targetStats = this[`${syn.targetSide}Stats`];
-                targetStats.block += syn.value;
+     if (itemData.appliedTriggers && itemData.appliedTriggers.length > 0) {
+        
+        console.log(` > [${itemData.id}] の起動時トリガーを処理...`);
+        
+        itemData.appliedTriggers.forEach(trigger => {
+            const effect = trigger.effect;
+            const sourceId = trigger.sourceId;
+
+            // 【起動時にブロック獲得】
+            if (effect.type === 'add_block_on_activate') {
+                const attackerStats = this[`${attacker}Stats`];
+                attackerStats.block += effect.value;
                 
-                // エフェクトも出す
-                const targetAvatar = (syn.targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
-                this.showGainBlockPopup(targetAvatar, syn.value);
+                const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+                this.showGainBlockPopup(targetAvatar, effect.value);
                 
-                console.log(` > シナジー発動！ [${itemData.id}]が[${syn.targetId}]にブロック${syn.value}を付与！`);
+                console.log(` > シナジー効果！ [${sourceId}]からブロック+${effect.value}を獲得！`);
+            }
+            // 【起動時に回復】
+            else if (effect.type === 'heal_on_activate') {
+                const attackerStats = this[`${attacker}Stats`];
+                const healAmount = Math.min(effect.value, attackerStats.max_hp - attackerStats.hp);
+                if (healAmount > 0) {
+                    attackerStats.hp += healAmount;
+                    this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+                    
+                    const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+                    this.showHealPopup(targetAvatar, Math.floor(healAmount));
+                    
+                    console.log(` > シナジー効果！ [${sourceId}]からHPを${healAmount.toFixed(1)}回復！`);
+                }
             }
             // ... 将来的に他の起動時効果もここに追加 ...
         });
