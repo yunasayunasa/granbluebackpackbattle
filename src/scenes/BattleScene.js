@@ -193,33 +193,38 @@ this.setupEnemy(this.gridY, this.currentEnemyLayout); // ★引数として渡�
         // =================================================================
         // STEP 4: プレイヤーのバックパックとインベントリの復元
         // =================================================================
-        // --- 4a. バックパックのアイテムを復元
-        for (const uid in backpackData) {
-            const itemInfo = backpackData[uid];
-            const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
-            if (itemContainer) {
-                itemContainer.setData('rotation', itemInfo.rotation);
-                itemContainer.setAngle(itemInfo.rotation);
-                this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
-            }
-        }
-        // --- 4b. インベントリの描画とアイテム復元
-        const inventoryAreaY = 450;
-        const inventoryAreaHeight = gameHeight - inventoryAreaY;
-        const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
-        const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
-        this.prepareContainer.add([invBg, invText]);
+        // --- 4a. バックパックのアイテムを復元 ---
+// ★★★ 修正箇所：backpackData -> playerData.backpack ★★★
+for (const uid in playerData.backpack) {
+    const itemInfo = playerData.backpack[uid];
+    const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
+    if (itemContainer) {
+        itemContainer.setData('rotation', itemInfo.rotation);
+        itemContainer.setAngle(itemInfo.rotation);
+        this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
+    }
+}
 
-        const inventoryContentWidth = gameWidth - 200;
-        const inventoryCount = inventoryData.length;
-        const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
-        const itemStartX = 100 + (itemSpacing / 2);
-        inventoryData.forEach((itemId, index) => {
-            const x = itemStartX + (index * itemSpacing);
-            const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
-            const itemContainer = this.createItem(itemId, x, y);
-            if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
-        });
+// --- 4b. インベントリの描画とアイテム復元 ---
+const inventoryAreaY = 480; // レイアウト調整
+const inventoryAreaHeight = gameHeight - inventoryAreaY;
+const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
+const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+this.prepareContainer.add([invBg, invText]);
+
+const inventoryContentWidth = gameWidth - 200;
+// ★★★ 修正箇所：inventoryData -> playerData.inventory ★★★
+const inventoryCount = playerData.inventory.length;
+const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
+const itemStartX = 100 + (itemSpacing / 2);
+
+// ★★★ 修正箇所：inventoryData -> playerData.inventory ★★★
+playerData.inventory.forEach((itemId, index) => {
+    const x = itemStartX + (index * itemSpacing);
+    const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
+    const itemContainer = this.createItem(itemId, x, y);
+    if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
+});
 
 
         // =================================================================
