@@ -86,34 +86,23 @@ export default class BattleScene extends Phaser.Scene {
             .setDisplaySize(this.scale.width, this.scale.height)
             .setDepth(-1);
         // =================================================================
-        // STEP 1: マネージャー取得とデータ準備
-        // =================================================================
-        this.stateManager = this.sys.registry.get('stateManager');
-        this.soundManager = this.sys.registry.get('soundManager');
-        this.tooltip = new Tooltip(this);
+// STEP 1: マネージャー取得とデータ準備
+// =================================================================
+this.stateManager = this.sys.registry.get('stateManager');
+this.soundManager = this.sys.registry.get('soundManager');
+this.tooltip = new Tooltip(this);
 
-       // --- 1a. StateManagerからplayer_dataを取得（なければ初期化）
+// --- 1a. StateManagerからplayer_dataを取得（なければ初期化）
 if (this.stateManager.sf.player_data === undefined) {
     const defaultPlayerData = {
-        coins: 0,
-        round: 1,
-        wins: 0,
-        avatar: {
-            base_max_hp: 100, // 素の最大HP
-            current_hp: 100
-        },
+        coins: 10, round: 1, wins: 0,
+        avatar: { base_max_hp: 100, current_hp: 100 },
         backpack: {},
         inventory: ['sword', 'shield', 'potion']
     };
     this.stateManager.setSF('player_data', defaultPlayerData);
 }
-// 古いセーブデータとの互換性のため、base_max_hpがなければ追加
-else if (this.stateManager.sf.player_data.avatar.base_max_hp === undefined) {
-    this.stateManager.sf.player_data.avatar.base_max_hp = 100;
-    this.stateManager.setSF('player_data', this.stateManager.sf.player_data); // 変更を保存
-}
 const playerData = this.stateManager.sf.player_data;
-
 // --- 1b. 戦闘パラメータを決定
 const initialPlayerMaxHp = playerData.avatar.base_max_hp; // ★素の最大HPを参照
 const initialPlayerHp = playerData.avatar.current_hp;     // ★現在のHPを参照
@@ -285,52 +274,64 @@ playerData.inventory.forEach((itemId, index) => {
             }
         });
         // ★★★ 追加ここまで ★★★
+// startBattleButton.on('pointerdown', ...) の中身を、これに完全に置き換えてください
 
-        // --- 5a. 戦闘開始ボタン ★★★ このブロックが復活しました ★★★
-        this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
-        this.prepareContainer.add(this.startBattleButton);
+this.startBattleButton.on('pointerdown', () => {
+    if (this.gameState !== 'prepare') return;
 
-         // ★★★ startBattleButtonのリスナーをクリーンアップ ★★★
-    this.startBattleButton.on('pointerdown', () => {
-        if (this.gameState !== 'prepare') return;
+    // =================================================================
+    // STEP 1: 現在の盤面を sf.player_data に保存する
+    // =================================================================
+    // これが「戦闘開始前の状態セーブ」となり、リトライ時のチェックポイントにもなる
+    
+    const playerData = this.stateManager.sf.player_data;
 
-        // ★チェックポイント作成はここが正しい
-        const initialBackpackData = {};
-        this.placedItemImages.forEach((item, index) => {
-            const gridPos = item.getData('gridPos');
-            if (gridPos) {
-                initialBackpackData[`uid_${index}`] = {
-                    itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                };
-            }
-        });
-        const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-        this.roundStartState = {
-            backpack: initialBackpackData,
-            inventory: initialInventoryData,
-            coins: this.stateManager.sf.coins || 0,
-            hp: this.initialBattleParams.playerHp
-        };
-        console.log("Round start state checkpoint created.", this.roundStartState);
-        
-        // --- 戦闘開始処理 ---
-        this.gameState = 'battle';
-        this.prepareForBattle(); // ★ これを呼ぶ
-        
-        const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-        allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
-        this.startBattleButton.input.enabled = false;
-        this.tweens.add({
-            targets: [this.prepareContainer, ...this.inventoryItemImages],
-            alpha: 0,
-            duration: 300,
-            onComplete: () => {
-                this.prepareContainer.setVisible(false);
-                this.inventoryItemImages.forEach(item => item.setVisible(false));
-            }
-        });
-        this.startBattle();
+    // 1a. バックパックの状態を読み取る
+    const newBackpackData = {};
+    this.placedItemImages.forEach((item, index) => {
+        const gridPos = item.getData('gridPos');
+        if (gridPos) {
+            newBackpackData[`uid_${index}`] = {
+                itemId: item.getData('itemId'),
+                row: gridPos.row,
+                col: gridPos.col,
+                rotation: item.getData('rotation')
+            };
+        }
     });
+    playerData.backpack = newBackpackData;
+
+    // 1b. インベントリの状態を読み取る
+    const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+    playerData.inventory = newInventoryData;
+    
+    // 1c. 更新したplayerDataオブジェクトごと、setSFで永続化
+    this.stateManager.setSF('player_data', playerData);
+    console.log("Player data saved at battle start:", playerData);
+
+
+    // =================================================================
+    // STEP 2: 戦闘開始処理
+    // =================================================================
+    this.gameState = 'battle';
+    this.prepareForBattle();
+    
+    const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
+    allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
+    this.startBattleButton.input.enabled = false;
+
+    this.tweens.add({
+        targets: [this.prepareContainer, ...this.inventoryItemImages],
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+            this.prepareContainer.setVisible(false);
+            this.inventoryItemImages.forEach(item => item.setVisible(false));
+        }
+    });
+    
+    this.startBattle();
+});
 
     // ★★★ createの末尾に本来あるべきコード ★★★
     this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
@@ -1773,190 +1774,165 @@ getRotatedShape(itemId, rotation) {
     }
     // BattleScene.js にこの2つのメソッドを追加
 
-    /**
-     * ショップUIの骨格を作成する
-     */
-    setupShop() {
-        const gameWidth = this.scale.width;
-        const inventoryAreaY = 520;
-        const inventoryAreaHeight = 500; // 仮
+  /**
+ * ショップUIの骨格を作成する
+ */
+setupShop() {
+    const gameWidth = this.scale.width;
+    const inventoryAreaY = 520;
 
-        // ショップUI全体をまとめるコンテナ（最初は非表示）
-        this.shopContainer = this.add.container(0, 0).setVisible(false);
-        this.prepareContainer.add(this.shopContainer); // prepareContainerの子にする
+    // ショップUI全体をまとめるコンテナ（最初は非表示）
+    this.shopContainer = this.add.container(0, 0).setVisible(false);
+    this.prepareContainer.add(this.shopContainer);
+    this.shopContainer.setDepth(12); // インベントリ背景より手前に
 
-        // リロールボタン
-        const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY + 30, 'リロール (1 coin)', { /* ... style ... */ })
-            .setOrigin(0.5).setInteractive().setDepth(12);
-        rerollButton.on('pointerdown', () => {
-            const rerollCost = 1;
-            const currentCoins = this.stateManager.sf.coins || 0;
-            if (currentCoins >= rerollCost) {
-                this.stateManager.setSF('coins', currentCoins - rerollCost);
-                this.refreshShop(); // 商品を再抽選
-            } else {
-                console.log("コインが足りません！"); // 将来的にはポップアップ表示
-            }
-        });
-        this.shopContainer.add(rerollButton);
+    // リロールボタン
+    const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY + 30, 'リロール (1 coin)', {
+        fontSize: '22px', fill: '#fff', backgroundColor: '#666', padding: { x: 8, y: 4 }
+    }).setOrigin(0.5).setInteractive().setDepth(12);
+    
+    rerollButton.on('pointerdown', () => {
+        const rerollCost = 1;
+        const currentCoins = this.stateManager.sf.player_data.coins || 0;
+        if (currentCoins >= rerollCost) {
+            const playerData = this.stateManager.sf.player_data;
+            playerData.coins -= rerollCost;
+            this.stateManager.setSF('player_data', playerData); // コイン消費を保存
+            
+            this.refreshShop(); // 商品を再抽選
+        } else {
+            console.log("リロールのコインが足りません！");
+            // ボタンを赤く点滅させてフィードバック
+            this.tweens.add({ targets: rerollButton, tint: 0xff0000, duration: 100, yoyo: true, repeat: 1 });
+        }
+    });
+    this.shopContainer.add(rerollButton);
+}
+
+   /**
+ * ショップの商品を抽選し、表示を更新する
+ */
+refreshShop() {
+    this.shopItemSlots.forEach(slot => slot.destroy());
+    this.shopItemSlots = [];
+
+    const gameWidth = this.scale.width;
+    const inventoryAreaY = 480;
+    const inventoryAreaHeight = this.scale.height - inventoryAreaY;
+    const currentRound = this.initialBattleParams.round;
+
+    let slotCount = 3;
+    if (currentRound >= 5) slotCount = 4;
+    if (currentRound >= 8) slotCount = 5;
+
+    const fullPool = Object.keys(ITEM_DATA);
+    const shopPool = fullPool.filter(id => {
+        const item = ITEM_DATA[id];
+        if (!item.cost || !item.rarity) return false;
+        if (currentRound < 3 && item.rarity > 1) return false;
+        if (currentRound < 6 && item.rarity > 2) return false;
+        return true;
+    });
+
+    const selectedItems = [];
+    const rewardCount = Math.min(slotCount, shopPool.length);
+    for (let i = 0; i < rewardCount; i++) {
+        const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
+        selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
     }
 
-    /**
-     * ショップの商品を抽選し、表示を更新する (最終確定版)
-     */
-    refreshShop() {
-        // 既存の商品スロットがあれば全て破棄してクリア
-        this.shopItemSlots.forEach(slot => slot.destroy());
-        this.shopItemSlots = [];
+    const shopContentWidth = gameWidth - 200;
+    const itemSpacing = shopContentWidth / slotCount;
+    const itemStartX = 100 + (itemSpacing / 2);
 
-        // --- 1. レイアウトとラウンド数の準備 ---
-        const gameWidth = this.scale.width;
-        const inventoryAreaY = 480; // UI領域の開始Y座標
-        const inventoryAreaHeight = this.scale.height - inventoryAreaY; // UI領域の高さ
-        const currentRound = this.initialBattleParams.round || 1;
+    selectedItems.forEach((itemId, index) => {
+        const x = itemStartX + (index * itemSpacing);
+        const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
+        const itemData = ITEM_DATA[itemId];
+        
+        const slotWidth = 160;
+        const slotHeight = 200;
+        const slotContainer = this.add.container(x, y).setSize(slotWidth, slotHeight).setInteractive();
 
-        // --- 2. ラウンドに応じた商品数を決定 ---
-        let slotCount = 3;
-        if (currentRound >= 5) slotCount = 4;
-        if (currentRound >= 8) slotCount = 5;
+        this.shopContainer.add(slotContainer);
+        this.shopItemSlots.push(slotContainer);
 
-        // --- 3. ラウンドに応じた抽選プールを作成 ---
-        const fullPool = Object.keys(ITEM_DATA);
-        const shopPool = fullPool.filter(id => {
-            const item = ITEM_DATA[id];
-            if (!item.cost || !item.rarity) return false; // costとrarityがないアイテムは除外
-            if (currentRound < 3 && item.rarity > 1) return false;
-            if (currentRound < 6 && item.rarity > 2) return false;
-            return true;
-        });
-
-        // --- 4. 商品をランダムに抽選 ---
-        const selectedItems = [];
-        const rewardCount = Math.min(slotCount, shopPool.length); // プールが枯渇しないように
-        for (let i = 0; i < rewardCount; i++) {
-            const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
-            selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
+        const itemImage = this.add.image(0, -50, itemData.storage);
+        const imageAreaWidth = 100, imageAreaHeight = 80;
+        if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
+            const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
+            itemImage.setScale(scale);
         }
 
-        // --- 5. 商品スロットをUIに生成 ---
-        const shopContentWidth = gameWidth - 200;
-        const itemSpacing = shopContentWidth / slotCount;
-        const itemStartX = 100 + (itemSpacing / 2);
-
-        selectedItems.forEach((itemId, index) => {
-            const x = itemStartX + (index * itemSpacing);
-            const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
-            const itemData = ITEM_DATA[itemId];
-
-            const slotWidth = 160;
-            const slotHeight = 200;
-            const slotContainer = this.add.container(x, y).setSize(slotWidth, slotHeight).setInteractive();
-
-            this.shopContainer.add(slotContainer);
-            this.shopItemSlots.push(slotContainer);
-
-            // --- UI要素の生成 ---
-            const itemImage = this.add.image(0, -50, itemData.storage);
-
-            const imageAreaWidth = 100;
-            const imageAreaHeight = 80;
-            if (itemImage.width > imageAreaWidth || itemImage.height > imageAreaHeight) {
-                const scale = Math.min(imageAreaWidth / itemImage.width, imageAreaHeight / itemImage.height);
-                itemImage.setScale(scale);
-            }
-
-            const nameText = this.add.text(0, 30, itemId, { fontSize: '20px', fill: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5).setName('nameText');
-            const costText = this.add.text(0, 55, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
-            const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setStrokeStyle(2, 0xffffff).setName('buyButtonBg');
-            const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setName('buyButtonText');
-
-            slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
-            const currentCoins = this.stateManager.sf.coins || 0;
-            if (currentCoins < itemData.cost) {
-                buyButtonText.setText('コイン不足');
-                buyButtonBg.setFillStyle(0x888888);
-                slotContainer.setData('canBuy', false);
-            } else {
-                slotContainer.setData('canBuy', true);
-            }
-
-
-            // --- 入力処理をコンテナに集約 ---
-            slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
-                event.stopPropagation();
-                this.tooltip.hide();
-
-            // 購入ボタンの領域（Y座標が60より下）がクリックされたか判定
-    if (localY > 60) {
-        // canBuyフラグがない、またはfalseなら処理を中断
-        if (slotContainer.getData('canBuy') !== true) return;
-
-        // ★★★ ここからが「積極的オートセーブ」のロジック ★★★
+        const nameText = this.add.text(0, 30, itemId, { fontSize: '20px', fill: '#fff' }).setOrigin(0.5).setName('nameText');
+        const costText = this.add.text(0, 55, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700' }).setOrigin(0.5);
+        const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setName('buyButtonBg');
+        const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff' }).setOrigin(0.5).setName('buyButtonText');
         
-        // 1. 更新後のデータをまず変数に用意する
-        const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
-        const newInventory = [...this.stateManager.sf.player_inventory, itemId];
-
-        // 2. StateManagerのsf変数を「まとめて」更新して自動保存
-        this.stateManager.setSF('coins', newCoins);
-        this.stateManager.setSF('player_inventory', newInventory);
+        slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
         
-        // ★★★ オートセーブここまで ★★★
-
-        // 3. 画面上のインベントリにもアイテムを追加
-        const newItemContainer = this.createItem(itemId, -100, -100);
-        if (newItemContainer) {
-            this.inventoryItemImages.push(newItemContainer);
-            this.updateInventoryLayout();
+        // 購入可否の初期設定
+        const currentCoins = this.stateManager.sf.player_data.coins || 0;
+        if (currentCoins < itemData.cost) {
+            buyButtonText.setText('コイン不足');
+            buyButtonBg.setFillStyle(0x888888);
+            slotContainer.setData('canBuy', false);
+        } else {
+            slotContainer.setData('canBuy', true);
         }
-        
-        // 4. 購入済み表示 & インタラクション無効化
-        buyButtonText.setText('購入済み');
-        buyButtonBg.setFillStyle(0x555555);
-        slotContainer.removeInteractive(); // スロット全体を無効化
-        
-        // 5. 他の商品の購入可否も更新する
-        this.updateShopButtons();
 
-                } else {
-                    // 画像領域がクリックされたらツールチップを表示
-                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                    let tooltipText = `【${itemId}】\n`;
-                    // 属性の表示
-                    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                    if (itemElements.length > 0) {
-                        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-                    }
-                    const sizeH = itemData.shape.length;
-                    const sizeW = itemData.shape[0].length;
+        slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
+            event.stopPropagation();
+            this.tooltip.hide();
 
-                    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-                    if (itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
-                    if (itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
-                    if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`; }
-
-                    this.tooltip.show(slotContainer, tooltipText);
-                    const matrix = slotContainer.getWorldTransformMatrix();
-                    const worldX = matrix.tx;
-                    const worldY = matrix.ty;
-                    this.tooltip.showAt(worldX, worldY - slotContainer.height / 2 - 10, tooltipText);
+            if (localY > 70) { // 購入ボタン領域
+                if (slotContainer.getData('canBuy') !== true) return;
+                
+                const playerData = this.stateManager.sf.player_data;
+                playerData.coins -= itemData.cost;
+                playerData.inventory.push(itemId);
+                this.stateManager.setSF('player_data', playerData);
+                
+                const newItem = this.createItem(itemId, slotContainer.x, slotContainer.y);
+                if (newItem) {
+                    this.inventoryItemImages.push(newItem);
+                    this.updateInventoryLayout();
                 }
-            });
+                
+                buyButtonText.setText('購入済み');
+                buyButtonBg.setFillStyle(0x555555);
+                slotContainer.removeInteractive();
+
+                this.updateShopButtons(); // 他のボタンの状態も更新
+            } else { // 画像領域
+                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                let tooltipText = `【${itemId}】\n`;
+                // ... (ツールチップのテキスト生成ロジックは変更なし) ...
+                const matrix = slotContainer.getWorldTransformMatrix();
+                this.tooltip.showAt(matrix.tx, matrix.ty - slotContainer.height/2, tooltipText);
+            }
         });
-    }
+    });
+}
 // BattleScene.js にこのメソッドを追加
+/**
+ * 現在の所持コインに応じて、ショップの全ての購入ボタンの状態を更新する
+ */
 updateShopButtons() {
-    const currentCoins = this.stateManager.sf.coins || 0;
+    const currentCoins = this.stateManager.sf.player_data.coins || 0;
+    
     this.shopItemSlots.forEach(slot => {
-        if (!slot.input || !slot.input.enabled) return; // 既に購入済みならスキップ
+        // スロットが無効（購入済み）ならスキップ
+        if (!slot.input || !slot.input.enabled) return;
         
         const nameText = slot.getByName('nameText');
         const buyButtonText = slot.getByName('buyButtonText');
         const buyButtonBg = slot.getByName('buyButtonBg');
-        if(!nameText || !buyButtonText || !buyButtonBg) return;
+
+        if (!nameText || !buyButtonText || !buyButtonBg) return;
 
         const itemData = ITEM_DATA[nameText.text];
-        if(!itemData) return;
+        if (!itemData) return;
 
         if (currentCoins < itemData.cost) {
             buyButtonText.setText('コイン不足');
