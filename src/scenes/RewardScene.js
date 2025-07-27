@@ -77,11 +77,15 @@ export default class RewardScene extends Phaser.Scene {
     selectReward(selectedItemId) {
         console.log(`報酬として ${selectedItemId} を選択しました`);
 
-        // ★★★ 修正箇所 ★★★
-    const playerData = this.stateManager.sf.player_data;
-    playerData.inventory.push(selectedItemId);
-    this.stateManager.setSF('player_data', playerData); // オブジェクトごと保存
-    // ★★★ 修正箇所ここまで ★★★
+        // 1. 現在のインベントリの「コピー」を作成する
+        const currentInventory = this.stateManager.sf.player_inventory || [];
+        const newInventory = [...currentInventory]; // スプレッド構文で新しい配列にコピー
+
+        // 2. コピーした新しい配列に、アイテムを追加する
+        newInventory.push(selectedItemId);
+
+        // 3. 新しい配列をsetSFに渡して、変更を検知させ、自動保存をトリガーする
+        this.stateManager.setSF('player_inventory', newInventory);
 
         // 4. 次のラウンドへ進む
         this.scene.get('SystemScene').events.emit('request-scene-transition', {
