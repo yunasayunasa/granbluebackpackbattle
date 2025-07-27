@@ -1958,7 +1958,13 @@ updateShopButtons() {
     });
 }
 // BattleScene.js にこのメソッドを追加
+// saveBackpackState を、この最終版に置き換えてください
+
+/**
+ * 現在のバックパック【と】インベントリの配置をsf変数に保存する
+ */
 saveBackpackState() {
+    // 1. 現在のバックパックの状態を画面から読み取る
     const newBackpackData = {};
     this.placedItemImages.forEach((item, index) => {
         const gridPos = item.getData('gridPos');
@@ -1966,13 +1972,21 @@ saveBackpackState() {
             newBackpackData[`uid_${index}`] = {
                 itemId: item.getData('itemId'),
                 row: gridPos.row,
-col: gridPos.col,
+                col: gridPos.col,
                 rotation: item.getData('rotation')
             };
         }
     });
+
+    // 2. 現在のインベントリの状態を画面から読み取る
+    const newInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+
+    // 3. StateManagerのsf変数を「まとめて」更新して自動保存
+    // ★★★ これが最も重要な修正 ★★★
     this.stateManager.setSF('player_backpack', newBackpackData);
-    console.log("Backpack state auto-saved.");
+    this.stateManager.setSF('player_inventory', newInventoryData);
+    
+    console.log("Backpack & Inventory states auto-saved.");
 }
     /*  // BattleScene.js にこの新しいメソッドを追加してください/**
    * トドメの一撃の演出を再生する (最終確定版)
