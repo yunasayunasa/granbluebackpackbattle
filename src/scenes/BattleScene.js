@@ -882,40 +882,46 @@ setupEnemy(gridY) {
     const enemyGridX = gameWidth - 100 - gridWidth;
     const enemyGridY = gridY;
 
-    // 以前の敵オブジェクトが残っていれば全て破棄する
     this.enemyItemImages.forEach(item => item.destroy());
     this.enemyItemImages = [];
 
-    // EnemyGeneratorから現在のラウンドのレイアウトを取得
     const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
     console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
 
-    for (const itemId in currentLayout) {
-        const itemData = ITEM_DATA[itemId];
-        if (!itemData) continue;
-        const pos = currentLayout[itemId].pos;
+    // ★ for...in ループの中を修正 ★
+    for (const uniqueId in currentLayout) {
+        const layoutInfo = currentLayout[uniqueId];
+        const baseItemId = uniqueId.split('_')[0]; // 'shield_2' -> 'shield'
+        const itemData = ITEM_DATA[baseItemId];
+
+        if (!itemData) {
+            console.warn(`ITEM_DATAに'${baseItemId}'が見つかりません。`);
+            continue;
+        }
 
         const containerWidth = itemData.shape[0].length * this.cellSize;
-        
-        // ★★★ この一行を修正した、これが正しいコードです ★★★
         const containerHeight = itemData.shape.length * this.cellSize;
-
+        
+        // ★★★ pos を使わず、layoutInfo.col と layoutInfo.row を直接使う ★★★
         const itemContainer = this.add.container(
-            enemyGridX + (pos[1] * this.cellSize) + (containerWidth / 2),
-            enemyGridY + (pos[0] * this.cellSize) + (containerHeight / 2)
+            enemyGridX + (layoutInfo.col * this.cellSize) + (containerWidth / 2),
+            enemyGridY + (layoutInfo.row * this.cellSize) + (containerHeight / 2)
         ).setSize(containerWidth, containerHeight);
         
+        // --- (以降の itemContainer の設定は変更なし) ---
         const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
         const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
         const maskGraphics = this.add.graphics().setVisible(false);
         recastOverlay.setMask(maskGraphics.createGeometryMask());
         
         itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-        itemContainer.setData({ itemId, recastOverlay, recastMask: maskGraphics });
+        
+        // ★★★ itemId ではなく、ユニークなID (shield_2など) をデータとして持たせる ★★★
+        itemContainer.setData({ itemId: uniqueId, recastOverlay, recastMask: maskGraphics });
 
         if (itemData.recast > 0) { recastOverlay.setVisible(true); }
-
         itemContainer.setDepth(3).setInteractive({ draggable: false });
+        
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             event.stopPropagation();
             const itemData = ITEM_DATA[itemId];
