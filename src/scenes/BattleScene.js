@@ -1849,10 +1849,10 @@ getRotatedShape(itemId, rotation) {
                 itemImage.setScale(scale);
             }
 
-            const nameText = this.add.text(0, 30, itemId, { fontSize: '20px', fill: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
+            const nameText = this.add.text(0, 30, itemId, { fontSize: '20px', fill: '#fff', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5).setName('nameText');
             const costText = this.add.text(0, 55, `${itemData.cost} coins`, { fontSize: '18px', fill: '#ffd700', stroke: '#000', strokeThickness: 2 }).setOrigin(0.5);
-            const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setStrokeStyle(2, 0xffffff);
-            const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5);
+            const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setStrokeStyle(2, 0xffffff).setName('buyButtonBg');
+            const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setName('buyButtonText');
 
             slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
             const currentCoins = this.stateManager.sf.coins || 0;
@@ -1870,29 +1870,38 @@ getRotatedShape(itemId, rotation) {
                 event.stopPropagation();
                 this.tooltip.hide();
 
-                // 購入ボタンの領域（Y座標が70より下）がクリックされたか判定
-                if (localY > 70) {
-                    const currentCoins = this.stateManager.sf.coins || 0;
-                    if (currentCoins >= itemData.cost) {
-                        this.stateManager.setSF('coins', currentCoins - itemData.cost);
-                        const currentInventory = this.stateManager.sf.player_inventory;
-                        currentInventory.push(itemId);
-                        this.stateManager.setSF('player_inventory', currentInventory);
-                        // ★★★ 3. 【重要】画面上のインベントリにもアイテムを追加 ★★★
-                        // createItemで新しいGameObjectを作成 (画面外の適当な位置でOK)
-                        const newItemContainer = this.createItem(itemId, -100, -100);
-                        if (newItemContainer) {
-                            this.inventoryItemImages.push(newItemContainer);
-                            // インベントリのレイアウトを更新して、新しいアイテムを正しい位置に移動させる
-                            this.updateInventoryLayout();
-                        }
-                        buyButtonText.setText('購入済み');
-                        buyButtonBg.setFillStyle(0x555555);
-                        slotContainer.removeInteractive(); // 二重購入防止
-                    } else {
-                        console.log("コインが足りません！");
-                        this.tweens.add({ targets: buyButtonBg, scaleX: 1.1, scaleY: 1.1, duration: 80, yoyo: true });
-                    }
+            // 購入ボタンの領域（Y座標が60より下）がクリックされたか判定
+    if (localY > 60) {
+        // canBuyフラグがない、またはfalseなら処理を中断
+        if (slotContainer.getData('canBuy') !== true) return;
+
+        // ★★★ ここからが「積極的オートセーブ」のロジック ★★★
+        
+        // 1. 更新後のデータをまず変数に用意する
+        const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
+        const newInventory = [...this.stateManager.sf.player_inventory, itemId];
+
+        // 2. StateManagerのsf変数を「まとめて」更新して自動保存
+        this.stateManager.setSF('coins', newCoins);
+        this.stateManager.setSF('player_inventory', newInventory);
+        
+        // ★★★ オートセーブここまで ★★★
+
+        // 3. 画面上のインベントリにもアイテムを追加
+        const newItemContainer = this.createItem(itemId, -100, -100);
+        if (newItemContainer) {
+            this.inventoryItemImages.push(newItemContainer);
+            this.updateInventoryLayout();
+        }
+        
+        // 4. 購入済み表示 & インタラクション無効化
+        buyButtonText.setText('購入済み');
+        buyButtonBg.setFillStyle(0x555555);
+        slotContainer.removeInteractive(); // スロット全体を無効化
+        
+        // 5. 他の商品の購入可否も更新する
+        this.updateShopButtons();
+
                 } else {
                     // 画像領域がクリックされたらツールチップを表示
                     const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
@@ -1919,7 +1928,48 @@ getRotatedShape(itemId, rotation) {
             });
         });
     }
+// BattleScene.js にこのメソッドを追加
+updateShopButtons() {
+    const currentCoins = this.stateManager.sf.coins || 0;
+    this.shopItemSlots.forEach(slot => {
+        if (!slot.input || !slot.input.enabled) return; // 既に購入済みならスキップ
+        
+        const nameText = slot.getByName('nameText');
+        const buyButtonText = slot.getByName('buyButtonText');
+        const buyButtonBg = slot.getByName('buyButtonBg');
+        if(!nameText || !buyButtonText || !buyButtonBg) return;
 
+        const itemData = ITEM_DATA[nameText.text];
+        if(!itemData) return;
+
+        if (currentCoins < itemData.cost) {
+            buyButtonText.setText('コイン不足');
+            buyButtonBg.setFillStyle(0x888888);
+            slot.setData('canBuy', false);
+        } else {
+            buyButtonText.setText('購入');
+            buyButtonBg.setFillStyle(0x3399ff);
+            slot.setData('canBuy', true);
+        }
+    });
+}
+// BattleScene.js にこのメソッドを追加
+saveBackpackState() {
+    const newBackpackData = {};
+    this.placedItemImages.forEach((item, index) => {
+        const gridPos = item.getData('gridPos');
+        if (gridPos) {
+            newBackpackData[`uid_${index}`] = {
+                itemId: item.getData('itemId'),
+                row: gridPos.row,
+col: gridPos.col,
+                rotation: item.getData('rotation')
+            };
+        }
+    });
+    this.stateManager.setSF('player_backpack', newBackpackData);
+    console.log("Backpack state auto-saved.");
+}
     /*  // BattleScene.js にこの新しいメソッドを追加してください/**
    * トドメの一撃の演出を再生する (最終確定版)
    * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
