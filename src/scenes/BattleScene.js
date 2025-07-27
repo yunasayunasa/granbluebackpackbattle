@@ -1158,6 +1158,10 @@ playResonanceAura(targetObject, color) {
             } else {
                 this.tweens.add({ targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'), duration: 200, ease: 'Power2' });
             }
+              // ★★★ ここにオートセーブ処理を追加 ★★★
+    this.time.delayedCall(250, () => { // Tweenのアニメーションが終わるのを少し待つ
+        this.saveBackpackState();
+    });
         });
 
         // createItem の中の 'pointerup' イベントリスナーをこれに置き換え
