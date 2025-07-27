@@ -92,29 +92,33 @@ export default class BattleScene extends Phaser.Scene {
         this.soundManager = this.sys.registry.get('soundManager');
         this.tooltip = new Tooltip(this);
 
-        // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
-        if (this.stateManager.sf.player_backpack === undefined) {
-            this.stateManager.setSF('player_backpack', {});
-        }
-        if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-        }
-        const backpackData = this.stateManager.sf.player_backpack;
-        const inventoryData = this.stateManager.sf.player_inventory;
+       // --- 1a. StateManagerからplayer_dataを取得（なければ初期化）
+if (this.stateManager.sf.player_data === undefined) {
+    const defaultPlayerData = {
+        coins: 0,
+        round: 1,
+        wins: 0,
+        avatar: {
+            base_max_hp: 100, // 素の最大HP
+            current_hp: 100
+        },
+        backpack: {},
+        inventory: ['sword', 'shield', 'potion']
+    };
+    this.stateManager.setSF('player_data', defaultPlayerData);
+}
+// 古いセーブデータとの互換性のため、base_max_hpがなければ追加
+else if (this.stateManager.sf.player_data.avatar.base_max_hp === undefined) {
+    this.stateManager.sf.player_data.avatar.base_max_hp = 100;
+    this.stateManager.setSF('player_data', this.stateManager.sf.player_data); // 変更を保存
+}
+const playerData = this.stateManager.sf.player_data;
 
-        // in create() -> STEP 1-b
-
-        // --- 1b. 戦闘パラメータを決定 ---
-        const initialPlayerMaxHp = this.stateManager.f.player_max_hp || 100;
-
-        // ★★★ ここからが修正箇所 ★★★
-        // 前のラウンドからHPを引き継ぐ。ただし初回（f.player_hpが存在しない場合）は最大HPから開始。
-        const initialPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : initialPlayerMaxHp;
-        // ★★★ 修正箇所ここまで ★★★
-
-        const round = this.stateManager.sf.round || 1;
-        this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
-        // ★★★ ここからが追加箇所 ★★★
+// --- 1b. 戦闘パラメータを決定
+const initialPlayerMaxHp = playerData.avatar.base_max_hp; // ★素の最大HPを参照
+const initialPlayerHp = playerData.avatar.current_hp;     // ★現在のHPを参照
+const round = playerData.round;
+this.initialBattleParams = { playerMaxHp: initialPlayerMaxHp, playerHp: initialPlayerHp, round: round };
         // --- 1c. ゲームオーバー判定
         // 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
         if (initialPlayerHp <= 0) {
@@ -354,9 +358,11 @@ prepareForBattle() {
     });
     
     const playerInitialStats = {
-        max_hp: this.initialBattleParams.playerMaxHp,
-        hp: this.initialBattleParams.playerHp
-    };
+    // ★★★ 修正箇所 ★★★
+    // initialBattleParamsから受け取る形は変わらないが、その中身の元データが変わった
+    max_hp: this.initialBattleParams.playerMaxHp,
+    hp: this.initialBattleParams.playerHp
+};
     
     const playerResult = this.calculateFinalBattleState(playerInitialItems, playerInitialStats);
     this.playerStats = playerResult.finalStats;
@@ -875,7 +881,8 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                 this.stateManager.setSF('player_inventory', roundStartState.inventory);
                 this.stateManager.setSF('coins', roundStartState.coins); // コインを復元
                 this.stateManager.setF('player_hp', roundStartState.hp); // HPを復元
-
+   this.stateManager.sf.player_data.avatar.current_hp = roundStartState.hp; // HPを復元
+        this.stateManager.setSF('player_data', this.stateManager.sf.player_data);
                 console.log("ラウンド開始時の状態に復元してリトライします。");
                 this.scene.start(this.scene.key);
             } else {
@@ -2057,7 +2064,8 @@ saveBackpackState() {
             this.time.timeScale = 1.0;
             const currentRound = this.stateManager.sf.round || 1;
             const FINAL_ROUND = 10; // ★最終ラウンドを定義
-
+this.stateManager.sf.player_data.avatar.current_hp = this.playerStats.hp;
+this.stateManager.setSF('player_data', this.stateManager.sf.player_data); // オブジェクトごと保存
             // ★★★ ここからが修正箇所 ★★★
             if (currentRound >= FINAL_ROUND) {
                 // --- ゲームクリア処理 ---
