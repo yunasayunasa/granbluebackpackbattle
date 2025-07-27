@@ -324,7 +324,7 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
     // ★★★ createの末尾に本来あるべきコード ★★★
     this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
     this.anims.create({ key: 'impact_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }), frameRate: 24, repeat: 0 });
-    this.anims.create({ key: 'finish_anim', frames: this.anims.generateFrameNumbers('effect_finish', { start: 0, end: 15 }), frameRate: 30, repeat: 0 });
+    this.anims.create({ key: 'finish_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 15 }), frameRate: 30, repeat: 0 });
     
     this.events.emit('scene-ready');
     console.log("BattleScene: create 完了");
