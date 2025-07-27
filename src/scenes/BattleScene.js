@@ -420,53 +420,62 @@ prepareForBattle() {
  * @returns {object} 計算後の最終的なステータスと、アクティブアイテムのリスト
  */
 calculateFinalBattleState(initialItems, initialStats) {
-    // === STEP 1: 属性共鳴の計算 ===
-    const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
-    const elementKeys = Object.keys(elementCounts);
-    initialItems.forEach(item => {
-        item.tags.forEach(tag => {
-            if (elementKeys.includes(tag)) elementCounts[tag]++;
-        });
-    });
+  // calculateFinalBattleState メソッドの STEP 1 を、これに置き換えてください
 
-    for (const element in ELEMENT_RESONANCE_RULES) {
-        const rule = ELEMENT_RESONANCE_RULES[element];
-        const count = elementCounts[element] || 0;
-        if (count >= rule.threshold) {
-            // ★★★ このループの中身が、前回は空でした ★★★
+// === STEP 1: 属性共鳴の計算 ===
+const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
+const elementKeys = Object.keys(elementCounts);
+initialItems.forEach(item => {
+    item.tags.forEach(tag => {
+        if (elementKeys.includes(tag)) elementCounts[tag]++;
+    });
+});
+
+for (const element in ELEMENT_RESONANCE_RULES) {
+    const rule = ELEMENT_RESONANCE_RULES[element];
+    const count = elementCounts[element] || 0;
+    if (count >= rule.threshold) {
+        
+        // ★★★ ここからが修正箇所 ★★★
+        if (element === 'water') {
+            // 水属性は特別：属性に関係なく全アイテムのシナジーを強化
             initialItems.forEach(item => {
-                // 【火属性】
-                if (element === 'fire' && item.tags.includes('fire') && item.action) {
-                    item.action.value += Math.floor(count / 2);
-                }
-                // 【風属性】
-                if (element === 'wind' && item.tags.includes('wind') && item.recast) {
-                    item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2)));
-                }
-                // 【土属性】
-                if (element === 'earth' && item.tags.includes('earth')) {
-                    const bonus = count * 2;
-                    if (item.action && item.action.type === 'block') item.action.value += bonus;
-                    if (item.synergy && item.synergy.effect.type.includes('block')) item.synergy.effect.value += bonus;
-                }
-                // 【光属性】
-                if (element === 'light' && item.tags.includes('light')) {
-                    const bonus = count * 2;
-                    if (item.action && item.action.type === 'heal') item.action.value += bonus;
-                    if (item.synergy && item.synergy.effect.type.includes('heal')) item.synergy.effect.value += bonus;
-                }
-                // 【水属性】
-                if (element === 'water' && item.synergy && typeof item.synergy.effect.value === 'number') {
+                if (item.synergy && typeof item.synergy.effect.value === 'number') {
                     const bonus = count - 2;
-                    if (item.synergy.effect.value > 0) {
-                        item.synergy.effect.value += bonus;
-                    } else {
-                        item.synergy.effect.value -= bonus;
+                    if (item.synergy.effect.value > 0) item.synergy.effect.value += bonus;
+                    else item.synergy.effect.value -= bonus;
+                }
+            });
+        } else {
+            // 水属性以外：その属性を持つアイテムだけを強化
+            initialItems.forEach(item => {
+                if (item.tags.includes(element)) {
+                    // 【火属性】
+                    if (element === 'fire' && item.action) {
+                        item.action.value += Math.floor(count / 2);
+                    }
+                    // 【風属性】
+                    if (element === 'wind' && item.recast) {
+                        item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2)));
+                    }
+                    // 【土属性】
+                    if (element === 'earth') {
+                        const bonus = count * 2;
+                        if (item.action && item.action.type === 'block') item.action.value += bonus;
+                        if (item.synergy && item.synergy.effect.type.includes('block')) item.synergy.effect.value += bonus;
+                    }
+                    // 【光属性】
+                    if (element === 'light') {
+                        const bonus = count * 2;
+                        if (item.action && item.action.type === 'heal') item.action.value += bonus;
+                        if (item.synergy && item.synergy.effect.type.includes('heal')) item.synergy.effect.value += bonus;
                     }
                 }
             });
         }
+        // ★★★ 修正箇所ここまで ★★★
     }
+}
 
     // === STEP 2: シナジー効果の計算 ===
     initialItems.forEach((sourceItem, sourceIndex) => {
