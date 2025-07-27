@@ -376,38 +376,38 @@ prepareForBattle() {
     this.stateManager.setF('player_hp', this.playerStats.hp);
     console.log("プレイヤー最終ステータス:", this.playerStats);
 
-    // --- 敵側の準備 ---
-   // in prepareForBattle() -> 敵側の準備
-
+// --- 敵側の準備 ---
 const enemyInitialItems = [];
-// ★ forEachではなく、for...in で currentLayout をループさせる
 const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
 
-// enemyInitialItems と enemyItemImages の紐付けを先に行う
+// ★★★ 敵アイテムのデータ生成とGameObjectの紐付けをここで行う ★★★
 this.enemyItemImages.forEach(itemContainer => {
-    const uniqueId = itemContainer.getData('itemId'); // 'shield_1' など
+    const uniqueId = itemContainer.getData('uniqueId'); // 'shield_2' など
+    if (!uniqueId) return;
+
     const baseItemId = uniqueId.split('_')[0]; // 'shield'
     const itemData = ITEM_DATA[baseItemId];
-    
-    if(itemData){
+    const layoutInfo = currentLayout[uniqueId];
+
+    if (itemData && layoutInfo) {
         const itemInstance = JSON.parse(JSON.stringify(itemData));
-        itemInstance.id = uniqueId; // ユニークIDを保持
-        itemInstance.row = currentLayout[uniqueId].row;
-        itemInstance.col = currentLayout[uniqueId].col;
-        itemInstance.rotation = currentLayout[uniqueId].rotation || 0;
-        itemInstance.gameObject = itemContainer;
+        itemInstance.id = uniqueId; // ユニークIDをインスタンスのIDとする
+        itemInstance.row = layoutInfo.row;
+        itemInstance.col = layoutInfo.col;
+        itemInstance.rotation = layoutInfo.rotation || 0;
+        itemInstance.gameObject = itemContainer; // GameObjectと直接紐付け
+        
         enemyInitialItems.push(itemInstance);
     }
 });
 
-    const enemyInitialStats = {
-        max_hp: this.stateManager.f.enemy_max_hp,
-        hp: this.stateManager.f.enemy_max_hp
-    };
-
-    const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
-    this.enemyStats = enemyResult.finalStats;
-    this.enemyBattleItems = enemyResult.battleItems;
+const enemyInitialStats = {
+    max_hp: this.stateManager.f.enemy_max_hp,
+    hp: this.stateManager.f.enemy_max_hp
+};
+const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
+this.enemyStats = enemyResult.finalStats;
+this.enemyBattleItems = enemyResult.battleItems;
      // ★★★ 敵側にもエフェクト再生を追加 ★★★
     enemyResult.activatedResonances.forEach(element => {
         const flashColor = ELEMENT_COLORS[element];
@@ -419,11 +419,11 @@ this.enemyItemImages.forEach(itemContainer => {
             });
         }
     });
-    this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
-    this.stateManager.setF('enemy_hp', this.enemyStats.hp);
-    console.log("敵最終ステータス:", this.enemyStats);
+  
+this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
+this.stateManager.setF('enemy_hp', this.enemyStats.hp);
+console.log("敵最終ステータス:", this.enemyStats);
 }
-
 // BattleScene.js の calculateFinalBattleState を、この完全なコードで置き換えてください
 
 /**
@@ -876,6 +876,8 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     // BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
 // BattleScene.js の setupEnemy を、この最終確定版に置き換えてください
 
+// setupEnemy を、この最終確定版に置き換えてください
+
 setupEnemy(gridY) {
     const gameWidth = this.scale.width;
     const gridWidth = this.backpackGridSize * this.cellSize;
@@ -888,7 +890,7 @@ setupEnemy(gridY) {
     const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
     console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
 
-    // ★ for...in ループの中を修正 ★
+    // ★★★ for...in ループの中を全面的に修正 ★★★
     for (const uniqueId in currentLayout) {
         const layoutInfo = currentLayout[uniqueId];
         const baseItemId = uniqueId.split('_')[0]; // 'shield_2' -> 'shield'
@@ -902,13 +904,11 @@ setupEnemy(gridY) {
         const containerWidth = itemData.shape[0].length * this.cellSize;
         const containerHeight = itemData.shape.length * this.cellSize;
         
-        // ★★★ pos を使わず、layoutInfo.col と layoutInfo.row を直接使う ★★★
         const itemContainer = this.add.container(
             enemyGridX + (layoutInfo.col * this.cellSize) + (containerWidth / 2),
             enemyGridY + (layoutInfo.row * this.cellSize) + (containerHeight / 2)
         ).setSize(containerWidth, containerHeight);
         
-        // --- (以降の itemContainer の設定は変更なし) ---
         const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
         const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
         const maskGraphics = this.add.graphics().setVisible(false);
@@ -916,17 +916,18 @@ setupEnemy(gridY) {
         
         itemContainer.add([itemImage, recastOverlay, maskGraphics]);
         
-        // ★★★ itemId ではなく、ユニークなID (shield_2など) をデータとして持たせる ★★★
-        itemContainer.setData({ itemId: uniqueId, recastOverlay, recastMask: maskGraphics });
+        // ★ itemContainer には、ユニークID を 'uniqueId' として保存する
+        itemContainer.setData({ itemId: baseItemId, uniqueId: uniqueId, recastOverlay, recastMask: maskGraphics });
 
         if (itemData.recast > 0) { recastOverlay.setVisible(true); }
+
         itemContainer.setDepth(3).setInteractive({ draggable: false });
         
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             event.stopPropagation();
-            const itemData = ITEM_DATA[itemId];
-            if (!itemData) return;
-            let tooltipText = `【${itemId}】\n\n`;
+            // ツールチップに表示するのはベースID
+            let tooltipText = `【${baseItemId}】\n\n`;
+          
             if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
             if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
             if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
