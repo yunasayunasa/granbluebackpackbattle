@@ -279,80 +279,57 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
         this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
 
-        // create メソッド内の startBattleButton.on('pointerdown', ...) リスナーを、これに置き換えてください
-        this.startBattleButton.on('pointerdown', () => {
-            if (this.gameState !== 'prepare') return;
-            // ラウンド開始時の状態を「チェックポイント」としてメモリ上に保存する
-            const initialBackpackData = {};
-            this.placedItemImages.forEach((item, index) => {
-                const gridPos = item.getData('gridPos');
-                if (gridPos) {
-                    initialBackpackData[`uid_${index}`] = {
-                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                    };
-                }
-            });
-            const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+         // ★★★ startBattleButtonのリスナーをクリーンアップ ★★★
+    this.startBattleButton.on('pointerdown', () => {
+        if (this.gameState !== 'prepare') return;
 
-            this.roundStartState = {
-                backpack: initialBackpackData,
-                inventory: initialInventoryData,
-                // 将来的にコインやHPもここに入れる
-                coins: this.stateManager.sf.coins || 0,
-                hp: this.initialBattleParams.playerHp
-            };
-            console.log("Round start state checkpoint created.", this.roundStartState);
-            // ★★★ 修正箇所ここまで ★★★
-
-            // --- 5c. 準備完了をSystemSceneに通知
-            this.events.emit('scene-ready');
-            console.log("BattleScene: create 完了");
-
-            // --- 戦闘開始処理 ---
-            this.gameState = 'battle';
-            this.prepareForBattle();
-
-            // 全てのプレイヤーアイテムとボタンの入力を無効化
-            const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-            allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
-            this.startBattleButton.input.enabled = false;
-
-            // ★★★ ここからが修正点 ★★★
-            // prepareContainer (背景や文字) と inventoryItemImages (アイテム画像) の両方を消す
-            this.tweens.add({
-                targets: [this.prepareContainer, ...this.inventoryItemImages],
-                alpha: 0,
-                duration: 300,
-                onComplete: () => {
-                    this.prepareContainer.setVisible(false);
-                    // inventoryItemImages は Tween で alpha:0 になっているので、
-                    // setVisible(false) は必須ではないが、念のためやっておくとより確実
-                    this.inventoryItemImages.forEach(item => item.setVisible(false));
-                }
-            });
-
-            this.startBattle();
+        // ★チェックポイント作成はここが正しい
+        const initialBackpackData = {};
+        this.placedItemImages.forEach((item, index) => {
+            const gridPos = item.getData('gridPos');
+            if (gridPos) {
+                initialBackpackData[`uid_${index}`] = {
+                    itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                };
+            }
         });
+        const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+        this.roundStartState = {
+            backpack: initialBackpackData,
+            inventory: initialInventoryData,
+            coins: this.stateManager.sf.coins || 0,
+            hp: this.initialBattleParams.playerHp
+        };
+        console.log("Round start state checkpoint created.", this.roundStartState);
+        
+        // --- 戦闘開始処理 ---
+        this.gameState = 'battle';
+        this.prepareForBattle(); // ★ これを呼ぶ
+        
+        const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
+        allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
+        this.startBattleButton.input.enabled = false;
+        this.tweens.add({
+            targets: [this.prepareContainer, ...this.inventoryItemImages],
+            alpha: 0,
+            duration: 300,
+            onComplete: () => {
+                this.prepareContainer.setVisible(false);
+                this.inventoryItemImages.forEach(item => item.setVisible(false));
+            }
+        });
+        this.startBattle();
+    });
 
-        // --- 5b. グローバルクリック（ツールチップ非表示用）
-        this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
-        this.anims.create({
-            key: 'impact_anim', // このアニメーションの名前
-            // 'effect_impact'のキーを持つスプライトシートの、0コマ目から7コマ目までを使う
-            frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }),
-            frameRate: 24, // 1秒間に24コマ再生
-            repeat: 0      // 繰り返し再生しない
-        });
-        this.anims.create({
-            key: 'finish_anim', // 新しいアニメーションキー
-            frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 15 }), // フレーム数を合わせる
-            frameRate: 30, // 少し速くして派手さを出す
-            repeat: 0
-        });
-        // --- 5c. 準備完了をSystemSceneに通知
-        this.events.emit('scene-ready');
-        console.log("BattleScene: create 完了");
-    }
+    // ★★★ createの末尾に本来あるべきコード ★★★
+    this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
+    this.anims.create({ key: 'impact_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }), frameRate: 24, repeat: 0 });
+    this.anims.create({ key: 'finish_anim', frames: this.anims.generateFrameNumbers('effect_finish', { start: 0, end: 15 }), frameRate: 30, repeat: 0 });
+    
+    this.events.emit('scene-ready');
+    console.log("BattleScene: create 完了");
+}
+
 
     // --- ヘルパーメソッド群 (ここから下はすべて完成版) ---
 
@@ -419,27 +396,17 @@ prepareForBattle() {
  * @param {object} initialStats - 初期状態のステータス (HPなど)
  * @returns {object} 計算後の最終的なステータスと、アクティブアイテムのリスト
  */
+// 2. calculateFinalBattleState (安全チェック強化版)
 calculateFinalBattleState(initialItems, initialStats) {
     console.log("--- calculateFinalBattleState 開始 ---");
-    
-    // === STEP 1: 属性共鳴の計算 ===
     const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
     const elementKeys = Object.keys(elementCounts);
-    
     initialItems.forEach(item => {
-        // ★★★ ここからが修正箇所 ★★★
-        // item.tagsが存在し、かつ配列であることを確認してからループを回す
         if (item.tags && Array.isArray(item.tags)) {
-            item.tags.forEach(tag => {
-                if (elementKeys.includes(tag)) {
-                    elementCounts[tag]++;
-                }
-            });
+            item.tags.forEach(tag => { if (elementKeys.includes(tag)) elementCounts[tag]++; });
         } else {
-            // tagsがないアイテムがあれば、警告を出す
-            console.warn(`アイテム[${item.id}]に 'tags' プロパティがありません、または配列ではありません。`);
+            console.warn(`アイテム[${item.id}]に 'tags' プロパティがありません`);
         }
-        // ★★★ 修正箇所ここまで ★★★
     });
     console.log("%c属性カウント結果:", "color: yellow; font-weight: bold;", elementCounts);
 
