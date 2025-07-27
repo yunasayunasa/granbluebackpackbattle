@@ -377,13 +377,28 @@ prepareForBattle() {
     console.log("プレイヤー最終ステータス:", this.playerStats);
 
     // --- 敵側の準備 ---
-    const enemyInitialItems = [];
-    this.enemyItemImages.forEach(itemContainer => {
-        const itemInstance = JSON.parse(JSON.stringify(ITEM_DATA[itemContainer.getData('itemId')]));
-        itemInstance.id = itemContainer.getData('itemId');
+   // in prepareForBattle() -> 敵側の準備
+
+const enemyInitialItems = [];
+// ★ forEachではなく、for...in で currentLayout をループさせる
+const currentLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+
+// enemyInitialItems と enemyItemImages の紐付けを先に行う
+this.enemyItemImages.forEach(itemContainer => {
+    const uniqueId = itemContainer.getData('itemId'); // 'shield_1' など
+    const baseItemId = uniqueId.split('_')[0]; // 'shield'
+    const itemData = ITEM_DATA[baseItemId];
+    
+    if(itemData){
+        const itemInstance = JSON.parse(JSON.stringify(itemData));
+        itemInstance.id = uniqueId; // ユニークIDを保持
+        itemInstance.row = currentLayout[uniqueId].row;
+        itemInstance.col = currentLayout[uniqueId].col;
+        itemInstance.rotation = currentLayout[uniqueId].rotation || 0;
         itemInstance.gameObject = itemContainer;
         enemyInitialItems.push(itemInstance);
-    });
+    }
+});
 
     const enemyInitialStats = {
         max_hp: this.stateManager.f.enemy_max_hp,
@@ -486,8 +501,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
 
         initialItems.forEach((targetItem, targetIndex) => {
             if (sourceIndex === targetIndex) return;
-            if (sourceItem.row === undefined || targetItem.row === undefined) return;
-
+          
             let synergyApplied = false;
             const sourceShape = this.getRotatedShape(sourceItem.id, sourceItem.rotation);
             const targetShape = this.getRotatedShape(targetItem.id, targetItem.rotation);
@@ -753,14 +767,13 @@ for (const element in ELEMENT_RESONANCE_RULES) {
 
         // 3. ブロック獲得アクションの場合
         else if (action.type === 'block') {
-            const attackerStats = this[`${attacker}Stats`];
-            attackerStats.block += action.value;
-            console.log(` > ${attacker}の${itemName}が発動！ ブロックを${action.value}獲得...`);
-
-            // ★ ブロック獲得エフェクト
-            let targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
-            this.showGainBlockPopup(targetAvatar, action.value);
-        }
+    const attackerStats = this[`${attacker}Stats`];
+    attackerStats.block += action.value;
+    
+    // ★★★ 修正箇所 ★★★
+    // アバターではなく、アクションを実行した'attackerObject'にポップアップを表示
+    this.showGainBlockPopup(attackerObject, action.value);
+}
         // ★★★ 4. 回復アクションの場合 (ここから追加) ★★★
         else if (action.type === 'heal') {
             const attackerStats = this[`${attacker}Stats`];
@@ -780,6 +793,22 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                 this.showHealPopup(targetAvatar, Math.floor(healAmount));
             }
         }
+            // --- このアクションを発動したことによる、他者へのシナジー効果を適用 ---
+    if (itemData.appliedSynergies && itemData.appliedSynergies.length > 0) {
+        itemData.appliedSynergies.forEach(syn => {
+            if (syn.type === 'add_block_on_activate') {
+                const targetStats = this[`${syn.targetSide}Stats`];
+                targetStats.block += syn.value;
+                
+                // エフェクトも出す
+                const targetAvatar = (syn.targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
+                this.showGainBlockPopup(targetAvatar, syn.value);
+                
+                console.log(` > シナジー発動！ [${itemData.id}]が[${syn.targetId}]にブロック${syn.value}を付与！`);
+            }
+            // ... 将来的に他の起動時効果もここに追加 ...
+        });
+    }
     }
     // BattleScene.js の endBattle メソッドを、この最終版に置き換え
 

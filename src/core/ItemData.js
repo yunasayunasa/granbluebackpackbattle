@@ -59,6 +59,65 @@ export const ITEM_DATA = {
         "rarity": 3,
          tags: ["gem", "fire"], // ★属性タグ
         passive: { effects: [{ type: "defense", value: 1 }] }
-    }
+    },
+   "potion_of_life": {
+        "imageFile": "item_sword",
+        "storage": "item_sword",
+        "shape": [[1]],
+        "cost": 12,
+        "rarity": 1,
+        "tags": ["consumable", "light"],
+        "action": { "type": "heal", "value": 15 },
+        "recast": 5.0
+    },
 
+    "shield": {
+        "imageFile": "shield.png",
+        "storage": "item_shield",
+        "shape": [[1], [1]],
+        "cost": 10,
+        "rarity": 1,
+        "tags": ["armor", "earth"],
+        "action": { "type": "block", "value": 8 },
+        "recast": 2.5
+    },
+
+    "berserker_axe": {
+        "imageFile": "item_potion",
+        "storage": "item_potion",
+        "shape": [[1], [1], [1]],
+        "cost": 20,
+        "rarity": 2,
+        "tags": ["weapon", "fire"],
+        "action": { "type": "attack", "value": 20 },
+        "recast": 3.0
+    },
+
+    "siegfried": {
+        "imageFile": "item_potion",
+        "storage": "item_potion",
+        "shape": [[1], [1]],
+        "cost": 40,
+        "rarity": 3,
+        "tags": ["hero", "earth"],
+        "action": { "type": "attack", "value": 12 },
+        "recast": 2.8,
+        "passive": { "effects": [{ "type": "max_hp", "value": 15 }] },
+        "synergy": {
+            "direction": "down",
+            "effect": { "type": "add_block_on_activate", "value": 5 } // ★新しい効果
+        }
+    },
+
+    "golem": {
+        "imageFile": "item_potion",
+        "storage": "item_potion",
+        "shape": [[1, 1], [1, 1]],
+        "cost": 30,
+        "rarity": 2,
+        "tags": ["golem", "earth"],
+        "action": { "type": "attack", "value": 10 },
+        "recast": 4.0,
+        "passive": { "effects": [{ "type": "defense", "value": 2 }] }
+    }
 };

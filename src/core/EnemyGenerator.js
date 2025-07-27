@@ -14,18 +14,20 @@ export const EnemyGenerator = {
     getLayoutForRound(round) {
         // ラウンドごとの敵編成をここに定義していく
         const enemyLayouts = {
-            1: { 
-                'sword': { pos: [2, 2], angle: 0 } 
-            },
-            2: { 
-                'berserker_axe': { pos: [1, 2], angle: 0 }, 
-                'shield': { pos: [3, 3], angle: 0 } 
-            },
-            3: {
-                'siegfried': { pos: [2, 1], angle: 0 }
-            },
-            // ... 4, 5, ... 10ラウンド目まで追加
-        };
+         1: { 
+        'sword': { row: 2, col: 2 } 
+    },
+    2: { 
+        'potion_of_life': { row: 1, col: 2 },
+        'shield_1': { row: 3, col: 1 }, // ★ユニークなキー
+        'shield_2': { row: 3, col: 3 }  // ★ユニークなキー
+    },
+    3: { 
+        'siegfried': { row: 1, col: 2 },
+        'golem_1': { row: 4, col: 1 },  // ★ユニークなキー
+        'golem_2': { row: 4, col: 4 }   // ★ユニークなキー
+    }
+};
         
         // 指定されたラウンドのレイアウトがあればそれを返す
         // なければ、最後の定義済みレイアウトを返す（仮）
