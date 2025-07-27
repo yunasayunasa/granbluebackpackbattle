@@ -23,7 +23,7 @@ export const EnemyGenerator = {
         'shield_2': { row: 3, col: 3 }  // ★ユニークなキー
     },
     3: { 
-        'siegfried': { row: 1, col: 2 },
+        'siegfried': { row: 2, col: 2 },
         'golem_1': { row: 4, col: 1 },  // ★ユニークなキー
         'golem_2': { row: 4, col: 4 }   // ★ユニークなキー
     }
