@@ -906,20 +906,26 @@ update(time, delta) {
         }
 
         // 3. ブロック獲得アクションの場合
-           else if (action.type === 'block') {
-            const BLOCK_DURATION = 3000;
-            const targetStats = (attacker === 'player') ? this.playerStats : this.enemyStats;
+         else if (action.type === 'block') {
+    const BLOCK_DURATION = 3000;
+    
+    // ★★★ この一行を追加しました ★★★
+    const attackerStats = this[`${attacker}Stats`];
 
-            // ★★★ 安全チェック ★★★
-            if (!Array.isArray(targetStats.block)) targetStats.block = [];
+    // 安全チェック: blockが配列でなければ、強制的に配列にする
+    if (!Array.isArray(attackerStats.block)) {
+        attackerStats.block = [];
+    }
 
-            targetStats.block.push({
-                amount: action.value,
-                expireTime: this.time.now + BLOCK_DURATION
-            });
-            const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
-            this.showGainBlockPopup(targetAvatar, action.value);
-        }
+    attackerStats.block.push({
+        amount: action.value,
+        expireTime: this.time.now + BLOCK_DURATION
+    });
+    
+    // エフェクト表示 (表示対象をattackerObjectに変更)
+    this.showGainBlockPopup(attackerObject, action.value);
+}
+
 
         // ★★★ 4. 回復アクションの場合 (ここから追加) ★★★
         else if (action.type === 'heal') {
