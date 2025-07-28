@@ -1235,13 +1235,13 @@ itemImage.setFlipX(true); // 画像を水平方向に反転させる
             .setDisplaySize(containerWidth, containerHeight)
             .setTint(0x00aaff, 0.3) // 半透明の白でティント（好みで色や透明度を調整）
             .setVisible(false); // recastを持つアイテム以外は非表示
-itemImage.setFlipX(true); // 画像を水平方向に反転させる
+
         // 3. マスクとして機能するGraphicsオブジェクト
         // 1. マスク用のGraphicsを「コンテナの子として」追加する
         // 1. マスク用のGraphicsを「シーンに直接」追加する
         const maskGraphics = this.add.graphics();
         maskGraphics.setVisible(false); // このオブジェクト自体は見えないようにする
-
+maskGraphics.setFlipX(true); // マスクも水平方向に反転
         // 2. マスクを生成して適用
         recastOverlay.setMask(maskGraphics.createGeometryMask());
 
