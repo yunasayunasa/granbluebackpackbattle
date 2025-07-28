@@ -116,7 +116,7 @@ export const ITEM_DATA = {
     // =================================================================
     'lancelot': {
         storage: 'char_lancelot',
-        shape: [[1], [1], [1]],
+        shape: [[1,1], [1,1], [1,1]],
         tags: ["hero", "water"],
         cost: 55,
         rarity: 3,
@@ -194,7 +194,7 @@ export const ITEM_DATA = {
     // =================================================================
     'siegfried': {
         storage: 'char_siegfried',
-        shape: [[1, 1], [1, 1]],
+        shape: [[1, 1], [1, 1],[1,1]],
         tags: ["hero", "earth"],
         cost: 60,
         rarity: 3,
@@ -289,7 +289,7 @@ export const ITEM_DATA = {
     },
     'grimnir': {
         storage: 'char_grimnir',
-        shape: [[1], [1]],
+        shape: [[1,1], [1,1]],
         tags: ["primal", "wind"],
         cost: 24,
         rarity: 2,
@@ -428,7 +428,7 @@ export const ITEM_DATA = {
         cost: 36,
         rarity: 2,
         passive: { effects: [{ type: 'defense', value: 2 }] },
-        action: { type: 'block', value: 25 },
+        action: { type: 'block', value: 15 },
         recast: 8.0
     },
     'nier': {
@@ -465,6 +465,6 @@ export const ITEM_DATA = {
         tags: ["support", "dark"],
         cost: 15,
         rarity: 1,
-        passive: { effects: [{ type: 'defense', value: 5 }] }
+        passive: { effects: [{ type: 'defense', value: 3 }] }
     }
 };
