@@ -448,15 +448,18 @@ console.log("敵最終ステータス:", this.enemyStats);
 }
 // BattleScene.js の calculateFinalBattleState を、この完全なコードで置き換えてください
 
+// BattleScene.js の calculateFinalBattleState を、この完全なコードで置き換えてください
+
 /**
  * 指定されたアイテムリストから、シナジーと属性共鳴を計算し、最終的な戦闘状態を返す
  * @param {Array} initialItems - 戦闘用のアイテムコピーの配列
  * @param {object} initialStats - 初期状態のステータス (HPなど)
  * @returns {object} 計算後の最終的なステータスと、アクティブアイテムのリスト
  */
-// 2. calculateFinalBattleState (安全チェック強化版)
 calculateFinalBattleState(initialItems, initialStats) {
     console.log("--- calculateFinalBattleState 開始 ---");
+    
+    // === STEP 1: 属性共鳴の計算 ===
     const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
     const elementKeys = Object.keys(elementCounts);
     initialItems.forEach(item => {
@@ -468,62 +471,46 @@ calculateFinalBattleState(initialItems, initialStats) {
     });
     console.log("%c属性カウント結果:", "color: yellow; font-weight: bold;", elementCounts);
 
-for (const element in ELEMENT_RESONANCE_RULES) {
-    const rule = ELEMENT_RESONANCE_RULES[element];
-    const count = elementCounts[element] || 0;
-    if (count >= rule.threshold) {
-              console.log(`%c🔥 属性共鳴発動！ [${element.toUpperCase()}] (${count}体) - ${rule.description(count)}`, "color: cyan; font-weight: bold;");
-        // ★★★ ここからが修正箇所 ★★★
-        if (element === 'water') {
-            // 水属性は特別：属性に関係なく全アイテムのシナジーを強化
-            initialItems.forEach(item => {
-                if (item.synergy && typeof item.synergy.effect.value === 'number') {
-                    const bonus = count - 2;
-                    if (item.synergy.effect.value > 0) item.synergy.effect.value += bonus;
-                    else item.synergy.effect.value -= bonus;
-                }
-                 console.log(`  -> [${item.id}] のシナジー効果がアップ`);
-            });
-        } else {
-            // 水属性以外：その属性を持つアイテムだけを強化
-            initialItems.forEach(item => {
-                if (item.tags.includes(element)) {
-                    // 【火属性】
-                    if (element === 'fire' && item.action) {
-                        item.action.value += Math.floor(count / 2);
+    for (const element in ELEMENT_RESONANCE_RULES) {
+        const rule = ELEMENT_RESONANCE_RULES[element];
+        const count = elementCounts[element] || 0;
+        if (count >= rule.threshold) {
+            console.log(`%c🔥 属性共鳴発動！ [${element.toUpperCase()}] (${count}体)`, "color: cyan;");
+            if (element === 'water') {
+                initialItems.forEach(item => {
+                    if (item.synergy && typeof item.synergy.effect.value === 'number') {
+                        const bonus = count - 2;
+                        if (item.synergy.effect.value > 0) item.synergy.effect.value += bonus;
+                        else item.synergy.effect.value -= bonus;
+                        console.log(`  -> [${item.id}] のシナジー効果がアップ`);
                     }
-                    // 【風属性】
-                    if (element === 'wind' && item.recast) {
-                        item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2)));
+                });
+            } else {
+                initialItems.forEach(item => {
+                    if (item.tags.includes(element)) {
+                        let isBoosted = false;
+                        if (element === 'fire' && item.action) {
+                            if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += Math.floor(count / 2); }); }
+                            else if(item.action.type === 'attack') { item.action.value += Math.floor(count / 2); }
+                            isBoosted = true;
+                        }
+                        if (element === 'wind' && item.recast) { item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2))); isBoosted = true; }
+                        if (element === 'earth') { const bonus = count * 2; if (item.action && item.action.type === 'block') item.action.value += bonus; if (item.synergy && item.synergy.effect.type.includes('block')) item.synergy.effect.value += bonus; isBoosted = true; }
+                        if (element === 'light') { const bonus = count * 2; if (item.action && item.action.type === 'heal') item.action.value += bonus; if (item.synergy && item.synergy.effect.type.includes('heal')) item.synergy.effect.value += bonus; isBoosted = true; }
+                        if (isBoosted) console.log(`  -> [${item.id}] が強化されました`);
                     }
-                    // 【土属性】
-                    if (element === 'earth') {
-                        const bonus = count * 2;
-                        if (item.action && item.action.type === 'block') item.action.value += bonus;
-                        if (item.synergy && item.synergy.effect.type.includes('block')) item.synergy.effect.value += bonus;
-                    }
-                    // 【光属性】
-                    if (element === 'light') {
-                        const bonus = count * 2;
-                        if (item.action && item.action.type === 'heal') item.action.value += bonus;
-                        if (item.synergy && item.synergy.effect.type.includes('heal')) item.synergy.effect.value += bonus;
-                    }
-    console.log(`  -> [${item.id}] が強化されました`);
-                }
-
-            });
+                });
+            }
         }
-        // ★★★ 修正箇所ここまで ★★★
     }
-}
 
     // === STEP 2: シナジー効果の計算 ===
     initialItems.forEach((sourceItem, sourceIndex) => {
         if (!sourceItem.synergy) return;
-
         initialItems.forEach((targetItem, targetIndex) => {
             if (sourceIndex === targetIndex) return;
-          
+            if (sourceItem.row === undefined || targetItem.row === undefined) return;
+
             let synergyApplied = false;
             const sourceShape = this.getRotatedShape(sourceItem.id, sourceItem.rotation);
             const targetShape = this.getRotatedShape(targetItem.id, targetItem.rotation);
@@ -537,85 +524,52 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                         for (let tc = 0; tc < targetShape[tr].length && !synergyApplied; tc++) {
                             if (targetShape[tr][tc] === 0) continue;
                             const targetCellPos = { r: targetItem.row + tr, c: targetItem.col + tc };
+                            
                             let isMatch = false;
+                            const direction = sourceItem.synergy.direction;
+                            const dr = targetCellPos.r - sourceCellPos.r;
+                            const dc = targetCellPos.c - sourceCellPos.c;
 
-                            // ★★★ ここからが修正箇所 ★★★
-    
-    // --- 1. 方向ごとの条件をチェック ---
-    const direction = sourceItem.synergy.direction;
-    const dr = targetCellPos.r - sourceCellPos.r; // 行(row)の差分
-    const dc = targetCellPos.c - sourceCellPos.c; // 列(column)の差分
+                            if (direction === 'adjacent') { if (Math.abs(dr) + Math.abs(dc) === 1) isMatch = true; } 
+                            else if (direction === 'horizontal') { if (dr === 0 && Math.abs(dc) === 1) isMatch = true; }
+                            else if (direction === 'vertical') { if (dc === 0 && Math.abs(dr) === 1) isMatch = true; }
+                            else if (direction === 'up_and_sides') { if ((dc === 0 && dr === -1) || (dr === 0 && Math.abs(dc) === 1)) { isMatch = true; } }
+                            else {
+                                let targetDir = {r: 0, c: 0};
+                                switch(direction) {
+                                    case 'up': targetDir = {r: -1, c: 0}; break; case 'down': targetDir = {r: 1,  c: 0}; break;
+                                    case 'left': targetDir = {r: 0, c: -1}; break; case 'right': targetDir = {r: 0, c: 1}; break;
+                                }
+                                if (targetDir.r !== 0 || targetDir.c !== 0) {
+                                    const rad = Phaser.Math.DegToRad(sourceItem.rotation);
+                                    const rotC = Math.round(targetDir.c * Math.cos(rad) - targetDir.r * Math.sin(rad));
+                                    const rotR = Math.round(targetDir.c * Math.sin(rad) + targetDir.r * Math.cos(rad));
+                                    if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) { isMatch = true; }
+                                }
+                            }
 
-    if (direction === 'adjacent') {
-        // 隣接：マンハッタン距離が1
-        if (Math.abs(dr) + Math.abs(dc) === 1) isMatch = true;
-    } 
-    else if (direction === 'horizontal') {
-        // 左右：行が同じで、列の差が1
-        if (dr === 0 && Math.abs(dc) === 1) isMatch = true;
-    }
-    else if (direction === 'vertical') {
-        // 上下：列が同じで、行の差が1
-        if (dc === 0 && Math.abs(dr) === 1) isMatch = true;
-    }
-    else if (direction === 'up_and_sides') {
-        // 上と左右
-        if ((dc === 0 && dr === -1) || // 上
-            (dr === 0 && Math.abs(dc) === 1)) { // 左右
-            isMatch = true;
-        }
-    }
-    else {
-        // --- 2. 回転を考慮する単一方向のチェック (既存のロジック) ---
-        let targetDir = {r: 0, c: 0};
-        switch(direction) {
-            case 'up':    targetDir = {r: -1, c: 0}; break;
-            case 'down':  targetDir = {r: 1,  c: 0}; break;
-            case 'left':  targetDir = {r: 0, c: -1}; break;
-            case 'right': targetDir = {r: 0, c: 1}; break;
-        }
-
-        if (targetDir.r !== 0 || targetDir.c !== 0) {
-            const rad = Phaser.Math.DegToRad(sourceItem.rotation);
-            const rotC = Math.round(targetDir.c * Math.cos(rad) - targetDir.r * Math.sin(rad));
-            const rotR = Math.round(targetDir.c * Math.sin(rad) + targetDir.r * Math.cos(rad));
-            if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) {
-                isMatch = true;
-            }
-        }
-    }
-
-    // ★★★ 修正箇所ここまで ★★★
-
-                          if (isMatch) {
-            const effect = sourceItem.synergy.effect;
-            console.log(`★ シナジー関係検出: [${sourceItem.id}] -> [${targetItem.id}]`);
-
-            // ★★★ ここからが修正箇所 ★★★
-            // シナジーの種類によって処理を分岐
-            
-            if (effect.type === 'add_attack' || effect.type === 'add_recast') {
-                // 即時反映型シナジー（従来通り）
-                if (effect.type === 'add_attack' && targetItem.action) {
-                    targetItem.action.value += effect.value;
-                }
-                if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                    targetItem.recast = Math.max(1.0, targetItem.recast + (effect.value));
-                }
-            } 
-            else if (effect.type === 'add_block_on_activate' || effect.type === 'heal_on_activate') {
-                // 起動時トリガー型シナジー
-                // ターゲット側に「誰からどんな効果を受けるか」を記録する
-                if (!targetItem.appliedTriggers) {
-                    targetItem.appliedTriggers = [];
-                }
-                targetItem.appliedTriggers.push({
-                    sourceId: sourceItem.id,
-                    effect: effect // 効果オブジェクトを丸ごと保存
-                });
-            }
-        synergyApplied = true;
-    }
+                            if (isMatch) {
+                                console.log(`★ シナジー関係検出: [${sourceItem.id}] -> [${targetItem.id}]`);
+                                const effects = Array.isArray(sourceItem.synergy.effect) ? sourceItem.synergy.effect : [sourceItem.synergy.effect];
+                                effects.forEach(effect => {
+                                    if (effect.type === 'add_attack' && targetItem.action) {
+                                        if(Array.isArray(targetItem.action)) { targetItem.action.forEach(act => { if(act.type === 'attack') act.value += effect.value; }); }
+                                        else if(targetItem.action.type === 'attack') { targetItem.action.value += effect.value; }
+                                    }
+                                    else if (effect.type === 'add_recast' && targetItem.recast > 0) { targetItem.recast = Math.max(0.1, targetItem.recast + effect.value); }
+                                    else if (effect.type === 'add_heal_power') {
+                                        if (targetItem.action && Array.isArray(targetItem.action)) { targetItem.action.forEach(act => { if(act.type === 'heal') act.value += effect.value; }); }
+                                        else if (targetItem.action && targetItem.action.type === 'heal') { targetItem.action.value += effect.value; }
+                                        if (targetItem.synergy && targetItem.synergy.effect.type.includes('heal')) { targetItem.synergy.effect.value += effect.value; }
+                                    }
+                                    else if (effect.type === 'add_block_on_activate' || effect.type === 'heal_on_activate') {
+                                        if (!targetItem.appliedTriggers) targetItem.appliedTriggers = [];
+                                        targetItem.appliedTriggers.push({ sourceId: sourceItem.id, effect: effect });
+                                        console.log(`  -> 起動時に「${effect.type}」を付与`);
+                                    }
+                                });
+                                synergyApplied = true;
+                            }
                         }
                     }
                 }
@@ -636,34 +590,23 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             });
         }
         if (item.recast > 0) {
-            battleItems.push({ data: item, nextActionTime: item.recast, gameObject: item.gameObject, isActing: false  });
+            battleItems.push({ data: item, nextActionTime: item.recast, gameObject: item.gameObject, isActing: false });
         }
     });
 
     const darkResonanceLevel = (elementCounts.dark >= 3) ? 1 : 0;
- // 発動した属性共鳴のリストを作成
-    const activatedResonances = [];
-    for (const element in elementCounts) {
-        if (elementCounts[element] >= ELEMENT_RESONANCE_RULES[element].threshold) {
-            activatedResonances.push(element);
-        }
-    }
+    const activatedResonances = Object.keys(elementCounts).filter(el => ELEMENT_RESONANCE_RULES[el] && elementCounts[el] >= ELEMENT_RESONANCE_RULES[el].threshold);
 
     return {
         finalStats: {
-            max_hp: finalMaxHp,
-            hp: Math.min(initialStats.hp, finalMaxHp),
-            defense: finalDefense,
-            block: 0,
-            attack: 0,
-            darkResonanceLevel: darkResonanceLevel
+            max_hp: finalMaxHp, hp: Math.min(initialStats.hp, finalMaxHp), defense: finalDefense,
+            block: 0, attack: 0, darkResonanceLevel: darkResonanceLevel
         },
         battleItems: battleItems,
         finalizedItems: initialItems,
-              activatedResonances: activatedResonances // ★この情報を戻り値に追加
+        activatedResonances: activatedResonances
     };
 }
-
     startBattle() {
         console.log("★★ 戦闘開始！ ★★");
     }
@@ -898,8 +841,156 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             }
             // ... 将来的に他の起動時効果もここに追加 ...
         });
+
     }
+    
     }
+    /**
+ * キャラクターのアクションを実行する
+ * @param {object} itemData - 行動するキャラクターのデータ
+ * @param {string} attacker - 'player' または 'enemy'
+ * @param {string} defender - 'player' または 'enemy'
+ * @param {Phaser.GameObjects.Container} attackerObject - 行動するキャラクターのGameObject
+ * @param {object} itemObject - isActingフラグなどを持つ戦闘用オブジェクト
+ */
+executeAction(itemData, attacker, defender, attackerObject, itemObject) {
+    // 1. アニメーション（渡されていれば）
+    if (attackerObject) {
+        this.playAttackAnimation(attackerObject, attacker, itemObject);
+    }
+    const itemName = itemData.id || "アイテム";
+
+    // 2. メインアクションの処理
+    if (itemData.action) {
+        // actionが配列でなければ、配列に変換して処理を共通化
+        const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
+
+        actions.forEach(action => {
+            const defenderStats = this[`${defender}Stats`];
+            const attackerStats = this[`${attacker}Stats`];
+            
+            // --- 攻撃アクション ---
+            if (action.type === 'attack') {
+                let totalAttack = action.value;
+                // 背水効果の計算
+                if (attacker === 'player' && itemData.tags.includes('dark') && attackerStats.darkResonanceLevel > 0) {
+                    const hpPercent = (attackerStats.hp / attackerStats.max_hp) * 100;
+                    let bonus = 0;
+                    if (hpPercent < 75) bonus += 2; if (hpPercent < 50) bonus += 3; if (hpPercent < 25) bonus += 5;
+                    if (bonus > 0) { totalAttack += bonus; console.log(`▼ 背水発動！ HP ${hpPercent.toFixed(0)}% のため攻撃力+${bonus}`); }
+                }
+
+                let damage = Math.max(0, totalAttack - defenderStats.defense);
+                let blockedDamage = 0;
+                if (defenderStats.block > 0 && damage > 0) {
+                    blockedDamage = Math.min(defenderStats.block, damage);
+                    defenderStats.block -= blockedDamage;
+                    damage -= blockedDamage;
+                    this.showBlockSuccessIcon(defender);
+                }
+                if (damage > 0) {
+                    this.playDamageEffects(defender, damage);
+                    const newHp = defenderStats.hp - damage;
+                    defenderStats.hp = newHp;
+                    this.stateManager.setF(`${defender}_hp`, newHp);
+                    if (newHp <= 0) {
+                        this.gameState = 'end';
+                        if (defender === 'enemy') this.playFinishBlowEffects(this.enemyAvatar);
+                        else this.endBattle('lose');
+                    }
+                }
+            }
+            // --- ブロック獲得アクション ---
+            else if (action.type === 'block') {
+                attackerStats.block += action.value;
+                this.showGainBlockPopup(attackerObject, action.value);
+            }
+            // --- 回復アクション ---
+            else if (action.type === 'heal') {
+                const healAmount = Math.min(action.value, attackerStats.max_hp - attackerStats.hp);
+                if (healAmount > 0) {
+                    attackerStats.hp += healAmount;
+                    this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+                    const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+                    this.showHealPopup(targetAvatar, Math.floor(healAmount));
+                }
+            }
+        });
+    }
+
+    // 3. 起動時トリガー効果の処理
+    this.handleActivationTriggers(itemData, attacker);
+}
+    // BattleScene.js にこの新しいメソッドを追加
+
+/**
+ * キャラクターが行動した際に、自身に適用されるトリガー効果を処理する
+ * @param {object} itemData - 行動したキャラクターのデータ
+ * @param {string} attacker - 'player' または 'enemy'
+ * @param {Phaser.GameObjects.Container} attackerObject - 行動したキャラクターのGameObject
+ */
+handleActivationTriggers(itemData, attacker, attackerObject) {
+    if (itemData.appliedTriggers && itemData.appliedTriggers.length > 0) {
+        console.log(` > [${itemData.id}] の起動時トリガーを処理...`);
+        itemData.appliedTriggers.forEach(trigger => {
+            const effect = trigger.effect;
+            const sourceId = trigger.sourceId;
+            const attackerStats = this[`${attacker}Stats`];
+            const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+
+            if (effect.type === 'add_block_on_activate') {
+                attackerStats.block += effect.value;
+                this.showGainBlockPopup(targetAvatar, effect.value);
+                console.log(` > シナジー効果！ [${sourceId}]からブロック+${effect.value}を獲得！`);
+            }
+            else if (effect.type === 'heal_on_activate') {
+                const healAmount = Math.min(effect.value, attackerStats.max_hp - attackerStats.hp);
+                if (healAmount > 0) {
+                    attackerStats.hp += healAmount;
+                    this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+                    this.showHealPopup(targetAvatar, Math.floor(healAmount));
+                    console.log(` > シナジー効果！ [${sourceId}]からHPを${healAmount.toFixed(1)}回復！`);
+                }
+            }
+        });
+    }
+}
+/**
+ * キャラクターが行動した際に、自身に適用される「起動時トリガー型シナジー」を処理する
+ * @param {object} itemData - 行動したキャラクターのデータ
+ * @param {string} attacker - 'player' または 'enemy'
+ */
+handleActivationTriggers(itemData, attacker) {
+    if (!itemData.appliedTriggers || itemData.appliedTriggers.length === 0) {
+        return;
+    }
+    
+    console.log(` > [${itemData.id}] の起動時トリガーを処理...`);
+    
+    itemData.appliedTriggers.forEach(trigger => {
+        const effect = trigger.effect;
+        const sourceId = trigger.sourceId;
+        const attackerStats = this[`${attacker}Stats`];
+        const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+
+        // 【起動時にブロック獲得】
+        if (effect.type === 'add_block_on_activate') {
+            attackerStats.block += effect.value;
+            this.showGainBlockPopup(targetAvatar, effect.value);
+            console.log(` > シナジー効果！ [${sourceId}]からブロック+${effect.value}を獲得！`);
+        }
+        // 【起動時に回復】
+        else if (effect.type === 'heal_on_activate') {
+            const healAmount = Math.min(effect.value, attackerStats.max_hp - attackerStats.hp);
+            if (healAmount > 0) {
+                attackerStats.hp += healAmount;
+                this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+                this.showHealPopup(targetAvatar, Math.floor(healAmount));
+                console.log(` > シナジー効果！ [${sourceId}]からHPを${healAmount.toFixed(1)}回復！`);
+            }
+        }
+    });
+}
     // BattleScene.js の endBattle メソッドを、この最終版に置き換え
 
     /**
