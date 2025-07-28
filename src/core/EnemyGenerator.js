@@ -40,15 +40,15 @@ const THEMES = {
 // STEP 4: ラウンドごとのルール定義
 const ROUND_RULES = {
     1: { themePool: ['tutorial'], budget: 20, count: 1 },
-    2: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 40, count: 2 },
-    3: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 70, count: 3 },
-    4: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 110, count: 3 },
-    5: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 150, count: 4 },
-    6: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 200, count: 3 },
-    7: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 250, count: 4 },
-    8: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 300, count: 4 },
-    9: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 350, count: 5 },
-    10: { themePool: ['final_battle'], budget: 500, count: 5 }
+    2: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 50, count: 3 },
+    3: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 80, count: 5 },
+    4: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 150, count: 5 },
+    5: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 200, count: 6 },
+    6: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 300, count: 6 },
+    7: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 400, count: 7 },
+    8: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 500, count: 8 },
+    9: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 600, count: 10 },
+    10: { themePool: ['final_battle'], budget: 700, count: 99 }
 };
 
 export const EnemyGenerator = {
