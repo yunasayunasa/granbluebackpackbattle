@@ -1095,6 +1095,8 @@ handleActivationTriggers(itemData, attacker, attackerObject) {
         });
     }
 }
+// handleActivationTriggers を、この安全対策版に置き換えてください
+
 /**
  * キャラクターが行動した際に、自身に適用される「起動時トリガー型シナジー」を処理する
  * @param {object} itemData - 行動したキャラクターのデータ
@@ -1110,33 +1112,45 @@ handleActivationTriggers(itemData, attacker) {
     itemData.appliedTriggers.forEach(trigger => {
         const effect = trigger.effect;
         const sourceId = trigger.sourceId;
-        const attackerStats = this[`${attacker}Stats`];
+        
+        // ★★★ ここからが修正箇所 ★★★
+        
+        // 1. 操作対象のステータスオブジェクトを明確に取得
+        const targetStats = (attacker === 'player') ? this.playerStats : this.enemyStats;
         const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
 
         // 【起動時にブロック獲得】
-           if (effect.type === 'add_block_on_activate') {
+        if (effect.type === 'add_block_on_activate') {
             const BLOCK_DURATION = 3000;
             
-            // ★★★ 安全チェック ★★★
-            if (!Array.isArray(targetStats.block)) targetStats.block = [];
+            // 2. 安全チェック：blockが配列でなければ、強制的に配列にする
+            if (!Array.isArray(targetStats.block)) {
+                targetStats.block = [];
+            }
 
+            // 3. 配列に新しいブロックを追加
             targetStats.block.push({
                 amount: effect.value,
                 expireTime: this.time.now + BLOCK_DURATION
             });
+            
+            // 4. エフェクトを表示
             this.showGainBlockPopup(targetAvatar, effect.value);
-            console.log(` > シナジー効果！ ...`);
+            console.log(` > シナジー効果！ [${sourceId}]からブロック+${effect.value}を獲得！`);
         }
         // 【起動時に回復】
         else if (effect.type === 'heal_on_activate') {
-            const healAmount = Math.min(effect.value, attackerStats.max_hp - attackerStats.hp);
+            // (回復処理は、blockと違って元々エラーが出ていないので、変更は最小限に)
+            const healAmount = Math.min(effect.value, targetStats.max_hp - targetStats.hp);
             if (healAmount > 0) {
-                attackerStats.hp += healAmount;
-                this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+                targetStats.hp += healAmount;
+                this.stateManager.setF(`${attacker}_hp`, targetStats.hp);
                 this.showHealPopup(targetAvatar, Math.floor(healAmount));
                 console.log(` > シナジー効果！ [${sourceId}]からHPを${healAmount.toFixed(1)}回復！`);
             }
         }
+        
+        // ★★★ 修正箇所ここまで ★★★
     });
 }
     // BattleScene.js の endBattle メソッドを、この最終版に置き換え
