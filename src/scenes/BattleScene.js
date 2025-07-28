@@ -373,6 +373,7 @@ prepareForBattle() {
     
     const playerResult = this.calculateFinalBattleState(playerInitialItems, playerInitialStats);
     this.playerStats = playerResult.finalStats;
+    this.playerStats.block = []
     this.playerBattleItems = playerResult.battleItems;
     this.finalizedPlayerItems = playerResult.finalizedItems;
   // 発動した属性共鳴のエフェクトを再生
@@ -431,6 +432,7 @@ const enemyInitialStats = {
 
 const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
 this.enemyStats = enemyResult.finalStats;
+this.enemyStats.block = []; 
 this.enemyBattleItems = [];
 enemyResult.finalizedItems.forEach(itemData => {
     // アクティブスキルを持つアイテムのみをリストに追加
@@ -632,7 +634,21 @@ calculateFinalBattleState(initialItems, initialStats) {
     // BattleScene.js の update をこれに置き換え
     update(time, delta) {
         if (this.gameState !== 'battle') return;
+    // --- 期限切れブロックの削除と合計ブロック量の計算 ---
+    const now = this.time.now;
+    let totalPlayerBlock = 0;
+    if (this.playerStats.block) {
+        // 有効期限が切れていないブロックだけを残す
+        this.playerStats.block = this.playerStats.block.filter(b => b.expireTime > now);
+        // 残ったブロックの合計値を計算
+        totalPlayerBlock = this.playerStats.block.reduce((sum, b) => sum + b.amount, 0);
+    }
 
+    let totalEnemyBlock = 0;
+    if (this.enemyStats.block) {
+        this.enemyStats.block = this.enemyStats.block.filter(b => b.expireTime > now);
+        totalEnemyBlock = this.enemyStats.block.reduce((sum, b) => sum + b.amount, 0);
+    }
          // --- ヘルパー関数: リキャストマスク更新 ---
     const updateRecastMask = (charObject, progress, isPlayerSide) => {
         if (!charObject || !charObject.active || !charObject.getData('recastMask')) return;
@@ -816,19 +832,33 @@ calculateFinalBattleState(initialItems, initialStats) {
     }
     // ★★★ 追加ここまで ★★★
 
-            let damage = Math.max(0, totalAttack - defenderStats.defense);
-            let blockedDamage = 0;
+             let damage = Math.max(0, totalAttack - defenderStats.defense);
+    
+    // ★★★ ここからがブロック消費ロジック ★★★
+    if (defenderStats.block && defenderStats.block.length > 0 && damage > 0) {
+        let damageToBlock = damage;
+        
+        // 配列の先頭（古いブロック）から順に消費していく
+        for (let i = 0; i < defenderStats.block.length; i++) {
+            const blockLayer = defenderStats.block[i];
+            const blockedAmount = Math.min(damageToBlock, blockLayer.amount);
+            
+            damageToBlock -= blockedAmount;
+            blockLayer.amount -= blockedAmount;
+            
+            if (damageToBlock <= 0) break; // ダメージを全て防ぎきったらループ終了
+        }
+        
+        // amountが0になったブロック層を配列から削除
+        defenderStats.block = defenderStats.block.filter(b => b.amount > 0);
+        
+        const totalBlocked = damage - damageToBlock;
+        damage = damageToBlock;
 
-            // ブロック処理
-            if (defenderStats.block > 0 && damage > 0) {
-                blockedDamage = Math.min(defenderStats.block, damage);
-                defenderStats.block -= blockedDamage;
-                damage -= blockedDamage;
-                console.log(` > ${defender}が${blockedDamage}ダメージをブロック！`);
-
-                // ★ ブロック成功エフェクトはここで1回だけ呼ぶ
-                this.showBlockSuccessIcon(defender);
-            }
+        if (totalBlocked > 0) {
+            this.showBlockSuccessIcon(defender);
+        }
+    }
 
             // ダメージ処理
             if (damage > 0) {
@@ -864,8 +894,16 @@ calculateFinalBattleState(initialItems, initialStats) {
 
         // 3. ブロック獲得アクションの場合
         else if (action.type === 'block') {
+            const BLOCK_DURATION = 3000; // ブロックの有効期限（ミリ
     const attackerStats = this[`${attacker}Stats`];
-    attackerStats.block += action.value;
+        // 新しいブロックオブジェクトを配列の末尾に追加
+    attackerStats.block.push({
+        amount: action.value,
+        expireTime: this.time.now + BLOCK_DURATION
+    });
+    
+    const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+     
     
     // ★★★ 修正箇所 ★★★
     // アバターではなく、アクションを実行した'attackerObject'にポップアップを表示
@@ -1059,7 +1097,12 @@ handleActivationTriggers(itemData, attacker) {
 
         // 【起動時にブロック獲得】
         if (effect.type === 'add_block_on_activate') {
-            attackerStats.block += effect.value;
+            const BLOCK_DURATION = 3000;
+    const attackerStats = this[`${attacker}Stats`];
+    attackerStats.block.push({
+        amount: effect.value,
+        expireTime: this.time.now + BLOCK_DURATION
+    });
             this.showGainBlockPopup(targetAvatar, effect.value);
             console.log(` > シナジー効果！ [${sourceId}]からブロック+${effect.value}を獲得！`);
         }

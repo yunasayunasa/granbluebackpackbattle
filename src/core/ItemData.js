@@ -125,7 +125,7 @@ export const ITEM_DATA = {
         recast: 5.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'add_recast', value: -1.0 }
+            effect: { type: 'add_recast', value: -0.2 }
         }
     },
     'poseidon': {
@@ -135,7 +135,7 @@ export const ITEM_DATA = {
         cost: 35,
         rarity: 2,
         passive: { effects: [{ type: 'defense', value: 1 }] },
-        action: { type: 'attack', value: 5 },
+        action: { type: 'attack', value: 3 },
         recast: 5.0,
         synergy: {
             direction: 'adjacent',
@@ -155,8 +155,8 @@ export const ITEM_DATA = {
         tags: ["master", "water"],
         cost: 22,
         rarity: 2,
-        action: { type: 'attack', value: 8 },
-        recast: 5.0,
+        action: { type: 'attack', value: 3},
+        recast: 6.0,
         synergy: {
             direction: 'adjacent',
             effect: { type: 'add_attack', value: 1 }
@@ -168,7 +168,7 @@ export const ITEM_DATA = {
         tags: ["dragon", "water"],
         cost: 25,
         rarity: 2,
-        action: { type: 'attack', value: 30 },
+        action: { type: 'attack', value: 15},
         recast: 20.0,
         synergy: {
             direction: 'adjacent',
