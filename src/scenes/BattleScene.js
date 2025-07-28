@@ -1272,7 +1272,14 @@ setupEnemy(gridY, currentLayout) {
             let tooltipText = `【${baseItemId}】\n\n`;
           
             if (itemData.recast > 0) tooltipText += `リキャスト: ${itemData.recast}秒\n`;
-            if (itemData.action) tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`;
+             // ★★★ Action 表示の修正 ★★★
+    if (itemData.action) {
+        const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
+        actions.forEach(action => {
+            tooltipText += `効果: ${action.type} ${action.value}\n`;
+        });
+    }
+
             if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
             if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
             this.tooltip.show(itemContainer, tooltipText);
@@ -1517,14 +1524,25 @@ tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
                 }
 
                 // Action
-                if (baseItemData.action) {
-                    const baseValue = baseItemData.action.value;
-                    const finalValue = (finalItemData && finalItemData.action) ? finalItemData.action.value : baseValue;
-                    tooltipText += `効果: ${baseItemData.action.type} ${finalValue}\n`;
-                    if (finalValue !== baseValue) {
-                        tooltipText += `  (基本値: ${baseValue})\n`;
-                    }
-                }
+               if (baseItemData.action) {
+        // actionが配列でなければ、配列に変換して処理を共通化
+        const actions = Array.isArray(baseItemData.action) ? baseItemData.action : [baseItemData.action];
+        
+        // finalizedItemsから対応するバフ適用後のデータを探す
+        const finalActions = (finalItemData && finalItemData.action) 
+            ? (Array.isArray(finalItemData.action) ? finalItemData.action : [finalItemData.action])
+            : actions;
+
+        actions.forEach((baseAction, index) => {
+            const finalAction = finalActions[index] || baseAction;
+            const finalValue = finalAction.value;
+            
+            tooltipText += `効果: ${baseAction.type} ${finalValue}\n`;
+            if (finalValue !== baseAction.value) {
+                tooltipText += `  (基本値: ${baseAction.value})\n`;
+            }
+        });
+    }
                 // Passive
                 if (baseItemData.passive && baseItemData.passive.effects) {
                     baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; });
@@ -2237,7 +2255,12 @@ const sizeW = itemData.size ? itemData.size.w : itemData.shape[0].length;
 tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
                     tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
                     if (itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
-                    if (itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
+                    if(itemData.action) {
+        const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
+        actions.forEach(action => {
+            tooltipText += `効果: ${action.type} ${action.value}\n`;
+        });
+    }
                     if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`; }
 
                     this.tooltip.show(slotContainer, tooltipText);
