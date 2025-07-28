@@ -15,7 +15,9 @@ const ELEMENT_COLORS = {
 // ツールチップ表示用の日本語変換テーブル
 const TOOLTIP_TRANSLATIONS = {
     // 方向
-    up: '上', down: '下', left: '左', right: '右', adjacent: '隣接',
+    up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右',
+    vertical: '上下',
+    up_and_sides: '上と左右',
     // 属性
     fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
     // タグ（必要に応じて）
@@ -1279,7 +1281,18 @@ setupEnemy(gridY, currentLayout) {
     }
 
             if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-            if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${itemData.synergy.direction}の[${itemData.synergy.targetTag || 'any'}]に\n    効果: ${itemData.synergy.effect.type} +${itemData.synergy.effect.value}\n`; }
+               // Synergy (複合対応 ＆ 日本語化)
+    if (itemData.synergy) {
+        tooltipText += `\nシナジー:\n`;
+        const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
+        const dir = t(itemData.synergy.direction); // ★日本語化
+        
+        effects.forEach(effect => {
+            const effectType = t(effect.type);
+            tooltipText += `  - ${dir}の味方に\n`; // ★「any」を削除
+            tooltipText += `    効果: ${effectType} +${effect.value}\n`;
+        });
+    }
             this.tooltip.show(itemContainer, tooltipText);
         });
         
@@ -2259,9 +2272,18 @@ tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
             tooltipText += `効果: ${action.type} ${action.value}\n`;
         });
     }
-                    if (itemData.synergy) { tooltipText += `\nシナジー:\n  - ${t(itemData.synergy.direction)}の味方に\n    効果: ${t(itemData.synergy.effect.type)} +${itemData.synergy.effect.value}\n`; }
-
-                    this.tooltip.show(slotContainer, tooltipText);
+            if(itemData.synergy) {
+        tooltipText += `\nシナジー:\n`;
+        const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
+        const dir = t(itemData.synergy.direction); // ★日本語化
+        
+        effects.forEach(effect => {
+            const effectType = t(effect.type);
+            tooltipText += `  - ${dir}の味方に\n`; // ★「any」を削除
+            tooltipText += `    効果: ${effectType} +${effect.value}\n`;
+        });
+    }
+    
                     const matrix = slotContainer.getWorldTransformMatrix();
                     const worldX = matrix.tx;
                     const worldY = matrix.ty;
