@@ -121,8 +121,8 @@ export const ITEM_DATA = {
         cost: 55,
         rarity: 3,
         passive: { effects: [{ type: 'max_hp', value: 15 }] },
-        action: { type: 'attack', value: 6 },
-        recast: 5.0,
+        action: { type: 'attack', value: 4 },
+        recast: 8.0,
         synergy: {
             direction: 'adjacent',
             effect: { type: 'add_recast', value: -0.2 }
