@@ -152,7 +152,11 @@ this.initialBattleParams = {
         // =================================================================
         this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
         this.finalizedPlayerItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
-        this.playerStats = {}; this.enemyStats = {};
+// ★★★ ここからが修正箇所 ★★★
+this.playerStats = { block: [] }; // blockを空の配列として初期化
+this.enemyStats = { block: [] };  // 敵側も同様
+// ★★★ 修正箇所ここまで ★★★
+
         this.battleEnded = false; this.gameState = 'prepare';
         this.cameras.main.setBackgroundColor('#8a2be2');
 
@@ -632,23 +636,27 @@ calculateFinalBattleState(initialItems, initialStats) {
     }
     // BattleScene.js の update をこれに置き換え
     // BattleScene.js の update をこれに置き換え
-    update(time, delta) {
-        if (this.gameState !== 'battle') return;
-    // --- 期限切れブロックの削除と合計ブロック量の計算 ---
+   
+update(time, delta) {
+    if (this.gameState !== 'battle') return;
     const now = this.time.now;
-    let totalPlayerBlock = 0;
-    if (this.playerStats.block) {
-        // 有効期限が切れていないブロックだけを残す
+
+    // --- プレイヤーの期限切れブロックを削除 ---
+    // ★★★ ここからが修正箇所 ★★★
+    if (this.playerStats.block && Array.isArray(this.playerStats.block)) {
         this.playerStats.block = this.playerStats.block.filter(b => b.expireTime > now);
-        // 残ったブロックの合計値を計算
-        totalPlayerBlock = this.playerStats.block.reduce((sum, b) => sum + b.amount, 0);
+    } else {
+        this.playerStats.block = []; // もし配列でなければ、ここで強制的に配列にする
+    }
+    // ★★★ 修正箇所ここまで ★★★
+    
+    // --- 敵の期限切れブロックを削除 ---
+    if (this.enemyStats.block && Array.isArray(this.enemyStats.block)) {
+        this.enemyStats.block = this.enemyStats.block.filter(b => b.expireTime > now);
+    } else {
+        this.enemyStats.block = [];
     }
 
-    let totalEnemyBlock = 0;
-    if (this.enemyStats.block) {
-        this.enemyStats.block = this.enemyStats.block.filter(b => b.expireTime > now);
-        totalEnemyBlock = this.enemyStats.block.reduce((sum, b) => sum + b.amount, 0);
-    }
          // --- ヘルパー関数: リキャストマスク更新 ---
     const updateRecastMask = (charObject, progress, isPlayerSide) => {
         if (!charObject || !charObject.active || !charObject.getData('recastMask')) return;
