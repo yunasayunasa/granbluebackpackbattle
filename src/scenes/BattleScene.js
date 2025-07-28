@@ -438,6 +438,7 @@ enemyResult.finalizedItems.forEach(itemData => {
             data: itemData,
             nextActionTime: itemData.recast,
             gameObject: itemData.gameObject // ★ GameObjectへの参照を直接持たせる
+            
         });
     }
 });
@@ -601,7 +602,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             });
         }
         if (item.recast > 0) {
-            battleItems.push({ data: item, nextActionTime: item.recast });
+            battleItems.push({ data: item, nextActionTime: item.recast, isActing: false  });
         }
     });
 
@@ -692,6 +693,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             updateRecastMask(item.data.gameObject, progress);
 
             if (item.nextActionTime <= 0) {
+                  item.isActing = true; // アクションロック
                 this.executeAction(item.data, 'player', 'enemy', item.data.gameObject);
                 item.nextActionTime += item.data.recast;
                 // アクション実行後、次のフレームで progress が 0 に近くなり、マスクがクリアされる
@@ -709,6 +711,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     updateRecastMask(item.gameObject, progress);
 
     if (item.nextActionTime <= 0) {
+          item.isActing = true; // アクションロック
         // ★ gameObject を直接参照
         this.executeAction(item.data, 'enemy', 'player', item.gameObject);
         item.nextActionTime += item.data.recast;
@@ -720,10 +723,10 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     // BattleScene.js の executeAction をこれに置き換え
     // BattleScene.js の executeAction をこれに置き換え
     // BattleScene.js の executeAction をこの完成版に置き換えてください
-    executeAction(itemData, attacker, defender, attackerObject) {
+    executeAction(itemData, attacker, defender, attackerObject, itemObject) {
         // 1. 攻撃者のアニメーション（渡されていれば）
         if (attackerObject) {
-            this.playAttackAnimation(attackerObject, attacker);
+            this.playAttackAnimation(attackerObject, attacker, itemObject);
         }
 
         const action = itemData.action;
@@ -1643,7 +1646,7 @@ getRotatedShape(itemId, rotation) {
     }
 
     // BattleScene.js にこの新しいメソッドを追加してください
-    playAttackAnimation(sourceObject, attackerType) {
+    playAttackAnimation(sourceObject, attackerType, itemObject) {
         if (!sourceObject) return;
 
         const moveDistance = 20; // 前に突き出す距離
@@ -1672,7 +1675,11 @@ getRotatedShape(itemId, rotation) {
                 sourceObject.setDepth(12); // 終わったら深度を戻す (敵は3)
                 if (attackerType === 'enemy') {
                     sourceObject.setDepth(3);
+                    
                 }
+
+                 if (itemObject) {
+                itemObject.isActing = false;} // ★アニメーション完了時にロック解除
             }
         });
     }
