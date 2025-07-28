@@ -51,7 +51,7 @@ export const ITEM_DATA = {
     },
     'anila': {
         storage: 'char_anila',
-        shape: [[1, 0], [1, 0], [1, 1]],
+        shape: [[1, 0], [1, 1]],
         tags: ["support", "fire"],
         cost: 28,
         rarity: 2,
@@ -262,7 +262,7 @@ export const ITEM_DATA = {
     // =================================================================
     'veirne': {
         storage: 'char_veirne',
-        shape: [[1, 1], [1, 1]],
+        shape: [[1, 1], [1, 1],[1,1]],
         tags: ["hero", "wind"],
         cost: 58,
         rarity: 3,
