@@ -636,7 +636,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             });
         }
         if (item.recast > 0) {
-            battleItems.push({ data: item, nextActionTime: item.recast, isActing: false  });
+            battleItems.push({ data: item, nextActionTime: item.recast, gameObject: item.gameObject, isActing: false  });
         }
     });
 
@@ -726,13 +726,13 @@ for (const element in ELEMENT_RESONANCE_RULES) {
             const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
             updateRecastMask(item.data.gameObject, progress);
 
-            if (item.nextActionTime <= 0) {
-                  item.isActing = true; // アクションロック
-                this.executeAction(item.data, 'player', 'enemy', item.data.gameObject);
-                item.nextActionTime += item.data.recast;
-                // アクション実行後、次のフレームで progress が 0 に近くなり、マスクがクリアされる
-            }
-        });
+            // ★ isActing フラグをチェック
+    if (item.nextActionTime <= 0 && !item.isActing) {
+        item.isActing = true; // アクションロック
+        this.executeAction(item.data, 'player', 'enemy', item.gameObject, item);
+        item.nextActionTime += item.data.recast;
+    }
+});
 
         if (this.gameState !== 'battle') return;
 
@@ -744,10 +744,10 @@ for (const element in ELEMENT_RESONANCE_RULES) {
     // ★ gameObject を直接参照
     updateRecastMask(item.gameObject, progress);
 
-    if (item.nextActionTime <= 0) {
-          item.isActing = true; // アクションロック
-        // ★ gameObject を直接参照
-        this.executeAction(item.data, 'enemy', 'player', item.gameObject);
+  // ★ 敵側も isActing フラグをチェック
+    if (item.nextActionTime <= 0 && !item.isActing) {
+        item.isActing = true; // アクションロック
+        this.executeAction(item.data, 'enemy', 'player', item.gameObject, item);
         item.nextActionTime += item.data.recast;
     }
 });
