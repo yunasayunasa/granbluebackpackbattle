@@ -46,8 +46,8 @@ const ROUND_RULES = {
     5: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 200, count: 6 },
     6: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 300, count: 6 },
     7: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 400, count: 7 },
-    8: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 500, count: 8 },
-    9: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized'], budget: 600, count: 10 },
+    8: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized','light_specialized', 'dark_specialized'], budget: 500, count: 8 },
+    9: { themePool: ['fire_specialized', 'water_specialized', 'earth_specialized', 'wind_specialized','light_specialized', 'dark_specialized'], budget: 600, count: 10 },
     10: { themePool: ['final_battle'], budget: 700, count: 99 }
 };
 
