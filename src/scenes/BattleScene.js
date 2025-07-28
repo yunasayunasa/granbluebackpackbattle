@@ -442,6 +442,21 @@ enemyResult.finalizedItems.forEach(itemData => {
         });
     }
 });
+// ★★★ ここからが追加箇所 ★★★
+// 発動した属性共鳴のエフェクトを再生
+enemyResult.activatedResonances.forEach(element => {
+    const flashColor = ELEMENT_COLORS[element];
+    if (flashColor) {
+        // その属性を持つアイテム全てを光らせる
+        enemyResult.finalizedItems.forEach(item => {
+            if (item.tags.includes(element) && item.gameObject) {
+                this.playResonanceAura(item.gameObject, flashColor);
+            }
+        });
+    }
+});
+// ★★★ 追加ここまで ★★★
+
 this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
 this.stateManager.setF('enemy_hp', this.enemyStats.hp);
 console.log("敵最終ステータス:", this.enemyStats);
