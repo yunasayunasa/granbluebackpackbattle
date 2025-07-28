@@ -615,53 +615,43 @@ calculateFinalBattleState(initialItems, initialStats) {
     update(time, delta) {
         if (this.gameState !== 'battle') return;
 
-        const updateRecastMask = (charObject, progress) => {
-            if (!charObject || !charObject.active || !charObject.getData('recastMask')) {
-                return;
+         // --- ヘルパー関数: リキャストマスク更新 ---
+    const updateRecastMask = (charObject, progress, isPlayerSide) => {
+        if (!charObject || !charObject.active || !charObject.getData('recastMask')) return;
+
+        const maskGraphics = charObject.getData('recastMask');
+        maskGraphics.clear();
+
+        if (progress > 0.01) {
+            const w = charObject.width;
+            const h = charObject.height;
+            const fillHeight = h * progress;
+
+            let corners = [
+                { x: -w / 2, y: h / 2 - fillHeight }, { x: w / 2, y: h / 2 - fillHeight },
+                { x: w / 2, y: h / 2 }, { x: -w / 2, y: h / 2 }
+            ];
+
+            // ★★★ プレイヤーサイドの場合、X座標を反転させる ★★★
+            if (isPlayerSide) {
+                corners.forEach(p => p.x *= -1);
             }
 
-            const maskGraphics = charObject.getData('recastMask');
-            maskGraphics.clear();
+            const rotation = charObject.rotation;
+            const sin = Math.sin(rotation);
+            const cos = Math.cos(rotation);
+            const rotatedCorners = corners.map(p => ({ x: p.x*cos - p.y*sin, y: p.x*sin + p.y*cos }));
+            
+            const matrix = charObject.getWorldTransformMatrix();
+            const gx = matrix.tx;
+            const gy = matrix.ty;
+            const finalPoints = rotatedCorners.map(p => ({ x: gx + p.x, y: gy + p.y }));
 
-            if (progress > 0.01) { // わずかな誤差を無視
-                const w = charObject.width;
-                const h = charObject.height;
-                const fillHeight = h * progress;
+            maskGraphics.fillStyle(0xffffff);
+            maskGraphics.fillPoints(finalPoints, true);
+        }
+    };
 
-                // 回転した矩形の4つの頂点座標を計算
-                const corners = [
-                    { x: -w / 2, y: h / 2 - fillHeight }, // 左下
-                    { x: w / 2, y: h / 2 - fillHeight }, // 右下
-                    { x: w / 2, y: h / 2 },              // 右上
-                    { x: -w / 2, y: h / 2 }               // 左上
-                ];
-
-                // 各頂点をキャラクターの回転に合わせて回転させる
-                const rotation = charObject.rotation;
-                const sin = Math.sin(rotation);
-                const cos = Math.cos(rotation);
-
-                const rotatedCorners = corners.map(p => ({
-                    x: p.x * cos - p.y * sin,
-                    y: p.x * sin + p.y * cos
-                }));
-
-                // キャラクターのグローバル座標を取得
-                const matrix = charObject.getWorldTransformMatrix();
-                const gx = matrix.tx;
-                const gy = matrix.ty;
-
-                // グローバル座標に頂点を移動
-                const finalPoints = rotatedCorners.map(p => ({
-                    x: gx + p.x,
-                    y: gy + p.y
-                }));
-
-                // 計算した頂点を使って多角形を描画
-                maskGraphics.fillStyle(0xffffff);
-                maskGraphics.fillPoints(finalPoints, true);
-            }
-        };
  // =================================================================
     // ★★★ トリガーアクションの監視 (プレイヤー側) ★★★
     // =================================================================
@@ -703,10 +693,11 @@ calculateFinalBattleState(initialItems, initialStats) {
     // リキャストベースのアクション (既存のロジック)
     // =================================================================
         // --- Player's items ---
-        this.playerBattleItems.forEach(item => {
-            item.nextActionTime -= delta / 1000;
-            const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
-            updateRecastMask(item.data.gameObject, progress);
+    this.playerBattleItems.forEach(item => {
+        item.nextActionTime -= delta / 1000;
+        const progress = Math.min(1, 1 - (item.data.recast > 0 ? item.nextActionTime / item.data.recast : 0));
+        // ★ isPlayerSide に true を渡す
+        updateRecastMask(item.gameObject, progress, true);
 
             // ★ isActing フラグをチェック
     if (item.nextActionTime <= 0 && !item.isActing) {
@@ -719,13 +710,12 @@ calculateFinalBattleState(initialItems, initialStats) {
         if (this.gameState !== 'battle') return;
 
         // --- Enemy's items ---
-        this.enemyBattleItems.forEach(item => { // ★ index を削除
-    item.nextActionTime -= delta / 1000;
-
-    const progress = Math.min(1, 1 - (item.nextActionTime / item.data.recast));
-    // ★ gameObject を直接参照
-    updateRecastMask(item.gameObject, progress);
-
+     this.enemyBattleItems.forEach(item => {
+        item.nextActionTime -= delta / 1000;
+        const progress = Math.min(1, 1 - (item.data.recast > 0 ? item.nextActionTime / item.data.recast : 0));
+        // ★ isPlayerSide に false を渡す
+        updateRecastMask(item.gameObject, progress, false);
+        
   // ★ 敵側も isActing フラグをチェック
     if (item.nextActionTime <= 0 && !item.isActing) {
         item.isActing = true; // アクションロック
@@ -1235,13 +1225,13 @@ itemImage.setFlipX(true); // 画像を水平方向に反転させる
             .setDisplaySize(containerWidth, containerHeight)
             .setTint(0x00aaff, 0.3) // 半透明の白でティント（好みで色や透明度を調整）
             .setVisible(false); // recastを持つアイテム以外は非表示
-
+itemImage.setFlipX(true); // 画像を水平方向に反転させる
         // 3. マスクとして機能するGraphicsオブジェクト
         // 1. マスク用のGraphicsを「コンテナの子として」追加する
         // 1. マスク用のGraphicsを「シーンに直接」追加する
         const maskGraphics = this.add.graphics();
         maskGraphics.setVisible(false); // このオブジェクト自体は見えないようにする
-maskGraphics.setFlipX(true); // マスクも水平方向に反転
+
         // 2. マスクを生成して適用
         recastOverlay.setMask(maskGraphics.createGeometryMask());
 
