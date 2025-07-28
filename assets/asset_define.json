@@ -24,7 +24,46 @@
     "background2": "assets/bg2.jpg",
     "background3": "assets/bg3.jpg",
     "background4": "assets/bg4.png",
-    "reward_background": "assets/reward_bg.jpg"
+    "reward_background": "assets/reward_bg.jpg",
+        "char_perceval": "assets/char/perceval.png",
+    "char_anila": "assets/char/anila.png",
+    "char_fenrir": "assets/char/fenrir.png",
+    "char_yuel": "assets/char/yuel.png",
+    "char_claris": "assets/char/claris.png",
+    "char_zavilbara": "assets/char/zavilbara.png",
+
+    "char_lancelot": "assets/char/lancelot.png",
+    "char_poseidon": "assets/char/poseidon.png",
+    "char_yachima": "assets/char/yachima.png",
+    "char_yodarha": "assets/char/yodarha.png",
+    "char_wamdus": "assets/char/wamdus.png",
+    "char_slime": "assets/char/slime.png",
+
+    "char_siegfried": "assets/char/siegfried.png",
+    "char_octo": "assets/char/octo.png",
+    "char_caym": "assets/char/caym.png",
+    "char_brodia": "assets/char/brodia.png",
+    "char_mahira": "assets/char/mahira.png",
+
+    "char_veirne": "assets/char/veirne.png",
+    "char_ciete": "assets/char/ciete.png",
+    "char_grimnir": "assets/char/grimnir.png",
+    "char_monika": "assets/char/monika.png",
+    "char_gachapin": "assets/char/gachapin.png",
+    "char_anchira": "assets/char/anchira.png",
+
+    "char_arthur": "assets/char/arthur.png",
+    "char_funf": "assets/char/funf.png",
+    "char_tico": "assets/char/tico.png",
+    "char_cosmos": "assets/char/cosmos.png",
+    "char_sandalphon": "assets/char/sandalphon.png",
+    
+    "char_six": "assets/char/six.png",
+    "char_fediel": "assets/char/fediel.png",
+    "char_nier": "assets/char/nier.png",
+    "char_cassius": "assets/char/cassius.png",
+    "char_bowman": "assets/char/bowman.png",
+    "char_rei": "assets/char/rei.png"
   },
    "spritesheets": {
     "effect_impact": {
