@@ -377,7 +377,7 @@ prepareForBattle() {
     
     const playerResult = this.calculateFinalBattleState(playerInitialItems, playerInitialStats);
     this.playerStats = playerResult.finalStats;
-    this.playerStats.block = []
+  //  this.playerStats.block = []
     this.playerBattleItems = playerResult.battleItems;
     this.finalizedPlayerItems = playerResult.finalizedItems;
   // 発動した属性共鳴のエフェクトを再生
@@ -436,7 +436,7 @@ const enemyInitialStats = {
 
 const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
 this.enemyStats = enemyResult.finalStats;
-this.enemyStats.block = []; 
+//this.enemyStats.block = []; 
 this.enemyBattleItems = [];
 enemyResult.finalizedItems.forEach(itemData => {
     // アクティブスキルを持つアイテムのみをリストに追加
@@ -622,14 +622,19 @@ calculateFinalBattleState(initialItems, initialStats) {
     const activatedResonances = Object.keys(elementCounts).filter(el => ELEMENT_RESONANCE_RULES[el] && elementCounts[el] >= ELEMENT_RESONANCE_RULES[el].threshold);
 
     return {
-        finalStats: {
-            max_hp: finalMaxHp, hp: Math.min(initialStats.hp, finalMaxHp), defense: finalDefense,
-            block: 0, attack: 0, darkResonanceLevel: darkResonanceLevel
-        },
-        battleItems: battleItems,
-        finalizedItems: initialItems,
-        activatedResonances: activatedResonances
-    };
+    finalStats: {
+        max_hp: finalMaxHp,
+        hp: Math.min(initialStats.hp, finalMaxHp),
+        defense: finalDefense,
+        // ★★★ ここを修正 ★★★
+        block: [], // 数値の0ではなく、空の配列を返す
+        attack: 0,
+        darkResonanceLevel: darkResonanceLevel
+    },
+    battleItems: battleItems,
+    finalizedItems: initialItems,
+    activatedResonances: activatedResonances
+};
 }
     startBattle() {
         console.log("★★ 戦闘開始！ ★★");
