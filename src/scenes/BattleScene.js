@@ -574,7 +574,7 @@ calculateFinalBattleState(initialItems, initialStats) {
                                         if(Array.isArray(targetItem.action)) { targetItem.action.forEach(act => { if(act.type === 'attack') act.value += effect.value; }); }
                                         else if(targetItem.action.type === 'attack') { targetItem.action.value += effect.value; }
                                     }
-                                    else if (effect.type === 'add_recast' && targetItem.recast > 0) { targetItem.recast = Math.max(0.1, targetItem.recast + effect.value); }
+                                    else if (effect.type === 'add_recast' && targetItem.recast > 0) { targetItem.recast = Math.max(1.0, targetItem.recast + effect.value); }
                                     else if (effect.type === 'add_heal_power') {
                                         if (targetItem.action && Array.isArray(targetItem.action)) { targetItem.action.forEach(act => { if(act.type === 'heal') act.value += effect.value; }); }
                                         else if (targetItem.action && targetItem.action.type === 'heal') { targetItem.action.value += effect.value; }
