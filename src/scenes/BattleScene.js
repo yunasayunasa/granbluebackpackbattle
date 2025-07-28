@@ -662,7 +662,46 @@ calculateFinalBattleState(initialItems, initialStats) {
                 maskGraphics.fillPoints(finalPoints, true);
             }
         };
+ // =================================================================
+    // ★★★ トリガーアクションの監視 (プレイヤー側) ★★★
+    // =================================================================
+    // finalizedPlayerItemsには、戦闘開始時の全キャラデータが入っている
+    this.finalizedPlayerItems.forEach(itemData => {
+        // トリガーを持ち、かつ、まだ発動していないキャラのみをチェック
+        if (itemData.triggerAction && !itemData.triggerFired) {
+            const trigger = itemData.triggerAction.trigger;
+            const stats = this.playerStats;
+            
+            // --- HPが一定以下になったら発動するトリガー ---
+            if (trigger.type === 'hp_below') {
+                const hpPercent = (stats.hp / stats.max_hp) * 100;
+                if (hpPercent <= trigger.percent) {
+                    console.log(`%c🔥 トリガー発動！ [${itemData.id}] - HP ${trigger.percent}%以下`, "color: magenta;");
+                    
+                    // アクションを実行（executeActionとは別の簡易処理）
+                    const action = itemData.triggerAction.action;
+                    if (action.type === 'heal_percent') {
+                        const healAmount = stats.max_hp * (action.value / 100);
+                        const finalHeal = Math.min(healAmount, stats.max_hp - stats.hp);
+                        if(finalHeal > 0) {
+                            stats.hp += finalHeal;
+                            this.stateManager.setF('player_hp', stats.hp);
+                            this.showHealPopup(this.playerAvatar, Math.floor(finalHeal));
+                        }
+                    }
+                    // ... 将来的に他のトリガーアクションもここに追加 ...
+                    
+                    if (trigger.once) {
+                        itemData.triggerFired = true; // "一度だけ"フラグを立てる
+                    }
+                }
+            }
+        }
+    });
 
+    // =================================================================
+    // リキャストベースのアクション (既存のロジック)
+    // =================================================================
         // --- Player's items ---
         this.playerBattleItems.forEach(item => {
             item.nextActionTime -= delta / 1000;
