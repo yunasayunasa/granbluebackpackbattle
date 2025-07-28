@@ -906,22 +906,21 @@ update(time, delta) {
         }
 
         // 3. ブロック獲得アクションの場合
-        else if (action.type === 'block') {
-            const BLOCK_DURATION = 3000; // ブロックの有効期限（ミリ
-    const attackerStats = this[`${attacker}Stats`];
-        // 新しいブロックオブジェクトを配列の末尾に追加
-    attackerStats.block.push({
-        amount: action.value,
-        expireTime: this.time.now + BLOCK_DURATION
-    });
-    
-    const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
-     
-    
-    // ★★★ 修正箇所 ★★★
-    // アバターではなく、アクションを実行した'attackerObject'にポップアップを表示
-    this.showGainBlockPopup(attackerObject, action.value);
-}
+           else if (action.type === 'block') {
+            const BLOCK_DURATION = 3000;
+            const targetStats = (attacker === 'player') ? this.playerStats : this.enemyStats;
+
+            // ★★★ 安全チェック ★★★
+            if (!Array.isArray(targetStats.block)) targetStats.block = [];
+
+            targetStats.block.push({
+                amount: action.value,
+                expireTime: this.time.now + BLOCK_DURATION
+            });
+            const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
+            this.showGainBlockPopup(targetAvatar, action.value);
+        }
+
         // ★★★ 4. 回復アクションの場合 (ここから追加) ★★★
         else if (action.type === 'heal') {
             const attackerStats = this[`${attacker}Stats`];
@@ -1109,15 +1108,18 @@ handleActivationTriggers(itemData, attacker) {
         const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
 
         // 【起動時にブロック獲得】
-        if (effect.type === 'add_block_on_activate') {
+           if (effect.type === 'add_block_on_activate') {
             const BLOCK_DURATION = 3000;
-    const attackerStats = this[`${attacker}Stats`];
-    attackerStats.block.push({
-        amount: effect.value,
-        expireTime: this.time.now + BLOCK_DURATION
-    });
+            
+            // ★★★ 安全チェック ★★★
+            if (!Array.isArray(targetStats.block)) targetStats.block = [];
+
+            targetStats.block.push({
+                amount: effect.value,
+                expireTime: this.time.now + BLOCK_DURATION
+            });
             this.showGainBlockPopup(targetAvatar, effect.value);
-            console.log(` > シナジー効果！ [${sourceId}]からブロック+${effect.value}を獲得！`);
+            console.log(` > シナジー効果！ ...`);
         }
         // 【起動時に回復】
         else if (effect.type === 'heal_on_activate') {
