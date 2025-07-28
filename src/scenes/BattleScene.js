@@ -1060,7 +1060,7 @@ playResonanceAura(targetObject, color) {
 
         // 1. ベースとなる画像
         const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-
+itemImage.setFlipX(true); // 画像を水平方向に反転させる
         // ★★★ ここからが追加/変更箇所 ★★★
 
         // 2. リキャスト進捗を示すオーバーレイ画像
@@ -1068,7 +1068,7 @@ playResonanceAura(targetObject, color) {
             .setDisplaySize(containerWidth, containerHeight)
             .setTint(0x00aaff, 0.3) // 半透明の白でティント（好みで色や透明度を調整）
             .setVisible(false); // recastを持つアイテム以外は非表示
-
+itemImage.setFlipX(true); // 画像を水平方向に反転させる
         // 3. マスクとして機能するGraphicsオブジェクト
         // 1. マスク用のGraphicsを「コンテナの子として」追加する
         // 1. マスク用のGraphicsを「シーンに直接」追加する
