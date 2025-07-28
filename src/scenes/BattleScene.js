@@ -539,19 +539,53 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                             const targetCellPos = { r: targetItem.row + tr, c: targetItem.col + tc };
                             let isMatch = false;
 
-                            if (sourceItem.synergy.direction === 'adjacent') {
-                                isMatch = Math.abs(sourceCellPos.r - targetCellPos.r) + Math.abs(sourceCellPos.c - targetCellPos.c) === 1;
-                            } else {
-                                let dir = {r: 0, c: 0};
-                                switch(sourceItem.synergy.direction) {
-                                    case 'up': dir = {r: -1, c: 0}; break; case 'down': dir = {r: 1, c: 0}; break;
-                                    case 'left': dir = {r: 0, c: -1}; break; case 'right': dir = {r: 0, c: 1}; break;
-                                }
-                                const rad = Phaser.Math.DegToRad(sourceItem.rotation);
-                                const rotC = Math.round(dir.c * Math.cos(rad) - dir.r * Math.sin(rad));
-                                const rotR = Math.round(dir.c * Math.sin(rad) + dir.r * Math.cos(rad));
-                                if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) { isMatch = true; }
-                            }
+                            // ★★★ ここからが修正箇所 ★★★
+    
+    // --- 1. 方向ごとの条件をチェック ---
+    const direction = sourceItem.synergy.direction;
+    const dr = targetCellPos.r - sourceCellPos.r; // 行(row)の差分
+    const dc = targetCellPos.c - sourceCellPos.c; // 列(column)の差分
+
+    if (direction === 'adjacent') {
+        // 隣接：マンハッタン距離が1
+        if (Math.abs(dr) + Math.abs(dc) === 1) isMatch = true;
+    } 
+    else if (direction === 'horizontal') {
+        // 左右：行が同じで、列の差が1
+        if (dr === 0 && Math.abs(dc) === 1) isMatch = true;
+    }
+    else if (direction === 'vertical') {
+        // 上下：列が同じで、行の差が1
+        if (dc === 0 && Math.abs(dr) === 1) isMatch = true;
+    }
+    else if (direction === 'up_and_sides') {
+        // 上と左右
+        if ((dc === 0 && dr === -1) || // 上
+            (dr === 0 && Math.abs(dc) === 1)) { // 左右
+            isMatch = true;
+        }
+    }
+    else {
+        // --- 2. 回転を考慮する単一方向のチェック (既存のロジック) ---
+        let targetDir = {r: 0, c: 0};
+        switch(direction) {
+            case 'up':    targetDir = {r: -1, c: 0}; break;
+            case 'down':  targetDir = {r: 1,  c: 0}; break;
+            case 'left':  targetDir = {r: 0, c: -1}; break;
+            case 'right': targetDir = {r: 0, c: 1}; break;
+        }
+
+        if (targetDir.r !== 0 || targetDir.c !== 0) {
+            const rad = Phaser.Math.DegToRad(sourceItem.rotation);
+            const rotC = Math.round(targetDir.c * Math.cos(rad) - targetDir.r * Math.sin(rad));
+            const rotR = Math.round(targetDir.c * Math.sin(rad) + targetDir.r * Math.cos(rad));
+            if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) {
+                isMatch = true;
+            }
+        }
+    }
+
+    // ★★★ 修正箇所ここまで ★★★
 
                           if (isMatch) {
             const effect = sourceItem.synergy.effect;
