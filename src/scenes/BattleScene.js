@@ -62,6 +62,7 @@ export default class BattleScene extends Phaser.Scene {
         this.battleEnded = false;
         this.ghostImage = null;
         this.finalizedPlayerItems = [];
+        this.finalizedEnemyItems = []; // ★追加
         this.roundStartState = null;
         this.shopContainer = null;      // ★ショップUI全体をまとめるコンテナ
         this.shopItemSlots = [];        // ★商品のスロット（カード）を保持する配列
@@ -455,6 +456,8 @@ enemyResult.activatedResonances.forEach(element => {
         });
     }
 });
+this.finalizedEnemyItems = enemyResult.finalizedItems;
+
 // ★★★ 追加ここまで ★★★
 
 this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
