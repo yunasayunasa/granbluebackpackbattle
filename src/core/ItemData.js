@@ -121,11 +121,11 @@ export const ITEM_DATA = {
         cost: 55,
         rarity: 3,
         passive: { effects: [{ type: 'max_hp', value: 15 }] },
-        action: { type: 'attack', value: 12 },
-        recast: 4.0,
+        action: { type: 'attack', value: 6 },
+        recast: 5.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'add_recast', value: -1.5 }
+            effect: { type: 'add_recast', value: -1.0 }
         }
     },
     'poseidon': {
@@ -134,12 +134,12 @@ export const ITEM_DATA = {
         tags: ["god", "water"],
         cost: 35,
         rarity: 2,
-        passive: { effects: [{ type: 'defense', value: 2 }] },
-        action: { type: 'attack', value: 10 },
+        passive: { effects: [{ type: 'defense', value: 1 }] },
+        action: { type: 'attack', value: 5 },
         recast: 5.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'add_block_on_activate', value: 5 }
+            effect: { type: 'add_block_on_activate', value: 1 }
         }
     },
     'yachima': {
@@ -155,11 +155,11 @@ export const ITEM_DATA = {
         tags: ["master", "water"],
         cost: 22,
         rarity: 2,
-        action: { type: 'attack', value: 15 },
-        recast: 4.0,
+        action: { type: 'attack', value: 8 },
+        recast: 5.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'add_attack', value: 3 }
+            effect: { type: 'add_attack', value: 1 }
         }
     },
     'wamdus': {
@@ -169,10 +169,10 @@ export const ITEM_DATA = {
         cost: 25,
         rarity: 2,
         action: { type: 'attack', value: 30 },
-        recast: 15.0,
+        recast: 20.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'heal_on_activate', value: 2 }
+            effect: { type: 'heal_on_activate', value: 1 }
         }
     },
     'slime': {
@@ -181,7 +181,7 @@ export const ITEM_DATA = {
         tags: ["monster", "water"],
         cost: 10,
         rarity: 1,
-        action: { type: 'attack', value: 4 },
+        action: { type: 'attack', value: 2},
         recast: 2.5,
         synergy: {
             direction: 'adjacent',
