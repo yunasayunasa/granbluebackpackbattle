@@ -1009,26 +1009,23 @@ executeAction(itemData, attacker, defender, attackerObject, itemObject) {
             const defenderStats = this[`${defender}Stats`];
             const attackerStats = this[`${attacker}Stats`];
             
-            // --- 攻撃アクション ---
-            if (action.type === 'attack') {
+                      if (action.type === 'attack') {
                 let totalAttack = action.value;
-                // 背水効果の計算
                 if (attacker === 'player' && itemData.tags.includes('dark') && attackerStats.darkResonanceLevel > 0) {
                     const hpPercent = (attackerStats.hp / attackerStats.max_hp) * 100;
                     let bonus = 0;
                     if (hpPercent < 75) bonus += 2; if (hpPercent < 50) bonus += 3; if (hpPercent < 25) bonus += 5;
                     if (bonus > 0) { totalAttack += bonus; console.log(`▼ 背水発動！ HP ${hpPercent.toFixed(0)}% のため攻撃力+${bonus}`); }
                 }
-
                 let damage = Math.max(0, totalAttack - defenderStats.defense);
                 let blockedDamage = 0;
-                if (defenderStats.block > 0 && damage > 0) {
+                if (defenderStats.block && defenderStats.block.length > 0 && damage > 0)  {
                     blockedDamage = Math.min(defenderStats.block, damage);
                     defenderStats.block -= blockedDamage;
                     damage -= blockedDamage;
                     this.showBlockSuccessIcon(defender);
                 }
-                if (damage > 0) {
+                         if (damage > 0) {
                     this.playDamageEffects(defender, damage);
                     const newHp = defenderStats.hp - damage;
                     defenderStats.hp = newHp;
@@ -1040,9 +1037,10 @@ executeAction(itemData, attacker, defender, attackerObject, itemObject) {
                     }
                 }
             }
-            // --- ブロック獲得アクション ---
+                  // --- ブロック獲得アクション ---
             else if (action.type === 'block') {
-                attackerStats.block += action.value;
+                if (!Array.isArray(attackerStats.block)) attackerStats.block = [];
+                attackerStats.block.push({ amount: action.value, expireTime: this.time.now + 3000 });
                 this.showGainBlockPopup(attackerObject, action.value);
             }
             // --- 回復アクション ---
