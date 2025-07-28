@@ -52,6 +52,7 @@ export const ITEM_DATA = {
     'anila': {
         storage: 'char_anila',
         shape: [[1, 0], [1, 1]],
+        size: { w: 2, h: 2 },
         tags: ["support", "fire"],
         cost: 28,
         rarity: 2,
@@ -116,7 +117,7 @@ export const ITEM_DATA = {
     // =================================================================
     'lancelot': {
         storage: 'char_lancelot',
-        shape: [[1,1], [1,1], [1,1]],
+        shape: [[1, 1], [1, 1], [1, 1]],
         tags: ["hero", "water"],
         cost: 55,
         rarity: 3,
@@ -155,7 +156,7 @@ export const ITEM_DATA = {
         tags: ["master", "water"],
         cost: 22,
         rarity: 2,
-        action: { type: 'attack', value: 3},
+        action: { type: 'attack', value: 3 },
         recast: 6.0,
         synergy: {
             direction: 'adjacent',
@@ -168,7 +169,7 @@ export const ITEM_DATA = {
         tags: ["dragon", "water"],
         cost: 25,
         rarity: 2,
-        action: { type: 'attack', value: 15},
+        action: { type: 'attack', value: 15 },
         recast: 20.0,
         synergy: {
             direction: 'adjacent',
@@ -181,7 +182,7 @@ export const ITEM_DATA = {
         tags: ["monster", "water"],
         cost: 10,
         rarity: 1,
-        action: { type: 'attack', value: 2},
+        action: { type: 'attack', value: 2 },
         recast: 2.5,
         synergy: {
             direction: 'adjacent',
@@ -194,7 +195,7 @@ export const ITEM_DATA = {
     // =================================================================
     'siegfried': {
         storage: 'char_siegfried',
-        shape: [[1, 1], [1, 1],[1,1]],
+        shape: [[1, 1], [1, 1], [1, 1]],
         tags: ["hero", "earth"],
         cost: 60,
         rarity: 3,
@@ -262,7 +263,7 @@ export const ITEM_DATA = {
     // =================================================================
     'veirne': {
         storage: 'char_veirne',
-        shape: [[1, 1], [1, 1],[1,1]],
+        shape: [[1, 1], [1, 1], [1, 1]],
         tags: ["hero", "wind"],
         cost: 58,
         rarity: 3,
@@ -289,7 +290,7 @@ export const ITEM_DATA = {
     },
     'grimnir': {
         storage: 'char_grimnir',
-        shape: [[1,1], [1,1]],
+        shape: [[1, 1], [1, 1]],
         tags: ["primal", "wind"],
         cost: 24,
         rarity: 2,
@@ -359,7 +360,7 @@ export const ITEM_DATA = {
         tags: ["master", "light"],
         cost: 40,
         rarity: 2,
-        triggerAction: { 
+        triggerAction: {
             trigger: { type: 'hp_below', percent: 25, once: true },
             action: { type: 'heal_percent', value: 50 }
         },
@@ -371,6 +372,7 @@ export const ITEM_DATA = {
     'tico': {
         storage: 'char_tico',
         shape: [[1, 0], [1, 1]],
+        size: { w: 2, h: 2 },
         tags: ["support", "light"],
         cost: 28,
         rarity: 2,
@@ -407,7 +409,7 @@ export const ITEM_DATA = {
             effect: { type: 'heal_on_activate', value: 3 }
         }
     },
-    
+
     // =================================================================
     // ⬛ 闇属性
     // =================================================================
@@ -424,6 +426,7 @@ export const ITEM_DATA = {
     'fediel': {
         storage: 'char_fediel',
         shape: [[1, 1], [0, 1]],
+ size: { w: 2, h: 2 },
         tags: ["dragon", "dark"],
         cost: 36,
         rarity: 2,

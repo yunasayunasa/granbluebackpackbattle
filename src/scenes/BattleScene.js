@@ -1506,10 +1506,9 @@ recastOverlay.setFlipX(true);; // 画像を水平方向に反転させる
                 }
 
                 // ★追加: サイズの表示
-                const sizeH = baseItemData.shape.length;
-                const sizeW = baseItemData.shape[0].length;
-                tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-
+               const sizeH = itemData.size ? itemData.size.h : itemData.shape.length;
+const sizeW = itemData.size ? itemData.size.w : itemData.shape[0].length;
+tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
 
                 // Recast
                 if (baseItemData.recast && baseItemData.recast > 0) {
@@ -2233,9 +2232,9 @@ getRotatedShape(itemId, rotation) {
                     if (itemElements.length > 0) {
                         tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
                     }
-                    const sizeH = itemData.shape.length;
-                    const sizeW = itemData.shape[0].length;
-
+                   const sizeH = itemData.size ? itemData.size.h : itemData.shape.length;
+const sizeW = itemData.size ? itemData.size.w : itemData.shape[0].length;
+tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
                     tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
                     if (itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
                     if (itemData.action) { tooltipText += `効果: ${itemData.action.type} ${itemData.action.value}\n`; }
