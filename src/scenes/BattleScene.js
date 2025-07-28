@@ -1234,7 +1234,7 @@ itemImage.setFlipX(true); // 画像を水平方向に反転させる
 
         // 2. マスクを生成して適用
         recastOverlay.setMask(maskGraphics.createGeometryMask());
-itemImage.setFlipX(true); // 画像を水平方向に反転させる
+recastOverlay.setFlipX(true);; // 画像を水平方向に反転させる
         // 3. コンテナに追加するのはオーバーレイまで
         const arrowContainer = this.add.container(0, 0).setVisible(false);
         const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
