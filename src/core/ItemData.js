@@ -62,8 +62,8 @@ export const ITEM_DATA = {
             effect: { type: 'add_attack', value: 2 }
         }
     },
-    'fenrir': {
-        storage: 'char_fenrir',
+    'fenny': {
+        storage: 'char_fenny',
         shape: [[1], [1]],
         tags: ["beast", "fire"],
         cost: 25,
