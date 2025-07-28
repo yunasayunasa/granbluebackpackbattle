@@ -703,7 +703,44 @@ calculateFinalBattleState(initialItems, initialStats) {
             }
         }
     });
+  // =================================================================
+    // ★★★ トリガーアクションの監視 (敵側) - ここからが追加箇所 ★★★
+    // =================================================================
+    // enemyResult.finalizedItems が必要だが、prepareForBattleでしか生成されない。
+    // そのため、戦闘開始時にリストをプロパティに保存しておく必要がある。
+    if (this.finalizedEnemyItems) {
+        this.finalizedEnemyItems.forEach(itemData => {
+            if (itemData.triggerAction && !itemData.triggerFired) {
+                const trigger = itemData.triggerAction.trigger;
+                const stats = this.enemyStats;
 
+                if (trigger.type === 'hp_below') {
+                    const hpPercent = (stats.hp / stats.max_hp) * 100;
+                    if (hpPercent <= trigger.percent) {
+                        console.log(`%c🔥 トリガー発動！ [敵の ${itemData.id}] - HP ${trigger.percent}%以下`, "color: magenta;");
+                        
+                        const action = itemData.triggerAction.action;
+                        if (action.type === 'heal_percent') {
+                            const healAmount = stats.max_hp * (action.value / 100);
+                            const finalHeal = Math.min(healAmount, stats.max_hp - stats.hp);
+                            if(finalHeal > 0) {
+                                stats.hp += finalHeal;
+                                this.stateManager.setF('enemy_hp', stats.hp);
+                                this.showHealPopup(this.enemyAvatar, Math.floor(finalHeal));
+                            }
+                        }
+                        
+                        if (trigger.once) {
+                            itemData.triggerFired = true;
+                        }
+                    }
+                }
+            }
+        });
+    }
+    // ★★★ 追加箇所ここまで ★★★
+
+    // 
     // =================================================================
     // リキャストベースのアクション (既存のロジック)
     // =================================================================
