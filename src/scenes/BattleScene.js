@@ -600,7 +600,7 @@ for (const element in ELEMENT_RESONANCE_RULES) {
                     targetItem.action.value += effect.value;
                 }
                 if (effect.type === 'add_recast' && targetItem.recast > 0) {
-                    targetItem.recast = Math.max(0.1, targetItem.recast + (effect.value));
+                    targetItem.recast = Math.max(1.0, targetItem.recast + (effect.value));
                 }
             } 
             else if (effect.type === 'add_block_on_activate' || effect.type === 'heal_on_activate') {
