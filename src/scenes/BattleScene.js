@@ -692,7 +692,7 @@ onTimeUp() {
         // プレイヤーの負け
         console.log("敵のHPが上回っているため、敗北。");
         this.endBattle('lose');
-
+    }}
 // BattleScene.js の update をこれに置き換え
     // BattleScene.js の update をこれに置き換え
    update(time, delta) {
