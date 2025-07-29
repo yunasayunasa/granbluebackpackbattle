@@ -2529,4 +2529,5 @@ this.stateManager.setF('player_hp', this.playerStats.hp);
         this.battleTimerText.destroy();
         this.battleTimerText = null;
     }
+    
 }}
