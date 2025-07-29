@@ -152,8 +152,9 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
             this.stateManager.setSF('player_backpack', {});
         }
         // --- 1a. StateManagerからplayer_dataを取得（なければ初期化） ---
-if (this.stateManager.sf.player_data === undefined) {
-
+if (this.stateManager.sf.player_inventory === undefined) {
+            this.stateManager.setSF('player_inventory', ['slime', 'potion']
+        }
     // ★★★ ここからが修正箇所 ★★★
 
     // 1. レアリティ1（コモン）のキャラクタープールを作成
