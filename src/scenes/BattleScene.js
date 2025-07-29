@@ -1206,23 +1206,19 @@ handleActivationTriggers(itemData, attacker) {
 
 // endBattle メソッドを、この安全版に置き換えてください
 
+// endBattle メソッドを、この player_data 統一版に置き換えてください
+
 endBattle(result) {
-    // すでに処理済みなら、二重実行を防ぐ
     if (this.battleEnded) return;
     this.battleEnded = true;
-
-    // gameStateを'end'にして、updateループ内の他の処理を止める
     this.gameState = 'end';
-
     console.log(`バトル終了。結果: ${result}`);
 
     if (result === 'win') {
-        // 勝利時は playFinishBlowEffects が全てを処理
         return;
     }
 
     // --- 敗北時の処理 ---
-    // 他のUIとの競合を避けるため、少し遅らせてUIを表示する
     this.time.delayedCall(100, () => {
         const gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', { 
             fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4 
@@ -1234,22 +1230,30 @@ endBattle(result) {
         }).setOrigin(0.5).setInteractive().setDepth(999);
         
         retryButton.on('pointerdown', () => {
-            // ボタンが押されたら、他のUIを無効化
             retryButton.disableInteractive();
             resetButton.disableInteractive();
             
             const roundStartState = this.roundStartState;
             if (roundStartState) {
-                // チェックポイントから状態を復元
-                this.stateManager.setSF('player_backpack', roundStartState.backpack);
-                this.stateManager.setSF('player_inventory', roundStartState.inventory);
-                this.stateManager.setSF('coins', roundStartState.coins);
-                this.stateManager.setF('player_hp', roundStartState.hp);
+                // ★★★ ここからが修正箇所 ★★★
+                // チェックポイントからplayer_dataを復元
+                const playerData = this.stateManager.sf.player_data;
                 
-                // シーンをリスタート
+                playerData.backpack = roundStartState.backpack;
+                playerData.inventory = roundStartState.inventory;
+                playerData.coins = roundStartState.coins;
+                // HPはf変数で管理するので、playerDataとは別
+                this.stateManager.setF('player_hp', roundStartState.hp);
+
+                // 更新したplayerDataオブジェクトごと保存
+                this.stateManager.setSF('player_data', playerData);
+                
+                console.log("ラウンド開始時の状態に復元してリトライします。");
                 this.scene.start(this.scene.key);
+                // ★★★ 修正箇所ここまで ★★★
             } else {
-                this.handleGameOver();
+                console.error("チェックポイントが見つかりません。スコア画面へ移行します。");
+                this.goToScoreScene();
             }
         });
 
@@ -1260,8 +1264,11 @@ endBattle(result) {
 
         resetButton.on('pointerdown', () => {
             retryButton.disableInteractive();
-            resetButton.disableInteractive().setText('リセット中...');
-            this.handleGameOver();
+            resetButton.disableInteractive().setText('集計中...');
+            
+            // ★★★ 修正箇所 ★★★
+            // handleGameOverではなく、goToScoreSceneを呼び出す
+            this.goToScoreScene();
         });
     });
 }
