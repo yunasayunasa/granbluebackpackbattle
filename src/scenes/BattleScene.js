@@ -1495,6 +1495,8 @@ createItem(itemId, x, y) {
 
     this.input.setDraggable(itemContainer);
 
+   // createItemメソッドの "// --- イベントリスナー ---" から下を、これで完全に置き換えてください
+
     // --- イベントリスナー ---
     let pressTimer = null;
     let isDragging = false;
@@ -1502,8 +1504,9 @@ createItem(itemId, x, y) {
 
     itemContainer.on('pointerdown', (pointer) => {
         isDown = true;
-        isDragging = false;
+        isDragging = false; // pointerdownの時点ではドラッグしていない
         itemContainer.setData('isLongPress', false);
+
         if (pointer.rightButtonDown()) {
             this.rotateItem(itemContainer);
             return;
@@ -1517,7 +1520,7 @@ createItem(itemId, x, y) {
     });
 
     itemContainer.on('dragstart', () => {
-        isDragging = true;
+        isDragging = true; // dragstartで明確にドラッグ中フラグを立てる
         if (pressTimer) pressTimer.remove();
         this.tooltip.hide();
         itemContainer.setDepth(99);
@@ -1549,14 +1552,16 @@ createItem(itemId, x, y) {
         } else {
             this.ghostImage.setVisible(false);
         }
-    }); // ★★★★★ ここに閉じカッコを追加しました ★★★★★
+    });
 
     itemContainer.on('dragend', (pointer) => {
         itemContainer.setDepth(12);
         this.ghostImage.clear();
         this.ghostImage.setVisible(false);
+        
         const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
         const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
+        
         if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
             const dropX = itemContainer.x;
             const dropY = itemContainer.y;
@@ -1568,31 +1573,69 @@ createItem(itemId, x, y) {
         } else {
             this.tweens.add({ targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'), duration: 200, ease: 'Power2' });
         }
+
+        // オートセーブ
         this.time.delayedCall(250, () => {
             this.saveBackpackState();
         });
     });
 
-    itemContainer.on('pointerdown', (pointer, localX, localY, event) => {
+    itemContainer.on('pointerup', (pointer, localX, localY, event) => {
         if (pressTimer) pressTimer.remove();
+
         if (!isDragging && !itemContainer.getData('isLongPress')) {
+            event.stopPropagation();
+            
             const baseItemData = ITEM_DATA[itemId];
             if (!baseItemData) return;
 
             const placedIndex = this.placedItemImages.indexOf(itemContainer);
             let finalItemData = null;
-            if (placedIndex > -1 && this.finalizedPlayerItems && this.finalizedPlayerItems[placedIndex]) {
+            if (placedIndex > -1 && this.finalizedPlayerItems && this.finalizedPlayerItems.length > placedIndex) {
                 finalItemData = this.finalizedPlayerItems[placedIndex];
             }
             
-            // (ツールチップ生成ロジックは変更なし)
             const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
             let tooltipText = `【${itemId}】\n`;
-            // ... (属性、サイズ、アクション、シナジーなど) ...
 
+            const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+            if (itemElements.length > 0) { tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`; }
+            
+            if (baseItemData.shapeType) { tooltipText += `サイズ: ${baseItemData.shapeType}\n\n`; }
+            else { const sizeH = baseItemData.shape.length; const sizeW = baseItemData.shape[0].length; tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`; }
+            
+            if (baseItemData.recast && baseItemData.recast > 0) {
+                const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
+                tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
+            }
+            
+            if (baseItemData.action) {
+                const actions = Array.isArray(baseItemData.action) ? baseItemData.action : [baseItemData.action];
+                const finalActions = (finalItemData && finalItemData.action) ? (Array.isArray(finalItemData.action) ? finalItemData.action : [finalItemData.action]) : actions;
+                actions.forEach((baseAction, index) => {
+                    const finalAction = finalActions[index] || baseAction;
+                    tooltipText += `効果: ${baseAction.type} ${finalAction.value}\n`;
+                    if (finalAction.value !== baseAction.value) { tooltipText += `  (基本値: ${baseAction.value})\n`; }
+                });
+            }
+            
+            if (baseItemData.passive && baseItemData.passive.effects) { baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+            
+            if (baseItemData.synergy) {
+                tooltipText += `\nシナジー:\n`;
+                const dir = t(baseItemData.synergy.direction);
+                const effects = Array.isArray(baseItemData.synergy.effect) ? baseItemData.synergy.effect : [baseItemData.synergy.effect];
+                tooltipText += `  - ${dir}の味方に\n`;
+                effects.forEach(effect => {
+                    const effectType = t(effect.type);
+                    const sign = effect.value > 0 ? '+' : '';
+                    tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
+                });
+            }
+            
             this.tooltip.show(itemContainer, tooltipText);
-            event.stopPropagation();
         }
+
         isDown = false;
         isDragging = false;
         itemContainer.setData('isLongPress', false);
@@ -1600,7 +1643,6 @@ createItem(itemId, x, y) {
 
     return itemContainer;
 }
-
     // BattleScene.js の rotateItem をこれに置き換え
     rotateItem(itemContainer) {
         const originalRotation = itemContainer.getData('rotation');
