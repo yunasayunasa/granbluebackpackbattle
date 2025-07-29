@@ -2413,6 +2413,10 @@ saveBackpackState() {
    */
     playFinishBlowEffects(targetAvatar) {
         if (!targetAvatar) return;
+  // すでに戦闘終了処理が始まっていたら、二重実行を防ぐ
+    if (this.battleEnded) return;
+    this.battleEnded = true;
+    this.gameState = 'end'; // updateループを停止させる
 
         // 1. スローモーション開始
         this.time.timeScale = 0.2;
@@ -2477,51 +2481,54 @@ saveBackpackState() {
         
         // ★★★ ここからが修正箇所 ★★★
 
+             // ★★★ ここからが修正箇所 ★★★
         const playerData = this.stateManager.sf.player_data;
+        if (!playerData) {
+            console.error("playFinishBlowEffects: playerDataが見つかりません。");
+            this.handleGameOver(); // 異常事態なのでリセット
+            return;
+        }
         const FINAL_ROUND = 10;
 
-        // a. 勝利数をインクリメント
+          // a. 勝利数と残りHPを更新
         playerData.wins = (playerData.wins || 0) + 1;
-        
-        // b. 残りHPを保存
         playerData.avatar.current_hp = this.playerStats.hp;
+
+        // b. 最終的な盤面を保存
+        const finalBackpackData = {};
+        this.placedItemImages.forEach((item, index) => {
+            const gridPos = item.getData('gridPos');
+            if (gridPos) {
+                finalBackpackData[`uid_${index}`] = {
+                    itemId: item.getData('baseItemId') || item.getData('itemId'),
+                    row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                };
+            }
+        });
+        playerData.backpack = finalBackpackData;
+        playerData.inventory = this.inventoryItemImages.map(item => item.getData('baseItemId') || item.getData('itemId'));
 
         // c. ゲームクリアかどうかを判定
         if (playerData.round >= FINAL_ROUND) {
             // --- ゲームクリア処理 ---
             console.log("★★★★ GAME CLEAR! ★★★★");
-
-            // 最終状態を保存してから、スコア画面へ
             this.stateManager.setSF('player_data', playerData);
             this.goToScoreScene();
             
         } else {
             // --- 通常勝利処理 ---
             
-            // i. 最終的な盤面を保存
-            const finalBackpackData = {};
-            this.placedItemImages.forEach((item, index) => {
-                const gridPos = item.getData('gridPos');
-                if (gridPos) {
-                    finalBackpackData[`uid_${index}`] = {
-                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                    };
-                }
-            });
-            playerData.backpack = finalBackpackData;
-            playerData.inventory = this.inventoryItemImages.map(item => item.getData('itemId'));
-
-            // ii. コインを獲得
+            // i. コインを獲得
             const rewardCoins = 10 + (playerData.round * 2);
             playerData.coins = (playerData.coins || 0) + rewardCoins;
 
-            // iii. 次のラウンドに進む
+            // ii. 次のラウンドに進む
             playerData.round++;
             
-            // iv. 全ての変更をsf変数に保存
+            // iii. 全ての変更をsf変数に保存
             this.stateManager.setSF('player_data', playerData);
             
-            // v. 報酬画面へ遷移
+            // iv. 報酬画面へ遷移
             this.scene.get('SystemScene').events.emit('request-scene-transition', {
                 to: 'RewardScene',
                 from: this.scene.key
