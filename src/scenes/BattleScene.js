@@ -1817,86 +1817,64 @@ getRotatedShape(itemId, rotation) {
 }
 
     // BattleScene.js の updateArrowVisibility をこれに置き換え
-    updateArrowVisibility(itemContainer) {
-        const itemId = itemContainer.getData('itemId');
-        const itemData = ITEM_DATA[itemId];
-        const arrowContainer = itemContainer.getData('arrowContainer');
-        const gridPos = itemContainer.getData('gridPos');
+    // updateArrowVisibility メソッドを、この最終版に置き換えてください
 
-        if (!arrowContainer) return;
+updateArrowVisibility(itemContainer) {
+    const itemId = itemContainer.getData('baseItemId') || itemContainer.getData('itemId');
+    const itemData = ITEM_DATA[itemId];
+    const arrowContainer = itemContainer.getData('arrowContainer');
+    const gridPos = itemContainer.getData('gridPos');
 
-        if (itemData.synergy && gridPos) {
-            arrowContainer.setVisible(true);
-            arrowContainer.each(arrow => arrow.setVisible(false));
+    if (!itemData || !arrowContainer) return;
 
-            const direction = itemData.synergy.direction;
-            const itemW = itemContainer.width;
-            const itemH = itemContainer.height;
-            const offset = 15;
+    // まず、全ての矢印を非表示にする
+    arrowContainer.setVisible(false);
+    arrowContainer.each(arrow => arrow.setVisible(false));
 
-                   if (direction === 'adjacent') {
+    // シナジーがあり、かつグリッドに配置されている場合のみ矢印を表示
+    if (itemData.synergy && gridPos) {
+        arrowContainer.setVisible(true);
+        
+        const direction = itemData.synergy.direction;
+        const itemW = itemContainer.width;
+        const itemH = itemContainer.height;
+        const offset = 15;
+
+        // --- 方向ごとの表示ロジック ---
+        if (direction === 'adjacent') {
             arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
             arrowContainer.getByName('down').setVisible(true).setPosition(0, itemH / 2 + offset);
             arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
             arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
-        } else if (direction === 'horizontal') {
+        }
+        else if (direction === 'horizontal') {
             arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
             arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
-        } else if (direction === 'vertical') {
+        }
+        else if (direction === 'vertical') {
             arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
             arrowContainer.getByName('down').setVisible(true).setPosition(0, itemH / 2 + offset);
-        } else if (direction === 'up_and_sides') {
+        }
+        else if (direction === 'up_and_sides') {
             arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
             arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
             arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
-        } else {
-            // 単一方向（up, down, left, right）
+        }
+        else { // up, down, left, right の単一方向
             let basePos = { x: 0, y: 0 };
             let arrowToShow = null;
             switch (direction) {
-                case 'up': basePos = { x: 0, y: -itemH / 2 - offset }; arrowToShow = arrowContainer.getByName('up'); break;
-                case 'down': basePos = { x: 0, y: itemH / 2 + offset }; arrowToShow = arrowContainer.getByName('down'); break;
-                case 'left': basePos = { x: -itemW / 2 - offset, y: 0 }; arrowToShow = arrowContainer.getByName('left'); break;
+                case 'up':    basePos = { x: 0, y: -itemH / 2 - offset }; arrowToShow = arrowContainer.getByName('up'); break;
+                case 'down':  basePos = { x: 0, y: itemH / 2 + offset }; arrowToShow = arrowContainer.getByName('down'); break;
+                case 'left':  basePos = { x: -itemW / 2 - offset, y: 0 }; arrowToShow = arrowContainer.getByName('left'); break;
                 case 'right': basePos = { x: itemW / 2 + offset, y: 0 }; arrowToShow = arrowContainer.getByName('right'); break;
             }
             if (arrowToShow) {
                 arrowToShow.setVisible(true).setPosition(basePos.x, basePos.y);
             }
         }
-            } else {
-                let basePos = { x: 0, y: 0 };
-                let arrowToShow = null;
-
-                switch (direction) {
-                    case 'up':
-                        basePos = { x: 0, y: -itemH / 2 - offset };
-                        arrowToShow = arrowContainer.getByName('up');
-                        break;
-                    case 'down':
-                        basePos = { x: 0, y: itemH / 2 + offset };
-                        arrowToShow = arrowContainer.getByName('down');
-                        break;
-                    case 'left':
-                        basePos = { x: -itemW / 2 - offset, y: 0 };
-                        arrowToShow = arrowContainer.getByName('left');
-                        break;
-                    case 'right':
-                        basePos = { x: itemW / 2 + offset, y: 0 };
-                        arrowToShow = arrowContainer.getByName('right');
-                        break;
-                }
-
-                if (arrowToShow) {
-                    // ★★★ 修正箇所 ★★★
-                    // 手動での座標回転ロジックを完全に削除。
-                    // 親(itemContainer)の回転に任せる。
-                    arrowToShow.setVisible(true).setPosition(basePos.x, basePos.y);
-                }
-            }
-        } else {
-            arrowContainer.setVisible(false);
-        }
     }
+}
 
     // playDamageEffects を、この構文修正済みのバージョンに置き換えてください
 
