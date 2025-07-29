@@ -23,7 +23,10 @@ const TOOLTIP_TRANSLATIONS = {
     // タグ（必要に応じて）
     weapon: '武器', support: '支援', healer: '回復', defense: '防御',
     // 効果タイプ
-    add_attack: '攻撃力', add_recast: 'リキャスト'
+    add_attack: '攻撃力', add_recast: 'リキャスト',
+ 'add_block_on_activate': '起動時ブロック',
+    'heal_on_activate': '起動時回復',
+    'add_heal_power': '回復効果'
 };
 
 // 属性共鳴のルール定義
