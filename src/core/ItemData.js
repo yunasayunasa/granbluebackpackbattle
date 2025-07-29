@@ -371,7 +371,7 @@ export const ITEM_DATA = {
     },
     'tico': {
         storage: 'char_tico',
-        shape: [[1, 0], [1, 1]],
+        shape: [[0, 1], [1, 1]],
         size: { w: 2, h: 2 },
         tags: ["support", "light"],
         cost: 28,
