@@ -194,7 +194,9 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
         this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
         this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
         this.prepareContainer = this.add.container(0, 0);
-        this.ghostImage = this.add.rectangle(0, 0, this.cellSize, this.cellSize, 0xffffff, 0.5).setVisible(false).setDepth(5);
+        this.ghostImage = this.add.graphics({
+    fillStyle: { color: 0x00ff00, alpha: 0.5 }
+}).setVisible(false).setDepth(5);
 
         // --- 3b. グリッドとアバターの描画
         this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
@@ -1548,24 +1550,40 @@ recastOverlay.setFlipX(true);; // 画像を水平方向に反転させる
             itemContainer.setPosition(dragX, dragY);
 
             // (ゴースト表示ロジックは変更なし)
-            const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
-            const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
-            const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
-            if (gridCol >= 0 && gridCol < this.backpackGridSize && gridRow >= 0 && gridRow < this.backpackGridSize) {
-                this.ghostImage.setVisible(true);
-                this.ghostImage.width = shape[0].length * this.cellSize;
-                this.ghostImage.height = shape.length * this.cellSize;
-                // ★★★ 修正箇所 ★★★
-                this.ghostImage.setPosition(this.gridX + gridCol * this.cellSize, this.gridY + gridRow * this.cellSize).setOrigin(0);
-                this.ghostImage.setFillStyle(this.canPlaceItem(itemContainer, gridCol, gridRow) ? 0x00ff00 : 0xff0000, 0.5);
-            } else {
-                this.ghostImage.setVisible(false);
+                const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
+    const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
+    const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
+
+    // 描画範囲がグリッド内かどうかを簡易チェック
+    if (gridRow >= 0 && gridRow < this.backpackGridSize && gridCol >= 0 && gridCol < this.backpackGridSize) {
+        
+        // 1. ゴーストの描画を一旦クリア
+        this.ghostImage.clear();
+        
+        // 2. 配置可能かどうかに応じて色を設定
+        const canPlace = this.canPlaceItem(itemContainer, gridCol, gridRow);
+        this.ghostImage.fillStyle(canPlace ? 0x00ff00 : 0xff0000, 0.5);
+
+        // 3. shapeデータに基づいて、複数の四角形を描画する
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[0].length; c++) {
+                if (shape[r][c] === 1) {
+                    const x = this.gridX + (gridCol + c) * this.cellSize;
+                    const y = this.gridY + (gridRow + r) * this.cellSize;
+                    this.ghostImage.fillRect(x, y, this.cellSize, this.cellSize);
+                }
             }
-        });
+        }
+        this.ghostImage.setVisible(true);
+
+    } else {
+        this.ghostImage.setVisible(false);
+    }
 
         itemContainer.on('dragend', (pointer) => {
             itemContainer.setDepth(12);
-            this.ghostImage.setVisible(false);
+                this.ghostImage.clear();
+    this.ghostImage.setVisible(false);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
