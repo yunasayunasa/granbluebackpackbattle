@@ -16,17 +16,10 @@
 
 ; ★重要★ プロファイル以外の進行状況をリセットする
 ; ScoreSceneから戻ってきた際に、前回のプレイデータをクリアするため
-[eval exp="sf.player_backpack = {}"]
-[eval exp="sf.player_inventory = ['sword', 'shield', 'potion']"]
-[eval exp="sf.round = 1"]
-[eval exp="sf.coins = 0"]
-[eval exp="sf.player_base_max_hp = 100"]
+
+
 
 ; f変数もクリア (HUD表示等に影響するため)
-[eval exp="f.player_hp = 100"]
-[eval exp="f.player_max_hp = 100"]
-[eval exp="f.enemy_hp = 0"]
-[eval exp="f.enemy_max_hp = 0"]
 
 ; BattleSceneへジャンプ
 [jump storage="BattleScene" params="{ mode: 'new_game' }"]
