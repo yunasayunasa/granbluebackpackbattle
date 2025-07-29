@@ -93,34 +93,7 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
     }
     // BattleScene.js の create を、この最終確定版に置き換えてください
     create() {
-          // ★★★ このブロックをcreate()の先頭に追加 ★★★
-        const startParams = this.sys.settings.data; // SystemSceneから渡されたデータ
-
-        if (startParams && startParams.transitionParams && startParams.transitionParams.mode === 'new_game') {
-            console.log("BattleScene: 'new_game' モードで起動。初期設定を実行します。");
-            
-            // 1. コモン(rarity:1)のアイテムプールを作成
-            const commonPool = [];
-            for (const id in ITEM_DATA) {
-                if (ITEM_DATA[id].rarity === 1) {
-                    commonPool.push(id);
-                }
-            }
-
-            // 2. プールからランダムに1つ選ぶ
-            const startItem = Phaser.Utils.Array.GetRandom(commonPool);
-            const startCoins = 20;
-
-            console.log(`初期アイテム: ${startItem}, 初期コイン: ${startCoins}`);
-
-            // 3. StateManagerのsf変数をリセット＆初期設定
-            //    (profileはリセットしない)
-            const profile = this.sys.registry.get('stateManager').sf.player_profile;
-
-            this.sys.registry.get('stateManager').sf = { // sfを一度リセット
-                player_profile: profile // プロファイルだけ引き継ぐ
-            }; 
-            
+          // ★★★ このブロックをcreate()の先頭に          
             this.stateManager = this.sys.registry.get('stateManager'); // 再取得
             this.stateManager.setSF('player_backpack', {});
             this.stateManager.setSF('player_inventory', [startItem]);
@@ -146,46 +119,49 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
 
         // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
 
-        // ★★★ このブロックを以下のように変更 ★★★
-
-        if (this.stateManager.sf.player_backpack === undefined) {
-            this.stateManager.setSF('player_backpack', {});
-        }
-        // --- 1a. StateManagerからplayer_dataを取得（なければ初期化） ---
-if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['slime', 'potion']
-        }
-    // ★★★ ここからが修正箇所 ★★★
-
-    // 1. レアリティ1（コモン）のキャラクタープールを作成
-    const commonPool = Object.keys(ITEM_DATA).filter(id => {
-        const item = ITEM_DATA[id];
-        // costとrarityがあり、rarityが1のアイテムのみを対象とする
-        return item.cost && item.rarity === 1;
-    });
-player_dataを取得（なければ初期化） ---
-if (this.stateManager.sf.player_data === undefined) {
-
-    // 2. 候補の中からランダムに1体選出
-    let initialInventory = ['sword']; // デフォルト（万が一コモンがいなかった場合）
-    if (commonPool.length > 0) {
-        const randomCommonId = Phaser.Utils.Array.GetRandom(commonPool);
-        initialInventory = [randomCommonId];
-        console.log(`初期装備として[${randomCommonId}]が選ばれました。`);
-    }
-
-    // 3. defaultPlayerData を生成
-    const defaultPlayerData = {
-        coins: 20,
-        round: 1,
-        wins: 0,
-        avatar: { base_max_hp: 100, current_hp: 100 },
-        backpack: {},
-        inventory: initialInventory // ★ランダムに選ばれた1体を設定
-    };
-    
-    this.stateManager.setSF('player_data', defaultPlayerData);
+    // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
         
+        // ★★★ このブロックを全面的に書き換え ★★★
+
+        // プレイヤープロファイルがなければ初期化 (これは初回起動時のみ)
+        if (this.stateManager.sf.player_profile === undefined) {
+            console.log("新規プレイヤープロファイルを作成します。");
+            this.stateManager.setSF('player_profile', {
+                totalExp: 0, rank: "駆け出し", highScore: 0, totalWins: 0
+            });
+        }
+        
+        // ★ご提案のロジック★
+        // backpackデータがない場合を「新しいゲームの開始」と判断する
+        if (this.stateManager.sf.player_backpack === undefined || Object.keys(this.stateManager.sf.player_backpack).length === 0 && (!this.stateManager.sf.player_inventory || this.stateManager.sf.player_inventory.length === 0)) {
+            console.log("BattleScene: 有効なバックパック/インベントリデータなし。新規ゲームとして初期化します。");
+
+            // 1. コモン(rarity:1)のアイテムプールを作成
+            const commonPool = [];
+            for (const id in ITEM_DATA) {
+                // costがあり、rarityが1のアイテムのみを候補とする
+                if (ITEM_DATA[id].cost && ITEM_DATA[id].rarity === 1) {
+                    commonPool.push(id);
+                }
+            }
+
+            // 2. プールからランダムに1つ選ぶ
+            const startItem = commonPool.length > 0 ? Phaser.Utils.Array.GetRandom(commonPool) : 'sword'; // プールが空の場合の安全策
+            const startCoins = 20;
+
+            console.log(`初期アイテム: ${startItem}, 初期コイン: ${startCoins}`);
+
+            // 3. StateManagerのsf変数を設定
+            this.stateManager.setSF('player_backpack', {});
+            this.stateManager.setSF('player_inventory', [startItem]);
+            this.stateManager.setSF('round', 1);
+            this.stateManager.setSF('coins', startCoins);
+            this.stateManager.setSF('player_base_max_hp', 100);
+
+            // f変数もクリア
+            this.stateManager.f = {};
+        }
+
         // 【新規追加】プレイヤープロファイルがなければ初期化
         if (this.stateManager.sf.player_profile === undefined) {
             console.log("新規プレイヤープロファイルを作成します。");
