@@ -2178,44 +2178,52 @@ updateArrowVisibility(itemContainer) {
     /**
      * ショップUIの骨格を作成する
      */
-    setupShop() {
-        const gameWidth = this.scale.width;
-        const inventoryAreaY = 520;
-        const inventoryAreaHeight = 500; // 仮
+   /**
+ * ショップUIの骨格を作成する
+ */
+setupShop() {
+    const gameWidth = this.scale.width;
+    const inventoryAreaY = 480;
 
-        // ショップUI全体をまとめるコンテナ（最初は非表示）
-        this.shopContainer = this.add.container(0, 0).setVisible(false);
-        this.prepareContainer.add(this.shopContainer); // prepareContainerの子にする
+    // ショップUI全体をまとめるコンテナ（最初は非表示）
+    this.shopContainer = this.add.container(0, 0).setVisible(false);
+    // ★★★ 修正箇所：親コンテナを prepareContainer にする ★★★
+    this.prepareContainer.add(this.shopContainer);
+    this.shopContainer.setDepth(12);
 
-        // リロールボタン
-        const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY + 30, 'リロール (1 coin)', { /* ... style ... */ })
-            .setOrigin(0.5).setInteractive().setDepth(12);
-        rerollButton.on('pointerdown', () => {
-            const rerollCost = 1;
-            const currentCoins = this.stateManager.sf.coins || 0;
-            if (currentCoins >= rerollCost) {
-                this.stateManager.setSF('coins', currentCoins - rerollCost);
-                this.refreshShop(); // 商品を再抽選
-            } else {
-                console.log("コインが足りません！"); // 将来的にはポップアップ表示
-            }
-        });
-        this.shopContainer.add(rerollButton);
-    }
+    // リロールボタン
+    const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY + 30, 'リロール (1 coin)', {
+        fontSize: '22px', fill: '#fff', backgroundColor: '#666', padding: { x: 8, y: 4 }
+    }).setOrigin(0.5).setInteractive();
+    
+    // ★★★ 修正箇所：リロールボタンを shopContainer に追加 ★★★
+    this.shopContainer.add(rerollButton);
+
+    rerollButton.on('pointerdown', (pointer, localX, localY, event) => {
+        event.stopPropagation();
+        const rerollCost = 1;
+        const playerData = this.stateManager.sf.player_data;
+        if (playerData.coins >= rerollCost) {
+            playerData.coins -= rerollCost;
+            this.stateManager.setSF('player_data', playerData);
+            this.refreshShop();
+        } else {
+            this.tweens.add({ targets: rerollButton, tint: 0xff0000, duration: 100, yoyo: true, repeat: 1 });
+        }
+    });
+}
 
     /**
-     * ショップの商品を抽選し、表示を更新する (最終確定版)
-     */
-    refreshShop() {
-        // 既存の商品スロットがあれば全て破棄してクリア
-        this.shopItemSlots.forEach(slot => slot.destroy());
-        this.shopItemSlots = [];
+ * ショップの商品を抽選し、表示を更新する
+ */
+refreshShop() {
+    this.shopItemSlots.forEach(slot => slot.destroy());
+    this.shopItemSlots = [];
 
-        // --- 1. レイアウトとラウンド数の準備 ---
-        const gameWidth = this.scale.width;
-        const inventoryAreaY = 480; // UI領域の開始Y座標
-        const inventoryAreaHeight = this.scale.height - inventoryAreaY; // UI領域の高さ
-        const currentRound = this.initialBattleParams.round || 1;
+    const gameWidth = this.scale.width;
+    const inventoryAreaY = 480;
+    const inventoryAreaHeight = this.scale.height - inventoryAreaY;
+    const currentRound = this.initialBattleParams.round
 
         // --- 2. ラウンドに応じた商品数を決定 ---
         let slotCount = 3;
@@ -2241,22 +2249,23 @@ updateArrowVisibility(itemContainer) {
         }
 
         // --- 5. 商品スロットをUIに生成 ---
-        const shopContentWidth = gameWidth - 200;
-        const itemSpacing = shopContentWidth / slotCount;
-        const itemStartX = 100 + (itemSpacing / 2);
+      const shopContentWidth = gameWidth - 200;
+    const itemSpacing = shopContentWidth / slotCount;
+    const itemStartX = 100 + (itemSpacing / 2);
 
-        selectedItems.forEach((itemId, index) => {
-            const x = itemStartX + (index * itemSpacing);
-            const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
-            const itemData = ITEM_DATA[itemId];
+    selectedItems.forEach((itemId, index) => {
+        // ★★★ 修正箇所：座標の基準を prepareContainer の(0,0)にする ★★★
+        const x = itemStartX + (index * itemSpacing);
+        const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
+        const itemData = ITEM_DATA[itemId];
+        
+        const slotWidth = 160;
+        const slotHeight = 200;
+        const slotContainer = this.add.container(x, y).setSize(slotWidth, slotHeight).setInteractive();
 
-            const slotWidth = 160;
-            const slotHeight = 200;
-            const slotContainer = this.add.container(x, y).setSize(slotWidth, slotHeight).setInteractive();
-
-            this.shopContainer.add(slotContainer);
-            this.shopItemSlots.push(slotContainer);
-
+        // ★★★ 修正箇所：親コンテナを shopContainer にする ★★★
+        this.shopContainer.add(slotContainer);
+        this.shopItemSlots.push(slotContainer);
             // --- UI要素の生成 ---
             const itemImage = this.add.image(0, -50, itemData.storage);
 
