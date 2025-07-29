@@ -1219,47 +1219,65 @@ handleActivationTriggers(itemData, attacker) {
      */
   // endBattle メソッドを、この最終確定版に置き換えてください
 
+// endBattle メソッドを、この安全版に置き換えてください
+
 endBattle(result) {
+    // すでに処理済みなら、二重実行を防ぐ
     if (this.battleEnded) return;
     this.battleEnded = true;
+
+    // gameStateを'end'にして、updateループ内の他の処理を止める
+    this.gameState = 'end';
+
     console.log(`バトル終了。結果: ${result}`);
 
     if (result === 'win') {
-        // 勝利時は playFinishBlowEffects が全てを処理するので、何もしない
+        // 勝利時は playFinishBlowEffects が全てを処理
         return;
     }
 
     // --- 敗北時の処理 ---
-    this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', { /*...*/ }).setOrigin(0.5).setDepth(999);
+    // 他のUIとの競合を避けるため、少し遅らせてUIを表示する
+    this.time.delayedCall(100, () => {
+        const gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', { 
+            fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4 
+        }).setOrigin(0.5).setDepth(999);
 
-    // --- 選択肢1: 「このラウンドを再挑戦」 ---
-    const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', { /*...*/ }).setOrigin(0.5).setInteractive().setDepth(999);
-    retryButton.on('pointerdown', () => {
-        // チェックポイントから状態を復元して、シーンをリスタートする（スコア計算はしない）
-        const roundStartState = this.roundStartState;
-        if (roundStartState) {
-            const playerData = this.stateManager.sf.player_data;
-            playerData.backpack = roundStartState.backpack;
-            playerData.inventory = roundStartState.inventory;
-            playerData.coins = roundStartState.coins;
-            this.stateManager.setSF('player_data', playerData);
+        // 「このラウンドを再挑戦」ボタン
+        const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', { 
+            fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive().setDepth(999);
+        
+        retryButton.on('pointerdown', () => {
+            // ボタンが押されたら、他のUIを無効化
+            retryButton.disableInteractive();
+            resetButton.disableInteractive();
             
-            this.stateManager.setF('player_hp', roundStartState.hp);
-            
-            console.log("ラウンド開始時の状態に復元してリトライします。");
-            this.scene.start(this.scene.key);
-        } else {
-            console.error("チェックポイントが見つかりません。");
-            this.goToScoreScene(); // 異常事態なので、スコア画面に送る
-        }
-    });
+            const roundStartState = this.roundStartState;
+            if (roundStartState) {
+                // チェックポイントから状態を復元
+                this.stateManager.setSF('player_backpack', roundStartState.backpack);
+                this.stateManager.setSF('player_inventory', roundStartState.inventory);
+                this.stateManager.setSF('coins', roundStartState.coins);
+                this.stateManager.setF('player_hp', roundStartState.hp);
+                
+                // シーンをリスタート
+                this.scene.start(this.scene.key);
+            } else {
+                this.handleGameOver();
+            }
+        });
 
-    // --- 選択肢2: 「諦めてスコアにする」 ---
-    const giveUpButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', { /*...*/ }).setOrigin(0.5).setInteractive().setDepth(999);
-    giveUpButton.on('pointerdown', () => {
-        // 今回の挑戦の結果を持って、スコア画面に遷移する
-        giveUpButton.disableInteractive().setText('集計中...');
-        this.goToScoreScene();
+        // 「はじめからやり直す」ボタン
+        const resetButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', { 
+            fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive().setDepth(999);
+
+        resetButton.on('pointerdown', () => {
+            retryButton.disableInteractive();
+            resetButton.disableInteractive().setText('リセット中...');
+            this.handleGameOver();
+        });
     });
 }
 // BattleScene.js に、この新しいヘルパーメソッドを追加してください
