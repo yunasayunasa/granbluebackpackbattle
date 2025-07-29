@@ -29,7 +29,7 @@
 [eval exp="f.enemy_max_hp = 0"]
 
 ; BattleSceneへジャンプ
-[jump storage="BattleScene"]
+[jump storage="BattleScene" params="{ mode: 'new_game' }"]
 
 
 *not_implemented
