@@ -1834,12 +1834,35 @@ getRotatedShape(itemId, rotation) {
             const itemH = itemContainer.height;
             const offset = 15;
 
-            if (direction === 'adjacent') {
-                arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
-                arrowContainer.getByName('down').setVisible(true).setPosition(0, itemH / 2 + offset);
-                arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
-                arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
-
+                   if (direction === 'adjacent') {
+            arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
+            arrowContainer.getByName('down').setVisible(true).setPosition(0, itemH / 2 + offset);
+            arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
+            arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
+        } else if (direction === 'horizontal') {
+            arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
+            arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
+        } else if (direction === 'vertical') {
+            arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
+            arrowContainer.getByName('down').setVisible(true).setPosition(0, itemH / 2 + offset);
+        } else if (direction === 'up_and_sides') {
+            arrowContainer.getByName('up').setVisible(true).setPosition(0, -itemH / 2 - offset);
+            arrowContainer.getByName('left').setVisible(true).setPosition(-itemW / 2 - offset, 0);
+            arrowContainer.getByName('right').setVisible(true).setPosition(itemW / 2 + offset, 0);
+        } else {
+            // 単一方向（up, down, left, right）
+            let basePos = { x: 0, y: 0 };
+            let arrowToShow = null;
+            switch (direction) {
+                case 'up': basePos = { x: 0, y: -itemH / 2 - offset }; arrowToShow = arrowContainer.getByName('up'); break;
+                case 'down': basePos = { x: 0, y: itemH / 2 + offset }; arrowToShow = arrowContainer.getByName('down'); break;
+                case 'left': basePos = { x: -itemW / 2 - offset, y: 0 }; arrowToShow = arrowContainer.getByName('left'); break;
+                case 'right': basePos = { x: itemW / 2 + offset, y: 0 }; arrowToShow = arrowContainer.getByName('right'); break;
+            }
+            if (arrowToShow) {
+                arrowToShow.setVisible(true).setPosition(basePos.x, basePos.y);
+            }
+        }
             } else {
                 let basePos = { x: 0, y: 0 };
                 let arrowToShow = null;
