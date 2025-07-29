@@ -1,7 +1,7 @@
 ; === Odyssey Engine Title Screen ===
 
 
-[link target="*start_score_attack" size=28 txet="スコアアタック"]
+[link target="*start_score_attack" size=28 text="スコアアタック"]
 [p]
 [link target="*not_implemented" size=28]*ストーリー (準備中)[endlink]
 [p]
