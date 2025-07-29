@@ -2523,7 +2523,9 @@ this.stateManager.setF('player_hp', this.playerStats.hp);
             this.scene.start('BattleScene');
         }, [], this);
     }
-  if (this.battleTimerText) {
+  shutdown() {
+    // ... (既存の input.off など) ...
+    if (this.battleTimerText) {
         this.battleTimerText.destroy();
         this.battleTimerText = null;
     }
