@@ -2432,116 +2432,115 @@ saveBackpackState() {
     
     console.log("Backpack & Inventory states auto-saved.");
 }
-    /*  // BattleScene.js にこの新しいメソッドを追加してください/**
-   * トドメの一撃の演出を再生する (最終確定版)
-   * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
-   */
-    playFinishBlowEffects(targetAvatar) {
-        if (!targetAvatar) return;
+   /**
+ * トドメの一撃の演出を再生する (最終確定版)
+ * @param {Phaser.GameObjects.Container} targetAvatar - 対象のアバターオブジェクト
+ */
+playFinishBlowEffects(targetAvatar) {
+    if (!targetAvatar) return;
 
-        // 1. スローモーション開始
-        this.time.timeScale = 0.2;
+    // 1. スローモーション開始
+    this.time.timeScale = 0.2;
 
-        // 2. 「中央が太く、両端が細い」斬撃エフェクト (Graphics)
-        const finishSlash = this.add.graphics().setDepth(2001);
-        const centerX = this.scale.width / 2;
-        const centerY = this.scale.height / 2;
-        const lineLength = this.scale.width;
-        const centerWidth = 30; // 中央の太さ
-
-        // 塗りつぶしの色と、輪郭線のスタイルを設定
-        finishSlash.fillStyle(0xffffff, 1.0);   // 塗りは純白
-        finishSlash.lineStyle(2, 0xffff00, 1.0); // 輪郭は黄色
-
-        // ひし形（中央が太く、両端が細い多角形）の4つの頂点を定義
-        const points = [
-            { x: -lineLength / 2, y: 0 },              // 左端
-            { x: 0, y: -centerWidth / 2 }, // 中央上
-            { x: lineLength / 2, y: 0 },              // 右端
-            { x: 0, y: centerWidth / 2 }  // 中央下
-        ];
-
-        // 多角形を描画
-        finishSlash.beginPath();
-        finishSlash.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) {
-            finishSlash.lineTo(points[i].x, points[i].y);
-        }
-        finishSlash.closePath();
-        finishSlash.fillPath();
-        finishSlash.strokePath();
-
-        const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
-        slashContainer.add(finishSlash);
-
-        // 斬撃アニメーション
-        this.tweens.add({
-            targets: slashContainer,
-            scale: { from: 0.3, to: 1.5 },
-            alpha: { from: 1, to: 0 },
-            duration: 400, // 実時間
-            ease: 'Cubic.easeOut',
-            onComplete: () => {
-                slashContainer.destroy();
-            }
-        });
-
-
-        // 3. スプライトシートアニメーション
-        const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
-        const desiredWidth = targetAvatar.displayWidth * 2.5;
-        effectSprite.setScale(desiredWidth / effectSprite.width);
-        effectSprite.play('finish_anim');
-        effectSprite.on('animationcomplete', () => {
-            effectSprite.destroy();
-        });
-
-        // 4. スローモーション解除とバトル終了処理
-        this.time.delayedCall(1500, () => {
-            this.time.timeScale = 1.0;
-            const currentRound = this.stateManager.sf.round || 1;
-            const FINAL_ROUND = 10; // ★最終ラウンドを定義
-this.stateManager.setF('player_hp', this.playerStats.hp);
-            // ★★★ ここからが修正箇所 ★★★
-            if (currentRound >= FINAL_ROUND) {
-                // --- ゲームクリア処理 ---
-                console.log("★★★★ GAME CLEAR! ★★★★");
-                this.add.text(this.scale.width / 2, this.scale.height / 2, 'GAME CLEAR!', { fontSize: '64px', fill: '#ffd700' }).setOrigin(0.5);
-
-                // クリア時もデータをリセットして「はじめから」に戻す
-                this.handleGameOver(); // 共通のゲームオーバー（リセット）処理を流用
-
-            } else {
-
-                const finalBackpackData = {};
-                this.placedItemImages.forEach((item, index) => {
-                    const gridPos = item.getData('gridPos');
-                    if (gridPos) {
-                        finalBackpackData[`uid_${index}`] = {
-                            itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                        };
-                    }
-                });
-                const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-                this.stateManager.setSF('player_backpack', finalBackpackData);
-                this.stateManager.setSF('player_inventory', finalInventoryData);
-                // ★★★ ここからが追加箇所 ★★★
-                // 3. コイン獲得処理
-                const currentCoins = this.stateManager.sf.coins || 0;
-                // const currentRound = this.stateManager.sf.round || 1;
-                const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
-                this.stateManager.setSF('coins', currentCoins + rewardCoins);
-
-                this.stateManager.setSF('round', currentRound + 1);
-                this.stateManager.setF('player_hp', this.playerStats.hp);
-
-                this.scene.get('SystemScene').events.emit('request-scene-transition', {
-                    to: 'RewardScene',
-                    from: this.scene.key
-                });
-            }
-        }, [], this);
+    // 2. 「中央が太く、両端が細い」斬撃エフェクト (Graphics)
+    const finishSlash = this.add.graphics().setDepth(2001);
+    const centerX = this.scale.width / 2;
+    const centerY = this.scale.height / 2;
+    const lineLength = this.scale.width;
+    const centerWidth = 30; // 中央の太さ
+    finishSlash.fillStyle(0xffffff, 1.0);
+    finishSlash.lineStyle(2, 0xffff00, 1.0);
+    const points = [
+        { x: -lineLength / 2, y: 0 },
+        { x: 0, y: -centerWidth / 2 },
+        { x: lineLength / 2, y: 0 },
+        { x: 0, y: centerWidth / 2 }
+    ];
+    finishSlash.beginPath();
+    finishSlash.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        finishSlash.lineTo(points[i].x, points[i].y);
     }
+    finishSlash.closePath();
+    finishSlash.fillPath();
+    finishSlash.strokePath();
+    const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
+    slashContainer.add(finishSlash);
+    this.tweens.add({
+        targets: slashContainer,
+        scale: { from: 0.3, to: 1.5 },
+        alpha: { from: 1, to: 0 },
+        duration: 400, // 実時間
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+            slashContainer.destroy();
+        }
+    });
+
+    // 3. スプライトシートアニメーション
+    const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
+    const desiredWidth = targetAvatar.displayWidth * 2.5;
+    effectSprite.setScale(desiredWidth / effectSprite.width);
+    effectSprite.play('finish_anim');
+    effectSprite.on('animationcomplete', () => {
+        effectSprite.destroy();
+    });
+
+    // 4. スローモーション解除とバトル終了処理
+    this.time.delayedCall(1500, () => {
+        this.time.timeScale = 1.0;
+        const currentRound = this.stateManager.sf.round || 1;
+        const FINAL_ROUND = 10; // ★最終ラウンドを定義
+
+        // HPは遷移前に必ず保存
+        this.stateManager.setF('player_hp', this.playerStats.hp);
+
+        // ★★★ このブロックを全面的に書き換え ★★★
+        if (currentRound >= FINAL_ROUND) {
+            // --- ゲームクリア処理 ---
+            console.log("★★★★ GAME CLEAR! ★★★★");
+            console.log("Transitioning to GameClearScene.");
+
+            // GameClearSceneに渡すデータを準備
+            const payload = {
+                to: 'GameClearScene',
+                from: this.scene.key,
+                finalRound: currentRound // 到達ラウンド数を渡す
+            };
+            this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
+
+        } else {
+            // --- ラウンド勝利処理 (既存のロジック) ---
+
+            // backpackとinventoryの状態を最終保存
+            const finalBackpackData = {};
+            this.placedItemImages.forEach((item, index) => {
+                const gridPos = item.getData('gridPos');
+                if (gridPos) {
+                    finalBackpackData[`uid_${index}`] = {
+                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                    };
+                }
+            });
+            const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+            this.stateManager.setSF('player_backpack', finalBackpackData);
+            this.stateManager.setSF('player_inventory', finalInventoryData);
+
+            // コイン獲得とラウンド更新
+            const currentCoins = this.stateManager.sf.coins || 0;
+            const rewardCoins = 10 + (currentRound * 2);
+            this.stateManager.setSF('coins', currentCoins + rewardCoins);
+            this.stateManager.setSF('round', currentRound + 1);
+
+            // RewardSceneへ遷移
+            this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                to: 'RewardScene',
+                from: this.scene.key
+            });
+        }
+        // ★★★ 書き換えここまで ★★★
+    }, [], this);
+}
     // BattleScene.js にこの新しいメソッドを追加してください
 
     /**

@@ -22,11 +22,11 @@ export default class GameClearScene extends Phaser.Scene {
 
         // --- 2. BGMの再生 ---
         // 勝利を祝うような、明るいファンファーレやBGMを再生
-        this.soundManager.playBgm('fanfare_success'); // 仮のBGMキーです。PreloadSceneでロードしてください。
+       // this.soundManager.playBgm('fanfare_success'); // 仮のBGMキーです。PreloadSceneでロードしてください。
 
         // --- 3. 背景とクリアメッセージの表示 ---
         this.cameras.main.setBackgroundColor('#000000');
-        const background = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background_clear') // 仮の背景キーです
+        const background = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1') // 仮の背景キーです
             .setDisplaySize(this.scale.width, this.scale.height)
             .setAlpha(0);
             
