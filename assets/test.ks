@@ -1,14 +1,5 @@
 ; === Odyssey Engine Title Screen ===
 
-[title name="バックパックバトル"]
-[stop_key_config]
-
-; --- 1. タイトル画面の準備 ---
-[playbgm storage="title_music" loop="true"]
-[bg storage="title_background" time="1000"]
-
-; --- 2. ゲームモード選択 ---
-[position layer="message0" left=440 top=300]
 
 [link target="*start_score_attack" size=28 txet="スコアアタック"]
 [p]
