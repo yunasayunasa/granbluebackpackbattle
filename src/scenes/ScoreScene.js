@@ -93,7 +93,18 @@ export default class ScoreScene extends Phaser.Scene {
         titleButton.on('pointerdown', () => {
             console.log("ScoreScene: Requesting a fresh start from Title screen (title.ks).");
             titleButton.disableInteractive();
-
+    // ★★★★★ ここからが修正の核心 ★★★★★
+            // タイトルに戻る前に、次の挑戦のために進行状況データをリセットする
+            console.log("リセット前 コイン:", this.stateManager.sf.coins);
+            this.stateManager.setSF('player_backpack', {});
+            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+            this.stateManager.setSF('round', 1);
+            this.stateManager.setSF('coins', 0);
+            this.stateManager.setSF('player_base_max_hp', 100);
+            console.log("リセット後 コイン:", this.stateManager.sf.coins);
+            // f変数もクリア
+            this.stateManager.f = {};
+            // ★★★★★ 修正ここまで ★★★★★
             // [jump storage="GameScene" params="{storage:'title.ks'}"] と同じ効果を
             // request-scene-transition イベントで実現する。
             // これにより、既存のシーンを停止し、新しいGameSceneを起動する。
