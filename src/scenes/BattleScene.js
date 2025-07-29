@@ -99,7 +99,7 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
             .setDisplaySize(this.scale.width, this.scale.height)
             .setDepth(-1);
-        // =================================================================
+         // =================================================================
         // STEP 1: マネージャー取得とデータ準備
         // =================================================================
         this.stateManager = this.sys.registry.get('stateManager');
@@ -107,12 +107,29 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         this.tooltip = new Tooltip(this);
 
         // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
+
+        // ★★★ このブロックを以下のように変更 ★★★
+
         if (this.stateManager.sf.player_backpack === undefined) {
             this.stateManager.setSF('player_backpack', {});
         }
         if (this.stateManager.sf.player_inventory === undefined) {
             this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
         }
+        
+        // 【新規追加】プレイヤープロファイルがなければ初期化
+        if (this.stateManager.sf.player_profile === undefined) {
+            console.log("新規プレイヤープロファイルを作成します。");
+            this.stateManager.setSF('player_profile', {
+                totalExp: 0,
+                rank: "駆け出し", // 初期ランク
+                highScore: 0,
+                totalWins: 0
+            });
+        }
+        
+        // ★★★ 変更ここまで ★★★
+
         const backpackData = this.stateManager.sf.player_backpack;
         const inventoryData = this.stateManager.sf.player_inventory;
 
