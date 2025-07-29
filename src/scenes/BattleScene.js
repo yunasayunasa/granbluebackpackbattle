@@ -1,4 +1,4 @@
-// BattleScene.js (最終決定版・完全体)
+ // BattleScene.js (最終決定版・完全体)
 import { ITEM_DATA } from '../core/ItemData.js';
 import Tooltip from '../ui/Tooltip.js';
 import { EnemyGenerator } from '../core/EnemyGenerator.js';
@@ -1678,6 +1678,25 @@ createItem(itemId, x, y) {
         // 矢印の表示更新を専用メソッドに一任する
         this.updateArrowVisibility(itemContainer);
     }
+    // BattleScene.js に、このメソッドを丸ごと追加してください
+
+/**
+ * 2次元配列（行列）を時計回りに90度回転させるヘルパーメソッド
+ * @param {Array<Array<number>>} matrix - 回転させたい2次元配列
+ * @returns {Array<Array<number>>} 回転後の新しい2次元配列
+ */
+_rotateMatrix(matrix) {
+    if (!matrix || matrix.length === 0 || !matrix[0]) return [[]]; // 安全チェック
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    const newMatrix = Array.from({ length: cols }, () => Array(rows).fill(0));
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            newMatrix[c][rows - 1 - r] = matrix[r][c];
+        }
+    }
+    return newMatrix;
+}
 
     canPlaceItem(itemContainer, startCol, startRow) {
         const itemId = itemContainer.getData('itemId');
