@@ -643,11 +643,56 @@ calculateFinalBattleState(initialItems, initialStats) {
     finalizedItems: initialItems,
     activatedResonances: activatedResonances
 };
-}
-   startBattle() {
+}// startBattle メソッドを、この setDepth を追加したバージョンに置き換えてください
+
+startBattle() {
     console.log("★★ 戦闘開始！ ★★");
-    this.battleStartTime = this.time.now; // ★戦闘開始時刻を記録
-    this.battleTimerText = this.add.text(this.scale.width/2, 50, `TIME: ${this.maxBattleDuration}`, { /*...*/ });
+    
+    // 戦闘開始時刻を記録
+    this.battleStartTime = this.time.now;
+    
+    // 残り時間UIの作成
+    this.battleTimerText = this.add.text(this.scale.width / 2, 50, `TIME: ${this.maxBattleDuration}`, {
+        fontSize: '40px',
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 5
+    }).setOrigin(0.5)
+      .setDepth(100); // ★★★ この行を追加 ★★★
+}
+    // BattleScene.js に、このメソッドを丸ごと追加してください
+
+/**
+ * 30秒経過した際に呼ばれるタイムアップ処理
+ */
+onTimeUp() {
+    // すでに戦闘が終わっていたら（または始まっていなければ）何もしない
+    if (this.gameState !== 'battle') return;
+
+    console.log("★★ タイムアップ！ ★★");
+    this.gameState = 'end'; // 戦闘終了状態にする
+
+    // タイマーUIを非表示にする
+    if (this.battleTimerText) {
+        this.battleTimerText.setVisible(false);
+    }
+
+    // --- HP比較による勝敗判定 ---
+    const playerHp = this.playerStats.hp;
+    const enemyHp = this.enemyStats.hp;
+    
+    console.log(`HP判定: PLAYER ${playerHp.toFixed(0)} vs ENEMY ${enemyHp.toFixed(0)}`);
+    
+    if (playerHp >= enemyHp) {
+        // プレイヤーの勝ち（引き分けも勝ちとする）
+        console.log("プレイヤーのHPが上回っているため、勝利。");
+        // 勝利演出を再生（これにより、セーブと次のシーンへの遷移が行われる）
+        this.playFinishBlowEffects(this.enemyAvatar);
+    } else {
+        // プレイヤーの負け
+        console.log("敵のHPが上回っているため、敗北。");
+        this.endBattle('lose');
+    }
 }
     onTimerUpdate() {
     const elapsed = this.mainTimer.getElapsedSeconds();
@@ -672,7 +717,7 @@ update(time, delta) {
         }
         
         if (remaining <= 0) {
-            this.onTimerUpdate(); // タイムアップ処理を呼び出す
+            this.onTimeUp(); // タイムアップ処理を呼び出す
         }
     }
     // ★★★ タイマー処理ここまで ★★★
