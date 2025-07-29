@@ -10,7 +10,7 @@
 ; --- 2. ゲームモード選択 ---
 [position layer="message0" left=440 top=300]
 
-[link target="*start_score_attack" size=28]*スコアアタック[endlink]
+[link target="*start_score_attack" size=28 txet="スコアアタック"]
 [p]
 [link target="*not_implemented" size=28]*ストーリー (準備中)[endlink]
 [p]
@@ -22,7 +22,7 @@
 
 *start_score_attack
 ; スコアアタックモードを開始する
-[cm] ; 画面の文字をクリア
+[cm] 
 
 ; ★重要★ プロファイル以外の進行状況をリセットする
 ; ScoreSceneから戻ってきた際に、前回のプレイデータをクリアするため
