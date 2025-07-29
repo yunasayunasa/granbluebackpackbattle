@@ -151,9 +151,39 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         if (this.stateManager.sf.player_backpack === undefined) {
             this.stateManager.setSF('player_backpack', {});
         }
-        if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-        }
+        // --- 1a. StateManagerからplayer_dataを取得（なければ初期化） ---
+if (this.stateManager.sf.player_data === undefined) {
+
+    // ★★★ ここからが修正箇所 ★★★
+
+    // 1. レアリティ1（コモン）のキャラクタープールを作成
+    const commonPool = Object.keys(ITEM_DATA).filter(id => {
+        const item = ITEM_DATA[id];
+        // costとrarityがあり、rarityが1のアイテムのみを対象とする
+        return item.cost && item.rarity === 1;
+    });
+player_dataを取得（なければ初期化） ---
+if (this.stateManager.sf.player_data === undefined) {
+
+    // 2. 候補の中からランダムに1体選出
+    let initialInventory = ['sword']; // デフォルト（万が一コモンがいなかった場合）
+    if (commonPool.length > 0) {
+        const randomCommonId = Phaser.Utils.Array.GetRandom(commonPool);
+        initialInventory = [randomCommonId];
+        console.log(`初期装備として[${randomCommonId}]が選ばれました。`);
+    }
+
+    // 3. defaultPlayerData を生成
+    const defaultPlayerData = {
+        coins: 20,
+        round: 1,
+        wins: 0,
+        avatar: { base_max_hp: 100, current_hp: 100 },
+        backpack: {},
+        inventory: initialInventory // ★ランダムに選ばれた1体を設定
+    };
+    
+    this.stateManager.setSF('player_data', defaultPlayerData);
         
         // 【新規追加】プレイヤープロファイルがなければ初期化
         if (this.stateManager.sf.player_profile === undefined) {
