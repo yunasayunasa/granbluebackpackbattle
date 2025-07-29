@@ -1257,60 +1257,76 @@ handleActivationTriggers(itemData, attacker) {
     // BattleScene.js の endBattle メソッドを、この最終版に置き換え
 
     /**
-     * 戦闘終了処理 (勝利/敗北)
-     * @param {string} result - 'win' または 'lose'
-     */
-    endBattle(result) {
-        if (this.battleEnded) return;
-        this.battleEnded = true;
-        console.log(`バトル終了。結果: ${result}`);
+ * 戦闘終了処理 (勝利/敗北)
+ * @param {string} result - 'win' または 'lose'
+ */
+endBattle(result) {
+    if (this.battleEnded) return;
+    this.battleEnded = true;
+    console.log(`バトル終了。結果: ${result}`);
 
-        if (result === 'win') {
-            // 勝利時の処理は playFinishBlowEffects が担当するので、ここでは何もしない
-            return;
-        }
-
-        // --- 敗北時の処理 ---
-        this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', {
-            fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
-        }).setOrigin(0.5).setDepth(999);
-
-        // ★★★ ここからが2択ボタンの実装 ★★★
-
-        // 1. 「このラウンドを再挑戦」ボタン
-        const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', {
-            fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
-        }).setOrigin(0.5).setInteractive().setDepth(999);
-
-        retryButton.on('pointerdown', () => {
-            const roundStartState = this.roundStartState;
-            if (roundStartState) {
-                // ★チェックポイントのデータを使ってsfとfを復元
-                this.stateManager.setSF('player_backpack', roundStartState.backpack);
-                this.stateManager.setSF('player_inventory', roundStartState.inventory);
-                this.stateManager.setSF('coins', roundStartState.coins); // コインを復元
-                this.stateManager.setF('player_hp', roundStartState.hp); // HPを復元
-
-                console.log("ラウンド開始時の状態に復元してリトライします。");
-                this.scene.start(this.scene.key);
-            } else {
-                // チェックポイントがない（異常事態）場合は、安全に全リセット
-                console.error("チェックポイントが見つかりません。ゲームをリセットします。");
-                this.handleGameOver();
-            }
-        });
-
-        // 2. 「はじめからやり直す」ボタン
-        const resetButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', {
-            fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
-        }).setOrigin(0.5).setInteractive().setDepth(999);
-
-        resetButton.on('pointerdown', () => {
-            // 共通のゲームオーバー（全リセット）処理を呼び出す
-            resetButton.disableInteractive().setText('リセット中...');
-            this.handleGameOver();
-        });
+    if (result === 'win') {
+        // 勝利時の処理は playFinishBlowEffects が担当するので、ここでは何もしない
+        return;
     }
+
+    // --- 敗北時の処理 ---
+    this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', {
+        fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(999);
+
+    // ★★★ このブロックを全面的に書き換え ★★★
+
+    // 1. 「このラウンドを再挑戦」ボタン (既存のロジックはそのまま)
+    const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 40, 'このラウンドを再挑戦', {
+        fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
+    }).setOrigin(0.5).setInteractive().setDepth(999);
+
+    retryButton.on('pointerdown', () => {
+        const roundStartState = this.roundStartState;
+        if (roundStartState) {
+            this.stateManager.setSF('player_backpack', roundStartState.backpack);
+            this.stateManager.setSF('player_inventory', roundStartState.inventory);
+            this.stateManager.setSF('coins', roundStartState.coins);
+            this.stateManager.setF('player_hp', roundStartState.hp);
+            console.log("ラウンド開始時の状態に復元してリトライします。");
+            this.scene.start(this.scene.key);
+        } else {
+            console.error("チェックポイントが見つかりません。スコア画面へ遷移します。");
+            // フェールセーフとしてスコア画面へ
+            const payload = {
+                to: 'ScoreScene',
+                from: this.scene.key,
+                result: 'lose',
+                finalRound: this.stateManager.sf.round || 1
+            };
+            this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
+        }
+    });
+
+    // 2. 「あきらめる」ボタン (スコア画面へ遷移)
+    const giveUpButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 120, 'あきらめる', {
+        fontSize: '32px', fill: '#fff', backgroundColor: '#aa0000', padding: { x: 15, y: 8 }
+    }).setOrigin(0.5).setInteractive().setDepth(999);
+
+    giveUpButton.on('pointerdown', () => {
+        console.log("敗北を認め、ScoreSceneへ遷移します。");
+        giveUpButton.disableInteractive().setText('集計中...');
+        retryButton.disableInteractive();
+
+        // ScoreSceneに渡すデータを準備
+        const payload = {
+            to: 'ScoreScene',
+            from: this.scene.key,
+            result: 'lose', // 'lose' という結果を渡す
+            finalRound: this.stateManager.sf.round || 1 // 現在のラウンド数を渡す
+        };
+        // SystemSceneに遷移を依頼
+        this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
+    });
+    
+    // ★★★ 書き換えここまで ★★★
+}
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
     // BattleScene.js にこの新しいメソッドを追加してください
