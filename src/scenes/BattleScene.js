@@ -1631,10 +1631,13 @@ recastOverlay.setFlipX(true);; // 画像を水平方向に反転させる
                 }
 
                 // ★追加: サイズの表示
-               const sizeH = itemData.size ? itemData.size.h : itemData.shape.length;
-const sizeW = itemData.size ? itemData.size.w : itemData.shape[0].length;
-tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-
+               if (itemData.shapeType) {
+    tooltipText += `サイズ: ${itemData.shapeType}\n\n`;
+} else {
+    const sizeH = itemData.size ? itemData.size.h : itemData.shape.length;
+    const sizeW = itemData.size ? itemData.size.w : itemData.shape[0].length;
+    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+}
                 // Recast
                 if (baseItemData.recast && baseItemData.recast > 0) {
                     const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
