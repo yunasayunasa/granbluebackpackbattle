@@ -109,7 +109,8 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
 
           // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
-        
+        (this.stateManager.sf.player_inventory === undefined) {
+            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
         // ★★★ このブロックを全面的に書き換え ★★★
 
         // プレイヤープロファイルがなければ初期化 (これは初回起動時のみ)
