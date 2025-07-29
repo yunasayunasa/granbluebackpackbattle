@@ -278,7 +278,17 @@ this.stateManager.sf.player_inventory.forEach((itemId, index) => {
         // ★★★ 追加ここまで ★★★
 
       // --- 5a. 戦闘開始ボタン ---
-this.startBattleButton = this.add.text(/* ... */);
+// ★★★ 5c. 【重要】戦闘開始ボタンの生成 ★★★
+this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { 
+    fontSize: '28px', 
+    fill: '#fff',
+    backgroundColor: '#008000', // 緑色
+    padding: { x: 20, y: 10 },
+    stroke: '#ffffff',
+    strokeThickness: 1
+}).setOrigin(0.5).setInteractive().setDepth(11);
+
+// prepareContainerに追加して、インベントリと一緒に表示/非表示されるようにする
 this.prepareContainer.add(this.startBattleButton);
 this.startBattleButton.on('pointerdown', () => {
     if (this.gameState !== 'prepare') return;
