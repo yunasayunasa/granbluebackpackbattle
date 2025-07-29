@@ -11,6 +11,9 @@ import ActionScene from './scenes/ActionScene.js';
 import BattleScene from './scenes/BattleScene.js';
 import NovelOverlayScene from './scenes/NovelOverlayScene.js';
 import RewardScene from './scenes/RewardScene.js'; 
+import GameOverScene from './scenes/GameOverScene.js';
+import GameClearScene from './scenes/GameClearScene.js';
+import ScoreScene from './scenes/ScoreScene.js';
 const config = {
     type: Phaser.AUTO,
     scale: {
@@ -32,7 +35,10 @@ const config = {
         ActionScene,
          BattleScene,
         NovelOverlayScene,
-        RewardScene 
+        RewardScene ,
+         GameOverScene,  // ★追加
+        GameClearScene,
+        ScoreScene  // ★追加
     ]
 };
 

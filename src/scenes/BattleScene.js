@@ -99,65 +99,32 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
             .setDisplaySize(this.scale.width, this.scale.height)
             .setDepth(-1);
-        // =================================================================
-        // STEP 1: マネージャー取得とデータ準備
-        // =================================================================
-        this.stateManager = this.sys.registry.get('stateManager');
-        this.soundManager = this.sys.registry.get('soundManager');
-        this.tooltip = new Tooltip(this);
+       // =================================================================
+// STEP 1: マネージャー取得と永続データの準備
+// =================================================================
+this.stateManager = this.sys.registry.get('stateManager');
+this.soundManager = this.sys.registry.get('soundManager');
+this.tooltip = new Tooltip(this);
 
-        // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
-        if (this.stateManager.sf.player_backpack === undefined) {
-            this.stateManager.setSF('player_backpack', {});
-        }
-        if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-        }
-        const backpackData = this.stateManager.sf.player_backpack;
-        const inventoryData = this.stateManager.sf.player_inventory;
+// --- 1a. 永続データ(sf変数)の初期化（初回起動時のみ） ---
+if (this.stateManager.sf.player_backpack === undefined) this.stateManager.setSF('player_backpack', {});
+if (this.stateManager.sf.player_inventory === undefined) this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+if (this.stateManager.sf.player_base_max_hp === undefined) this.stateManager.setSF('player_base_max_hp', 100);
+if (this.stateManager.sf.round === undefined) this.stateManager.setSF('round', 1);
+if (this.stateManager.sf.coins === undefined) this.stateManager.setSF('coins', 10);
 
-        // in create() -> STEP 1-b
-
-        // --- 1b. 戦闘パラメータを決定 ---
-// ★★★ ここからが修正箇所 ★★★
-
-// 1. 素の最大HPをsf変数で管理（なければ初期化）
-if (this.stateManager.sf.player_base_max_hp === undefined) {
-    this.stateManager.setSF('player_base_max_hp', 100);
-}
+// --- 1b. 戦闘パラメータを決定 ---
 const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
+const inheritedPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : basePlayerMaxHp;
+const round = this.stateManager.sf.round;
+this.initialBattleParams = { playerMaxHp: basePlayerMaxHp, playerHp: inheritedPlayerHp, round: round };
 
-// 2. 前のラウンドから現在HPを引き継ぐ (f変数から)
-//    初回やデータがない場合は、素の最大HPから開始
-const inheritedPlayerHp = this.stateManager.f.player_hp > 0 
-    ? this.stateManager.f.player_hp 
-    : basePlayerMaxHp;
-
-const round = this.stateManager.sf.round || 1;
-
-// 3. このシーンで使うパラメータを設定
-this.initialBattleParams = { 
-    playerMaxHp: basePlayerMaxHp,  // ★基準は「素の最大HP」
-    playerHp: inheritedPlayerHp,   // ★基準は「引き継いだHP」
-    round: round 
-};
-        // --- 1c. ゲームオーバー判定
-        // 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
-    if (inheritedPlayerHp <= 0) {
-            console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
-
-            // 将来的には GameOverScene に遷移する
-            // 今は暫定的に、データをリセットして同じバトルシーンを再起動する（はじめから）
-            this.stateManager.sf = {}; // メモリ上のsfをリセット
-            localStorage.removeItem('my_novel_engine_system'); // ストレージのsfをリセット
-            this.stateManager.f = {}; // メモリ上のfをリセット
-
-            // SystemSceneにタイトルへの復帰などを依頼するのが理想だが、今は直接リスタート
-            this.scene.start(this.scene.key);
-
-            return; // create処理をここで中断
-        }
-        // ★★★ 追加ここまで ★★★
+// --- 1c. ゲームオーバー判定 ---
+if (inheritedPlayerHp <= 0) {
+    this.add.text(this.scale.width/2, this.scale.height/2, 'GAME OVER', {fontSize: '64px', fill: '#f00'}).setOrigin(0.5);
+    this.handleGameOver();
+    return;
+}
 
 
         // =================================================================
@@ -218,37 +185,30 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
 // --- 3c. 敵アイテムの配置 ---
 this.currentEnemyLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round); // ★ここで一度だけ生成
 this.setupEnemy(this.gridY, this.currentEnemyLayout); // ★引数として渡す
-        // =================================================================
-        // STEP 4: プレイヤーのバックパックとインベントリの復元
-        // =================================================================
-        // --- 4a. バックパックのアイテムを復元
-        for (const uid in backpackData) {
-            const itemInfo = backpackData[uid];
-            const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
-            if (itemContainer) {
-                itemContainer.setData('rotation', itemInfo.rotation);
-                itemContainer.setAngle(itemInfo.rotation);
-                this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
-            }
-        }
-        // --- 4b. インベントリの描画とアイテム復元
-        const inventoryAreaY = 450;
-        const inventoryAreaHeight = gameHeight - inventoryAreaY;
-        const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
-        const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
-        this.prepareContainer.add([invBg, invText]);
-
-        const inventoryContentWidth = gameWidth - 200;
-        const inventoryCount = inventoryData.length;
-        const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
-        const itemStartX = 100 + (itemSpacing / 2);
-        inventoryData.forEach((itemId, index) => {
-            const x = itemStartX + (index * itemSpacing);
-            const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
-            const itemContainer = this.createItem(itemId, x, y);
-            if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
-        });
-
+      // =================================================================
+// STEP 4: プレイヤーデータの復元と描画
+// =================================================================
+// --- 4a. バックパックのアイテムを復元
+for (const uid in this.stateManager.sf.player_backpack) {
+    const itemInfo = this.stateManager.sf.player_backpack[uid];
+    const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
+    if (itemContainer) {
+        itemContainer.setData('rotation', itemInfo.rotation);
+        itemContainer.setAngle(itemInfo.rotation);
+        this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
+    }
+}
+// --- 4b. インベントリの描画とアイテム復元
+// ... (inventoryAreaYなどの定義) ...
+const inventoryCount = this.stateManager.sf.player_inventory.length;
+const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
+const itemStartX = 100 + (itemSpacing / 2);
+this.stateManager.sf.player_inventory.forEach((itemId, index) => {
+    const x = itemStartX + (index * itemSpacing);
+    const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
+    const itemContainer = this.createItem(itemId, x, y);
+    if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
+});
 
         // =================================================================
         // ★★★ STEP 4.5: ショップのセットアップ ★★★
@@ -309,51 +269,47 @@ this.setupEnemy(this.gridY, this.currentEnemyLayout); // ★引数として渡�
         });
         // ★★★ 追加ここまで ★★★
 
-        // --- 5a. 戦闘開始ボタン ★★★ このブロックが復活しました ★★★
-        this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
-        this.prepareContainer.add(this.startBattleButton);
+      // --- 5a. 戦闘開始ボタン ---
+this.startBattleButton = this.add.text(/* ... */);
+this.prepareContainer.add(this.startBattleButton);
+this.startBattleButton.on('pointerdown', () => {
+    if (this.gameState !== 'prepare') return;
 
-         // ★★★ startBattleButtonのリスナーをクリーンアップ ★★★
-    this.startBattleButton.on('pointerdown', () => {
-        if (this.gameState !== 'prepare') return;
-
-        // ★チェックポイント作成はここが正しい
-        const initialBackpackData = {};
-        this.placedItemImages.forEach((item, index) => {
-            const gridPos = item.getData('gridPos');
-            if (gridPos) {
-                initialBackpackData[`uid_${index}`] = {
-                    itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                };
-            }
-        });
-        const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-        this.roundStartState = {
-            backpack: initialBackpackData,
-            inventory: initialInventoryData,
-            coins: this.stateManager.sf.coins || 0,
-            hp: this.initialBattleParams.playerHp
-        };
-        console.log("Round start state checkpoint created.", this.roundStartState);
-        
-        // --- 戦闘開始処理 ---
-        this.gameState = 'battle';
-        this.prepareForBattle(); // ★ これを呼ぶ
-        
-        const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-        allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
-        this.startBattleButton.input.enabled = false;
-        this.tweens.add({
-            targets: [this.prepareContainer, ...this.inventoryItemImages],
-            alpha: 0,
-            duration: 300,
-            onComplete: () => {
-                this.prepareContainer.setVisible(false);
-                this.inventoryItemImages.forEach(item => item.setVisible(false));
-            }
-        });
-        this.startBattle();
+    // チェックポイント作成
+    const backpackState = {};
+    this.placedItemImages.forEach((item, index) => {
+        const gridPos = item.getData('gridPos');
+        if (gridPos) {
+            backpackState[`uid_${index}`] = {
+                itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+            };
+        }
     });
+    const inventoryState = this.inventoryItemImages.map(item => item.getData('itemId'));
+    this.roundStartState = {
+        backpack: backpackState,
+        inventory: inventoryState,
+        coins: this.stateManager.sf.coins,
+        hp: this.initialBattleParams.playerHp
+    };
+    console.log("Round start state checkpoint created.", this.roundStartState);
+    
+    // 戦闘開始処理
+    this.gameState = 'battle';
+    this.prepareForBattle();
+    const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages, shopToggleButton, resetButton, this.startBattleButton];
+    allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
+    this.tweens.add({
+        targets: [this.prepareContainer, ...this.inventoryItemImages],
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+            this.prepareContainer.setVisible(false);
+            this.inventoryItemImages.forEach(item => item.setVisible(false));
+        }
+    });
+    this.startBattle();
+});
 
     // ★★★ createの末尾に本来あるべきコード ★★★
     this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
@@ -1243,57 +1199,74 @@ handleActivationTriggers(itemData, attacker) {
      * 戦闘終了処理 (勝利/敗北)
      * @param {string} result - 'win' または 'lose'
      */
-    endBattle(result) {
-        if (this.battleEnded) return;
-        this.battleEnded = true;
-        console.log(`バトル終了。結果: ${result}`);
+  // endBattle メソッドを、この最終確定版に置き換えてください
 
-        if (result === 'win') {
-            // 勝利時の処理は playFinishBlowEffects が担当するので、ここでは何もしない
-            return;
-        }
+endBattle(result) {
+    if (this.battleEnded) return;
+    this.battleEnded = true;
+    console.log(`バトル終了。結果: ${result}`);
 
-        // --- 敗北時の処理 ---
-        this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', {
-            fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
-        }).setOrigin(0.5).setDepth(999);
-
-        // ★★★ ここからが2択ボタンの実装 ★★★
-
-        // 1. 「このラウンドを再挑戦」ボタン
-        const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', {
-            fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
-        }).setOrigin(0.5).setInteractive().setDepth(999);
-
-        retryButton.on('pointerdown', () => {
-            const roundStartState = this.roundStartState;
-            if (roundStartState) {
-                // ★チェックポイントのデータを使ってsfとfを復元
-                this.stateManager.setSF('player_backpack', roundStartState.backpack);
-                this.stateManager.setSF('player_inventory', roundStartState.inventory);
-                this.stateManager.setSF('coins', roundStartState.coins); // コインを復元
-                this.stateManager.setF('player_hp', roundStartState.hp); // HPを復元
-
-                console.log("ラウンド開始時の状態に復元してリトライします。");
-                this.scene.start(this.scene.key);
-            } else {
-                // チェックポイントがない（異常事態）場合は、安全に全リセット
-                console.error("チェックポイントが見つかりません。ゲームをリセットします。");
-                this.handleGameOver();
-            }
-        });
-
-        // 2. 「はじめからやり直す」ボタン
-        const resetButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', {
-            fontSize: '32px', fill: '#fff', backgroundColor: '#880000', padding: { x: 15, y: 8 }
-        }).setOrigin(0.5).setInteractive().setDepth(999);
-
-        resetButton.on('pointerdown', () => {
-            // 共通のゲームオーバー（全リセット）処理を呼び出す
-            resetButton.disableInteractive().setText('リセット中...');
-            this.handleGameOver();
-        });
+    if (result === 'win') {
+        // 勝利時は playFinishBlowEffects が全てを処理するので、何もしない
+        return;
     }
+
+    // --- 敗北時の処理 ---
+    this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', { /*...*/ }).setOrigin(0.5).setDepth(999);
+
+    // --- 選択肢1: 「このラウンドを再挑戦」 ---
+    const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, 'このラウンドを再挑戦', { /*...*/ }).setOrigin(0.5).setInteractive().setDepth(999);
+    retryButton.on('pointerdown', () => {
+        // チェックポイントから状態を復元して、シーンをリスタートする（スコア計算はしない）
+        const roundStartState = this.roundStartState;
+        if (roundStartState) {
+            const playerData = this.stateManager.sf.player_data;
+            playerData.backpack = roundStartState.backpack;
+            playerData.inventory = roundStartState.inventory;
+            playerData.coins = roundStartState.coins;
+            this.stateManager.setSF('player_data', playerData);
+            
+            this.stateManager.setF('player_hp', roundStartState.hp);
+            
+            console.log("ラウンド開始時の状態に復元してリトライします。");
+            this.scene.start(this.scene.key);
+        } else {
+            console.error("チェックポイントが見つかりません。");
+            this.goToScoreScene(); // 異常事態なので、スコア画面に送る
+        }
+    });
+
+    // --- 選択肢2: 「諦めてスコアにする」 ---
+    const giveUpButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'はじめからやり直す', { /*...*/ }).setOrigin(0.5).setInteractive().setDepth(999);
+    giveUpButton.on('pointerdown', () => {
+        // 今回の挑戦の結果を持って、スコア画面に遷移する
+        giveUpButton.disableInteractive().setText('集計中...');
+        this.goToScoreScene();
+    });
+}
+// BattleScene.js に、この新しいヘルパーメソッドを追加してください
+
+/**
+ * 今回の挑戦の結果をまとめ、ScoreSceneへ遷移する
+ */
+goToScoreScene() {
+    const playerData = this.stateManager.sf.player_data;
+    
+    // 挑戦結果データを生成
+    const runResult = {
+        round: playerData.round,
+        wins: playerData.wins,
+        coins: playerData.coins
+        // isClear: (将来的に)
+    };
+    
+    // SystemSceneにScoreSceneへの遷移を依頼
+    this.scene.get('SystemScene').events.emit('request-scene-transition', {
+        to: 'ScoreScene',
+        from: this.scene.key,
+        params: runResult // ★挑戦結果を渡す
+    });
+}
 
     // BattleScene.js の createItem メソッド (ドラッグ追従・最終版)
     // BattleScene.js にこの新しいメソッドを追加してください
@@ -2479,52 +2452,65 @@ saveBackpackState() {
             effectSprite.destroy();
         });
 
-        // 4. スローモーション解除とバトル終了処理
-        this.time.delayedCall(1500, () => {
-            this.time.timeScale = 1.0;
-            const currentRound = this.stateManager.sf.round || 1;
-            const FINAL_ROUND = 10; // ★最終ラウンドを定義
-this.stateManager.setF('player_hp', this.playerStats.hp);
-            // ★★★ ここからが修正箇所 ★★★
-            if (currentRound >= FINAL_ROUND) {
-                // --- ゲームクリア処理 ---
-                console.log("★★★★ GAME CLEAR! ★★★★");
-                this.add.text(this.scale.width / 2, this.scale.height / 2, 'GAME CLEAR!', { fontSize: '64px', fill: '#ffd700' }).setOrigin(0.5);
+          // --- 2. スローモーション解除と後処理 ---
+    this.time.delayedCall(1500, () => {
+        this.time.timeScale = 1.0;
+        
+        // ★★★ ここからが修正箇所 ★★★
 
-                // クリア時もデータをリセットして「はじめから」に戻す
-                this.handleGameOver(); // 共通のゲームオーバー（リセット）処理を流用
+        const playerData = this.stateManager.sf.player_data;
+        const FINAL_ROUND = 10;
 
-            } else {
+        // a. 勝利数をインクリメント
+        playerData.wins = (playerData.wins || 0) + 1;
+        
+        // b. 残りHPを保存
+        playerData.avatar.current_hp = this.playerStats.hp;
 
-                const finalBackpackData = {};
-                this.placedItemImages.forEach((item, index) => {
-                    const gridPos = item.getData('gridPos');
-                    if (gridPos) {
-                        finalBackpackData[`uid_${index}`] = {
-                            itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                        };
-                    }
-                });
-                const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-                this.stateManager.setSF('player_backpack', finalBackpackData);
-                this.stateManager.setSF('player_inventory', finalInventoryData);
-                // ★★★ ここからが追加箇所 ★★★
-                // 3. コイン獲得処理
-                const currentCoins = this.stateManager.sf.coins || 0;
-                // const currentRound = this.stateManager.sf.round || 1;
-                const rewardCoins = 10 + (currentRound * 2); // ラウンド数に応じた報酬
-                this.stateManager.setSF('coins', currentCoins + rewardCoins);
+        // c. ゲームクリアかどうかを判定
+        if (playerData.round >= FINAL_ROUND) {
+            // --- ゲームクリア処理 ---
+            console.log("★★★★ GAME CLEAR! ★★★★");
 
-                this.stateManager.setSF('round', currentRound + 1);
-                this.stateManager.setF('player_hp', this.playerStats.hp);
+            // 最終状態を保存してから、スコア画面へ
+            this.stateManager.setSF('player_data', playerData);
+            this.goToScoreScene();
+            
+        } else {
+            // --- 通常勝利処理 ---
+            
+            // i. 最終的な盤面を保存
+            const finalBackpackData = {};
+            this.placedItemImages.forEach((item, index) => {
+                const gridPos = item.getData('gridPos');
+                if (gridPos) {
+                    finalBackpackData[`uid_${index}`] = {
+                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                    };
+                }
+            });
+            playerData.backpack = finalBackpackData;
+            playerData.inventory = this.inventoryItemImages.map(item => item.getData('itemId'));
 
-                this.scene.get('SystemScene').events.emit('request-scene-transition', {
-                    to: 'RewardScene',
-                    from: this.scene.key
-                });
-            }
-        }, [], this);
-    }
+            // ii. コインを獲得
+            const rewardCoins = 10 + (playerData.round * 2);
+            playerData.coins = (playerData.coins || 0) + rewardCoins;
+
+            // iii. 次のラウンドに進む
+            playerData.round++;
+            
+            // iv. 全ての変更をsf変数に保存
+            this.stateManager.setSF('player_data', playerData);
+            
+            // v. 報酬画面へ遷移
+            this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                to: 'RewardScene',
+                from: this.scene.key
+            });
+        }
+        // ★★★ 修正箇所ここまで ★★★
+    }, [], this);
+}
     // BattleScene.js にこの新しいメソッドを追加してください
 
     /**
