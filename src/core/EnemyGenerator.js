@@ -39,7 +39,7 @@ const THEMES = {
 
 // STEP 4: ラウンドごとのルール定義
 const ROUND_RULES = {
-    1: { themePool: ['tutorial'], budget: 20, count: 1 },
+     1: { themePool: ['mixed_elements', 'light_specialized', 'dark_specialized'], budget: 30, count: 1 },
     2: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 50, count: 3 },
     3: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 80, count: 5 },
     4: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 150, count: 5 },
