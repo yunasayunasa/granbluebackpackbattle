@@ -20,7 +20,7 @@ export default class ScoreScene extends Phaser.Scene {
 
         // --- 1. 背景とBGM設定 ---
         this.cameras.main.setBackgroundColor('#1a1a1a');
-        this.soundManager.playBgm('result_music'); // 仮の結果発表BGM
+       // this.soundManager.playBgm('result_music'); // 仮の結果発表BGM
 
         // --- 2. スコア計算ロジック ---
         const finalRound = this.receivedData.finalRound || 1;
