@@ -185,7 +185,7 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
 // --- 3c. 敵アイテムの配置 ---
 this.currentEnemyLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round); // ★ここで一度だけ生成
 this.setupEnemy(this.gridY, this.currentEnemyLayout); // ★引数として渡す
-      // =================================================================
+// =================================================================
 // STEP 4: プレイヤーデータの復元と描画
 // =================================================================
 // --- 4a. バックパックのアイテムを復元
@@ -199,13 +199,21 @@ for (const uid in this.stateManager.sf.player_backpack) {
     }
 }
 // --- 4b. インベントリの描画とアイテム復元
-// ... (inventoryAreaYなどの定義) ...
+const inventoryAreaY = 480;
+const inventoryAreaHeight = gameHeight - inventoryAreaY;
+const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
+const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+this.prepareContainer.add([invBg, invText]);
+
+const inventoryContentWidth = gameWidth - 200; // ★この行が重要です★
+
 const inventoryCount = this.stateManager.sf.player_inventory.length;
 const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
 const itemStartX = 100 + (itemSpacing / 2);
+
 this.stateManager.sf.player_inventory.forEach((itemId, index) => {
     const x = itemStartX + (index * itemSpacing);
-    const y = inventoryAreaY + inventoryAreaHeight / 2 + 10;
+    const y = inventoryAreaY + inventoryAreaHeight / 2;
     const itemContainer = this.createItem(itemId, x, y);
     if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
 });
