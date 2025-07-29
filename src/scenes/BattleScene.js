@@ -692,32 +692,28 @@ onTimeUp() {
         // プレイヤーの負け
         console.log("敵のHPが上回っているため、敗北。");
         this.endBattle('lose');
-    }
-}
-    onTimerUpdate() {
-    const elapsed = this.mainTimer.getElapsedSeconds();
-    const remaining = this.maxBattleDuration - elapsed;
-    if (this.battleTimerText && remaining >= 0) {
-        this.battleTimerText.setText(`TIME: ${Math.ceil(remaining)}`);
-    }
-}
+
 // BattleScene.js の update をこれに置き換え
     // BattleScene.js の update をこれに置き換え
-   
-update(time, delta) {
+   update(time, delta) {
+    // 戦闘中でなければ何もしない
     if (this.gameState !== 'battle') return;
-    const now = this.time.now;
-  // ★★★ ここからがタイマー処理 ★★★
+
+    // --- タイムアップ処理 ---
     if (this.battleStartTime) {
-        const elapsed = (this.time.now - this.battleStartTime) / 1000;
-        const remaining = this.maxBattleDuration - elapsed;
-        
+        // 経過時間(秒)を計算
+        const elapsedSeconds = (this.time.now - this.battleStartTime) / 1000;
+        // 残り時間(秒)を計算
+        const remainingSeconds = this.maxBattleDuration - elapsedSeconds;
+
+        // UIテキストを更新
         if (this.battleTimerText) {
-            this.battleTimerText.setText(`TIME: ${Math.max(0, Math.ceil(remaining))}`);
+            this.battleTimerText.setText(`TIME: ${Math.max(0, Math.ceil(remainingSeconds))}`);
         }
         
-        if (remaining <= 0) {
-            this.onTimeUp(); // タイムアップ処理を呼び出す
+        // 残り時間が0以下になったら、タイムアップ処理を呼び出す
+        if (remainingSeconds <= 0) {
+            this.onTimeUp();
         }
     }
     // ★★★ タイマー処理ここまで ★★★
