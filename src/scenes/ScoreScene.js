@@ -99,7 +99,7 @@ export default class ScoreScene extends Phaser.Scene {
             this.stateManager.setSF('player_backpack', {});
             this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
             this.stateManager.setSF('round', 1);
-            this.stateManager.setSF('coins', 0);
+            this.stateManager.setSF('coins', 20);
             this.stateManager.setSF('player_base_max_hp', 100);
             console.log("リセット後 コイン:", this.stateManager.sf.coins);
             // f変数もクリア
