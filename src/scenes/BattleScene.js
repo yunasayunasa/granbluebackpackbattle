@@ -93,6 +93,44 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
     }
     // BattleScene.js の create を、この最終確定版に置き換えてください
     create() {
+          // ★★★ このブロックをcreate()の先頭に追加 ★★★
+        const startParams = this.sys.settings.data; // SystemSceneから渡されたデータ
+
+        if (startParams && startParams.transitionParams && startParams.transitionParams.mode === 'new_game') {
+            console.log("BattleScene: 'new_game' モードで起動。初期設定を実行します。");
+            
+            // 1. コモン(rarity:1)のアイテムプールを作成
+            const commonPool = [];
+            for (const id in ITEM_DATA) {
+                if (ITEM_DATA[id].rarity === 1) {
+                    commonPool.push(id);
+                }
+            }
+
+            // 2. プールからランダムに1つ選ぶ
+            const startItem = Phaser.Utils.Array.GetRandom(commonPool);
+            const startCoins = 20;
+
+            console.log(`初期アイテム: ${startItem}, 初期コイン: ${startCoins}`);
+
+            // 3. StateManagerのsf変数をリセット＆初期設定
+            //    (profileはリセットしない)
+            const profile = this.sys.registry.get('stateManager').sf.player_profile;
+
+            this.sys.registry.get('stateManager').sf = { // sfを一度リセット
+                player_profile: profile // プロファイルだけ引き継ぐ
+            }; 
+            
+            this.stateManager = this.sys.registry.get('stateManager'); // 再取得
+            this.stateManager.setSF('player_backpack', {});
+            this.stateManager.setSF('player_inventory', [startItem]);
+            this.stateManager.setSF('round', 1);
+            this.stateManager.setSF('coins', startCoins);
+            this.stateManager.setSF('player_base_max_hp', 100);
+
+            // f変数もクリア
+            this.stateManager.f = {};
+        }
         console.log("BattleScene: create - データ永続化対応版 (sf)");
         const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
         const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
