@@ -92,131 +92,116 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         console.log("BattleScene: init (空)");
     }
     // BattleScene.js の create を、この最終確定版に置き換えてください
-    create() {
-        console.log("BattleScene: create - データ永続化対応版 (sf)");
-        const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
-        const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
-        this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
-            .setDisplaySize(this.scale.width, this.scale.height)
-            .setDepth(-1);
-       // =================================================================
-// STEP 1: マネージャー取得と永続データの準備
-// =================================================================
-this.stateManager = this.sys.registry.get('stateManager');
-this.soundManager = this.sys.registry.get('soundManager');
-this.tooltip = new Tooltip(this);
+   create() {
+    console.log("BattleScene: create - player_data unified version");
 
-// --- 1a. 永続データ(sf変数)の初期化（初回起動時のみ） ---
-if (this.stateManager.sf.player_backpack === undefined) this.stateManager.setSF('player_backpack', {});
-if (this.stateManager.sf.player_inventory === undefined) this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-if (this.stateManager.sf.player_base_max_hp === undefined) this.stateManager.setSF('player_base_max_hp', 100);
-if (this.stateManager.sf.round === undefined) this.stateManager.setSF('round', 1);
-if (this.stateManager.sf.coins === undefined) this.stateManager.setSF('coins', 10);
+    // =================================================================
+    // STEP 1: マネージャー取得と永続データの準備
+    // =================================================================
+    this.stateManager = this.sys.registry.get('stateManager');
+    this.soundManager = this.sys.registry.get('soundManager');
+    this.tooltip = new Tooltip(this);
 
-// --- 1b. 戦闘パラメータを決定 ---
-const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
-const inheritedPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : basePlayerMaxHp;
-const round = this.stateManager.sf.round;
-this.initialBattleParams = { playerMaxHp: basePlayerMaxHp, playerHp: inheritedPlayerHp, round: round };
-
-// --- 1c. ゲームオーバー判定 ---
-if (inheritedPlayerHp <= 0) {
-    this.add.text(this.scale.width/2, this.scale.height/2, 'GAME OVER', {fontSize: '64px', fill: '#f00'}).setOrigin(0.5);
-    this.handleGameOver();
-    return;
-}
-
-
-        // =================================================================
-        // STEP 2: シーンのプロパティ初期化
-        // =================================================================
-        this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
-        this.finalizedPlayerItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
-// ★★★ ここからが修正箇所 ★★★
-this.playerStats = { block: [] }; // blockを空の配列として初期化
-this.enemyStats = { block: [] };  // 敵側も同様
-// ★★★ 修正箇所ここまで ★★★
-
-        this.battleEnded = false; this.gameState = 'prepare';
-        this.cameras.main.setBackgroundColor('#8a2be2');
-
-        // =================================================================
-        // STEP 3: グローバルな状態設定と基本描画
-        // =================================================================
-        this.soundManager.playBgm('ronpa_bgm');
-        this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
-        this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
-        // in create()
-// ...
-const enemyBaseHp = 100;
-const enemyRoundBonus = (this.initialBattleParams.round - 1) * 20;
-const enemyFinalHp = enemyBaseHp + enemyRoundBonus;
-
-this.stateManager.setF('enemy_max_hp', enemyFinalHp); 
-this.stateManager.setF('enemy_hp', enemyFinalHp);
-        
-        // --- 3a. 盤面レイアウトの計算と描画
-        const gameWidth = this.scale.width;
-        const gameHeight = this.scale.height;
-        const gridWidth = this.backpackGridSize * this.cellSize;
-        const gridHeight = this.backpackGridSize * this.cellSize;
-        this.gridX = 100;
-        this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
-        this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
-        this.prepareContainer = this.add.container(0, 0);
-        this.ghostImage = this.add.graphics({
-    fillStyle: { color: 0x00ff00, alpha: 0.5 }
-}).setVisible(false).setDepth(5);
-
-        // --- 3b. グリッドとアバターの描画
-        this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2); } // prettier-ignore
-        this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = this.gridY;
-        this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); } // prettier-ignore
-        this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
-        const maxAvatarHeight = gridHeight * 0.8;
-        [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
-
-        // in create()
-// ...
-// --- 3c. 敵アイテムの配置 ---
-this.currentEnemyLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round); // ★ここで一度だけ生成
-this.setupEnemy(this.gridY, this.currentEnemyLayout); // ★引数として渡す
-// =================================================================
-// STEP 4: プレイヤーデータの復元と描画
-// =================================================================
-// --- 4a. バックパックのアイテムを復元
-for (const uid in this.stateManager.sf.player_backpack) {
-    const itemInfo = this.stateManager.sf.player_backpack[uid];
-    const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
-    if (itemContainer) {
-        itemContainer.setData('rotation', itemInfo.rotation);
-        itemContainer.setAngle(itemInfo.rotation);
-        this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
+    // --- 1a. StateManagerからplayer_dataを取得（なければ初期化） ---
+    if (this.stateManager.sf.player_data === undefined) {
+        const defaultPlayerData = {
+            coins: 10,
+            round: 1,
+            wins: 0,
+            avatar: { base_max_hp: 100, current_hp: 100 },
+            backpack: {},
+            inventory: ['sword', 'shield', 'potion']
+        };
+        this.stateManager.setSF('player_data', defaultPlayerData);
     }
-}
-// --- 4b. インベントリの描画とアイテム復元
-const inventoryAreaY = 480;
-const inventoryAreaHeight = gameHeight - inventoryAreaY;
-const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
-const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
-this.prepareContainer.add([invBg, invText]);
+    // 古いセーブデータとの互換性のため（細かいプロパティがない場合に追加）
+    const playerData = this.stateManager.sf.player_data;
+    if (playerData.avatar === undefined) playerData.avatar = { base_max_hp: 100, current_hp: 100 };
+    if (playerData.wins === undefined) playerData.wins = 0;
+    
+    // --- 1b. 戦闘パラメータを決定 ---
+    this.initialBattleParams = {
+        playerMaxHp: playerData.avatar.base_max_hp,
+        playerHp: playerData.avatar.current_hp,
+        round: playerData.round
+    };
 
-const inventoryContentWidth = gameWidth - 200; // ★この行が重要です★
+    // --- 1c. ゲームオーバー判定 ---
+    if (this.initialBattleParams.playerHp <= 0) {
+        this.add.text(this.scale.width/2, this.scale.height/2, 'GAME OVER', {fontSize: '64px', fill: '#f00'}).setOrigin(0.5);
+        this.goToScoreScene();
+        return;
+    }
 
-const inventoryCount = this.stateManager.sf.player_inventory.length;
-const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
-const itemStartX = 100 + (itemSpacing / 2);
+    // =================================================================
+    // STEP 2: シーンのプロパティ初期化
+    // =================================================================
+    this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
+    this.finalizedPlayerItems = []; this.finalizedEnemyItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
+    this.playerStats = { block: [] }; this.enemyStats = { block: [] };
+    this.battleEnded = false; this.gameState = 'prepare';
+    this.roundStartState = null; this.shopContainer = null; this.shopItemSlots = []; this.isShopVisible = false;
 
-this.stateManager.sf.player_inventory.forEach((itemId, index) => {
-    const x = itemStartX + (index * itemSpacing);
-    const y = inventoryAreaY + inventoryAreaHeight / 2;
-    const itemContainer = this.createItem(itemId, x, y);
-    if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
-});
+    // =================================================================
+    // STEP 3: グローバルな状態設定と基本描画
+    // =================================================================
+    const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
+    const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
+    this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey).setDisplaySize(this.scale.width, this.scale.height).setDepth(-1);
+
+    this.soundManager.playBgm('ronpa_bgm');
+    this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
+    this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
+    const enemyBaseHp = 100 + (this.initialBattleParams.round - 1) * 20;
+    this.stateManager.setF('enemy_max_hp', enemyBaseHp);
+    this.stateManager.setF('enemy_hp', enemyBaseHp);
+    
+    // --- 盤面、アバター、敵の描画 ---
+    // (この部分はあなたのコードから変更ありませんので、省略せずそのまま記述しています)
+    const gameWidth = this.scale.width;
+    const gameHeight = this.scale.height;
+    const gridWidth = this.backpackGridSize * this.cellSize;
+    const gridHeight = this.backpackGridSize * this.cellSize;
+    this.gridX = 100;
+    this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
+    this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
+    this.prepareContainer = this.add.container(0, 0);
+    this.ghostImage = this.add.graphics({ fillStyle: { color: 0x00ff00, alpha: 0.5 } }).setVisible(false).setDepth(5);
+    this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
+    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,this.gridX,this.gridY+i*this.cellSize,this.gridX+gridWidth,this.gridY+i*this.cellSize,0x666666,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,this.gridX+i*this.cellSize,this.gridY,this.gridX+i*this.cellSize,this.gridY+gridHeight,0x666666,0.5).setOrigin(0).setDepth(2); }
+    this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
+    const enemyGridX = gameWidth - 100 - gridWidth;
+    this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
+    for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0,0,enemyGridX,this.gridY+i*this.cellSize,enemyGridX+gridWidth,this.gridY+i*this.cellSize,0x888888,0.5).setOrigin(0).setDepth(2); this.add.line(0,0,enemyGridX+i*this.cellSize,this.gridY,enemyGridX+i*this.cellSize,this.gridY+gridHeight,0x888888,0.5).setOrigin(0).setDepth(2); }
+    this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
+    const maxAvatarHeight = gridHeight * 0.8;
+    [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
+    this.currentEnemyLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+    this.setupEnemy(this.gridY, this.currentEnemyLayout);
+
+    // =================================================================
+    // STEP 4: プレイヤーデータの復元と描画
+    // =================================================================
+    for (const uid in playerData.backpack) {
+        const itemInfo = playerData.backpack[uid];
+        const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
+        if (itemContainer) { itemContainer.setData('rotation', itemInfo.rotation); itemContainer.setAngle(itemInfo.rotation); this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row); }
+    }
+    const inventoryAreaY = 480;
+    const inventoryAreaHeight = gameHeight - inventoryAreaY;
+    const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
+    const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+    this.prepareContainer.add([invBg, invText]);
+    const inventoryContentWidth = gameWidth - 200;
+    const inventoryCount = playerData.inventory.length;
+    const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
+    const itemStartX = 100 + (itemSpacing / 2);
+    playerData.inventory.forEach((itemId, index) => {
+        const x = itemStartX + (index * itemSpacing);
+        const y = inventoryAreaY + inventoryAreaHeight / 2;
+        const itemContainer = this.createItem(itemId, x, y);
+        if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
+    });
 
         // =================================================================
         // ★★★ STEP 4.5: ショップのセットアップ ★★★
