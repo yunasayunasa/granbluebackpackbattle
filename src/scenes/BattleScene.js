@@ -2589,7 +2589,7 @@ playFinishBlowEffects(targetAvatar) {
 
         // 1. 全てのデータをリセット
         this.stateManager.setSF('player_backpack', {});
-        this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+        this.stateManager.setSF('player_inventory', ['sword', 'slime', 'potion']);
         this.stateManager.setSF('round', 1);
         this.stateManager.setSF('coins', 0); // ★コインを0にリセットし、HUD更新をトリガー
 
