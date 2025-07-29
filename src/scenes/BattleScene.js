@@ -108,27 +108,49 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
 
         // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
 
-        // ★★★ このブロックを以下のように変更 ★★★
-
-        if (this.stateManager.sf.player_backpack === undefined) {
-            this.stateManager.setSF('player_backpack', {});
-        }
-        if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-        }
+          // --- 1a. StateManagerからプレイヤーデータを取得（なければ初期化）
         
-        // 【新規追加】プレイヤープロファイルがなければ初期化
+        // ★★★ このブロックを全面的に書き換え ★★★
+
+        // プレイヤープロファイルがなければ初期化 (これは初回起動時のみ)
         if (this.stateManager.sf.player_profile === undefined) {
             console.log("新規プレイヤープロファイルを作成します。");
             this.stateManager.setSF('player_profile', {
-                totalExp: 0,
-                rank: "駆け出し", // 初期ランク
-                highScore: 0,
-                totalWins: 0
+                totalExp: 0, rank: "駆け出し", highScore: 0, totalWins: 0
             });
         }
         
-        // ★★★ 変更ここまで ★★★
+        // ★ご提案のロジック★
+        // backpackデータがない場合を「新しいゲームの開始」と判断する
+        if (this.stateManager.sf.player_backpack === undefined || Object.keys(this.stateManager.sf.player_backpack).length === 0 && (!this.stateManager.sf.player_inventory || this.stateManager.sf.player_inventory.length === 0)) {
+            console.log("BattleScene: 有効なバックパック/インベントリデータなし。新規ゲームとして初期化します。");
+
+            // 1. コモン(rarity:1)のアイテムプールを作成
+            const commonPool = [];
+            for (const id in ITEM_DATA) {
+                // costがあり、rarityが1のアイテムのみを候補とする
+                if (ITEM_DATA[id].cost && ITEM_DATA[id].rarity === 1) {
+                    commonPool.push(id);
+                }
+            }
+
+            // 2. プールからランダムに1つ選ぶ
+            const startItem = commonPool.length > 0 ? Phaser.Utils.Array.GetRandom(commonPool) : 'sword'; // プールが空の場合の安全策
+            const startCoins = 20;
+
+            console.log(`初期アイテム: ${startItem}, 初期コイン: ${startCoins}`);
+
+            // 3. StateManagerのsf変数を設定
+            this.stateManager.setSF('player_backpack', {});
+            this.stateManager.setSF('player_inventory', [startItem]);
+            this.stateManager.setSF('round', 1);
+            this.stateManager.setSF('coins', startCoins);
+            this.stateManager.setSF('player_base_max_hp', 100);
+
+            // f変数もクリア
+            this.stateManager.f = {};
+        }
+
 
         const backpackData = this.stateManager.sf.player_backpack;
         const inventoryData = this.stateManager.sf.player_inventory;
