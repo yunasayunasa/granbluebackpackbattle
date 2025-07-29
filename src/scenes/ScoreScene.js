@@ -20,7 +20,7 @@ export default class ScoreScene extends Phaser.Scene {
 
         // --- 1. 背景とBGM設定 ---
         this.cameras.main.setBackgroundColor('#1a1a1a');
-      //  this.soundManager.playBgm('result_music'); // 仮の結果発表BGM
+        this.soundManager.playBgm('result_music'); // 仮の結果発表BGM
 
         // --- 2. スコア計算ロジック ---
         const finalRound = this.receivedData.finalRound || 1;
@@ -46,8 +46,7 @@ export default class ScoreScene extends Phaser.Scene {
         }
         profile.highScore = Math.max(oldHighScore, score);
 
-        // ランク判定（仮）
-        // このテーブルは後で自由に調整できます
+        // ランク判定テーブル
         const rankTable = [
             { exp: 0,    rank: "駆け出し" },
             { exp: 100,  rank: "ブロンズ" },
@@ -65,14 +64,13 @@ export default class ScoreScene extends Phaser.Scene {
         }
         profile.rank = newRank;
 
-        // ★★★ StateManagerに更新後のプロファイルを保存 ★★★
+        // StateManagerに更新後のプロファイルを保存
         this.stateManager.setSF('player_profile', profile);
 
         // --- 4. 結果表示UIの作成 ---
         const titleText = (result === 'clear') ? 'GAME CLEAR' : 'GAME OVER';
         this.add.text(this.scale.width / 2, 80, titleText, { fontSize: '60px', fill: '#e0e0e0' }).setOrigin(0.5);
 
-        // 表示用のテキストを作成
         const resultLines = [
             `到達ラウンド: ${finalRound}`,
             `獲得スコア: ${score}`,
@@ -80,7 +78,7 @@ export default class ScoreScene extends Phaser.Scene {
             `---`,
             `獲得経験値: ${expGained}`,
             `累計経験値: ${profile.totalExp}`,
-            `ランク: ${oldRank} → ${newRank} ${newRank !== oldRank ? '(Rank Up!)' : ''}`
+            `ランク: ${oldRank} ${newRank !== oldRank ? '→ ' + newRank + ' (Rank Up!)' : ''}`
         ];
 
         resultLines.forEach((line, index) => {
@@ -93,22 +91,18 @@ export default class ScoreScene extends Phaser.Scene {
         }).setOrigin(0.5).setInteractive();
 
         titleButton.on('pointerdown', () => {
-            console.log("ScoreScene: Returning to TitleScene.");
-            
-            // ★重要★ 次の挑戦のために、プロファイル以外のsf変数をリセットする
-            this.stateManager.setSF('player_backpack', {});
-            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-            this.stateManager.setSF('round', 1);
-            this.stateManager.setSF('coins', 0);
-            this.stateManager.setSF('player_base_max_hp', 100);
+            console.log("ScoreScene: Requesting a fresh start from Title screen (title.ks).");
+            titleButton.disableInteractive();
 
-            // f変数もリセット
-            this.stateManager.f = {};
-
-            // TitleSceneへ遷移
+            // [jump storage="GameScene" params="{storage:'title.ks'}"] と同じ効果を
+            // request-scene-transition イベントで実現する。
+            // これにより、既存のシーンを停止し、新しいGameSceneを起動する。
             this.scene.get('SystemScene').events.emit('request-scene-transition', {
-                to: 'TitleScene', // TitleSceneを後で作成します
-                from: this.scene.key
+                to: 'GameScene',
+                from: this.scene.key,
+                params: {
+                    storage: 'title.ks' // GameSceneのinitが解釈するパラメータ
+                }
             });
         });
         
