@@ -1670,14 +1670,25 @@ recastOverlay.setFlipX(true);; // 画像を水平方向に反転させる
                 }
 
                 // Synergy
-                if (baseItemData.synergy) {
-                    tooltipText += `\nシナジー:\n`;
-                    const dir = t(baseItemData.synergy.direction);
-                    const effect = baseItemData.synergy.effect;
-                    const effectType = t(effect.type);
-                    tooltipText += `  - ${dir}の味方に\n`;
-                    tooltipText += `    効果: ${effectType} +${effect.value}\n`;
-                }
+                if (baseItemData.synergy) { // or itemData.synergy
+    tooltipText += `\nシナジー:\n`;
+    const dir = t(baseItemData.synergy.direction);
+    
+    // effectが配列でなければ、配列に変換して処理を共通化
+    const effects = Array.isArray(baseItemData.synergy.effect) 
+        ? baseItemData.synergy.effect 
+        : [baseItemData.synergy.effect];
+    
+    // 最初の効果の方向を表示
+    tooltipText += `  - ${dir}の味方に\n`;
+    
+    // 配列の各効果をループして表示
+    effects.forEach(effect => {
+        const effectType = t(effect.type);
+        const sign = effect.value > 0 ? '+' : ''; // プラスマイナス記号を付ける
+        tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
+    });
+}
 
 
                 // --- ★★★ ツールチップ生成ロジック End ★★★ ---
