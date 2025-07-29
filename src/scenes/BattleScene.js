@@ -672,7 +672,7 @@ update(time, delta) {
         }
         
         if (remaining <= 0) {
-            this.onTimeUp(); // タイムアップ処理を呼び出す
+            this.onTimerUpdate(); // タイムアップ処理を呼び出す
         }
     }
     // ★★★ タイマー処理ここまで ★★★
