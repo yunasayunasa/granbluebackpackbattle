@@ -52,6 +52,7 @@ export const ITEM_DATA = {
     'anila': {
         storage: 'char_anila',
         shape: [[1, 0], [1, 1]],
+        shapeType: 'L字型', 
         size: { w: 2, h: 2 },
         tags: ["support", "fire"],
         cost: 28,
@@ -372,6 +373,7 @@ export const ITEM_DATA = {
     'tico': {
         storage: 'char_tico',
         shape: [[0, 1], [1, 1]],
+        shapeType: '逆L字型', 
         size: { w: 2, h: 2 },
         tags: ["support", "light"],
         cost: 28,
@@ -425,7 +427,8 @@ export const ITEM_DATA = {
     },
     'fediel': {
         storage: 'char_fediel',
-        shape: [[1, 1], [0, 1]],
+        shape: [[0, 1], [1, 1]],
+        shapeType: '逆L字型', 
  size: { w: 2, h: 2 },
         tags: ["dragon", "dark"],
         cost: 36,
