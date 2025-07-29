@@ -75,6 +75,7 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         this.shopContainer = null;      // ★ショップUI全体をまとめるコンテナ
         this.shopItemSlots = [];        // ★商品のスロット（カード）を保持する配列
         this.isShopVisible = false;
+        this.isTimeUp = false;
         this.currentEnemyLayout = null;
     }
 
@@ -82,6 +83,7 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
     // BattleScene.js の init をこのシンプルなバージョンに置き換えてください
     init(data) {
         this.enemyItemImages = [];
+        this.isTimeUp = false;
         // データ受け渡しに起因するバグをなくすため、ここでは何もしない。
         // 全ての初期化は create で行う。
         console.log("BattleScene: init (空)");
@@ -712,10 +714,18 @@ const now = this.time.now;
         }
         
         // 残り時間が0以下になったら、タイムアップ処理を呼び出す
-        if (remainingSeconds <= 0) {
-            this.onTimeUp();
-        }
+           if (remainingSeconds <= 0 && !this.isTimeUp) {
+        // ★★★ ここからが修正箇所 ★★★
+        console.log("Time is up! Scheduling final judgment.");
+        
+        // 1. タイムアップフラグを立て、二重実行を防ぐ
+        this.isTimeUp = true;
+        
+        // 2. onTimeUpメソッドを、少し遅らせて実行する
+        this.time.delayedCall(500, this.onTimeUp, [], this); // 0.5秒後に判定
+        // ★★★ 修正箇所ここまで ★★★
     }
+}
     // ★★★ タイマー処理ここまで ★★★
     // --- プレイヤーの期限切れブロックを削除 ---
     // ★★★ ここからが修正箇所 ★★★
