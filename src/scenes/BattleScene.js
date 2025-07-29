@@ -646,7 +646,7 @@ calculateFinalBattleState(initialItems, initialStats) {
 }// startBattle メソッドを、この setDepth を追加したバージョンに置き換えてください
 
 startBattle() {
-    console.log("★★ 戦闘開始！ ★★");
+    console.log("★★は 戦闘開始！ ★★");
     
     // 戦闘開始時刻を記録
     this.battleStartTime = this.time.now;
@@ -698,7 +698,7 @@ onTimeUp() {
    update(time, delta) {
     // 戦闘中でなければ何もしない
     if (this.gameState !== 'battle') return;
-
+const now = this.time.now;
     // --- タイムアップ処理 ---
     if (this.battleStartTime) {
         // 経過時間(秒)を計算
