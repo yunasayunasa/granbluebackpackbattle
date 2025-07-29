@@ -1688,7 +1688,7 @@ recastOverlay.setFlipX(true);; // 画像を水平方向に反転させる
         const sign = effect.value > 0 ? '+' : ''; // プラスマイナス記号を付ける
         tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
     });
-}
+
 
 
                 // --- ★★★ ツールチップ生成ロジック End ★★★ ---
