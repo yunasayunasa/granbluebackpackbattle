@@ -39,6 +39,12 @@ export default class BattleScene extends Phaser.Scene {
     constructor() {
         super('BattleScene');
         // --- プロパティの初期化 ---
+        // in constructor()
+// ...
+this.battleTimer = null;         // ★タイマーイベントの参照を保持
+this.battleTimerText = null;     // ★残り時間を表示するテキストオブジェクト
+this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
+// ...
         this.receivedParams = null;
         this.stateManager = null;
         this.soundManager = null;
@@ -638,16 +644,38 @@ calculateFinalBattleState(initialItems, initialStats) {
     activatedResonances: activatedResonances
 };
 }
-    startBattle() {
-        console.log("★★ 戦闘開始！ ★★");
+   startBattle() {
+    console.log("★★ 戦闘開始！ ★★");
+    this.battleStartTime = this.time.now; // ★戦闘開始時刻を記録
+    this.battleTimerText = this.add.text(this.scale.width/2, 50, `TIME: ${this.maxBattleDuration}`, { /*...*/ });
+}
+    onTimerUpdate() {
+    const elapsed = this.mainTimer.getElapsedSeconds();
+    const remaining = this.maxBattleDuration - elapsed;
+    if (this.battleTimerText && remaining >= 0) {
+        this.battleTimerText.setText(`TIME: ${Math.ceil(remaining)}`);
     }
-    // BattleScene.js の update をこれに置き換え
+}
+// BattleScene.js の update をこれに置き換え
     // BattleScene.js の update をこれに置き換え
    
 update(time, delta) {
     if (this.gameState !== 'battle') return;
     const now = this.time.now;
-
+  // ★★★ ここからがタイマー処理 ★★★
+    if (this.battleStartTime) {
+        const elapsed = (this.time.now - this.battleStartTime) / 1000;
+        const remaining = this.maxBattleDuration - elapsed;
+        
+        if (this.battleTimerText) {
+            this.battleTimerText.setText(`TIME: ${Math.max(0, Math.ceil(remaining))}`);
+        }
+        
+        if (remaining <= 0) {
+            this.onTimeUp(); // タイムアップ処理を呼び出す
+        }
+    }
+    // ★★★ タイマー処理ここまで ★★★
     // --- プレイヤーの期限切れブロックを削除 ---
     // ★★★ ここからが修正箇所 ★★★
     if (this.playerStats.block && Array.isArray(this.playerStats.block)) {
@@ -2495,7 +2523,8 @@ this.stateManager.setF('player_hp', this.playerStats.hp);
             this.scene.start('BattleScene');
         }, [], this);
     }
-    shutdown() {
-        console.log("BattleScene: shutdown されました。");
+  if (this.battleTimerText) {
+        this.battleTimerText.destroy();
+        this.battleTimerText = null;
     }
 }
