@@ -2265,51 +2265,42 @@ updateArrowVisibility(itemContainer) {
             const buyButtonBg = this.add.rectangle(0, 90, 100, 40, 0x3399ff).setStrokeStyle(2, 0xffffff).setName('buyButtonBg');
             const buyButtonText = this.add.text(0, 90, '購入', { fontSize: '22px', fill: '#fff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setName('buyButtonText');
 
-            slotContainer.add([itemImage, nameText, costText, buyButtonBg, buyButtonText]);
-            const currentCoins = this.stateManager.sf.coins || 0;
-            if (currentCoins < itemData.cost) {
-                buyButtonText.setText('コイン不足');
-                buyButtonBg.setFillStyle(0x888888);
-                slotContainer.setData('canBuy', false);
-            } else {
-                slotContainer.setData('canBuy', true);
-            }
-
-
-            // --- 入力処理をコンテナに集約 ---
-            slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
-                event.stopPropagation();
-                this.tooltip.hide();
-
-            // 購入ボタンの領域（Y座標が60より下）がクリックされたか判定
-    if (localY > 60) {
-        // canBuyフラグがない、またはfalseなら処理を中断
-        if (slotContainer.getData('canBuy') !== true) return;
-
-        // ★★★ ここからが「積極的オートセーブ」のロジック ★★★
+           // --- 1. playerDataから現在のコインを取得 ---
+        const currentCoins = this.stateManager.sf.player_data.coins || 0;
         
-        // 1. 更新後のデータをまず変数に用意する
-        const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
-        const newInventory = [...this.stateManager.sf.player_inventory, itemId];
-
-        // 2. StateManagerのsf変数を「まとめて」更新して自動保存
-        this.stateManager.setSF('coins', newCoins);
-        this.stateManager.setSF('player_inventory', newInventory);
-        
-        // ★★★ オートセーブここまで ★★★
-
-        // 3. 画面上のインベントリにもアイテムを追加
-        const newItemContainer = this.createItem(itemId, -100, -100);
-        if (newItemContainer) {
-            this.inventoryItemImages.push(newItemContainer);
-            this.updateInventoryLayout();
+        if (currentCoins < itemData.cost) {
+            buyButtonText.setText('コイン不足');
+            buyButtonBg.setFillStyle(0x888888);
+            slotContainer.setData('canBuy', false);
+        } else {
+            slotContainer.setData('canBuy', true);
         }
-        
-        // 4. 購入済み表示 & インタラクション無効化
-        buyButtonText.setText('購入済み');
-        buyButtonBg.setFillStyle(0x555555);
-        slotContainer.removeInteractive(); // スロット全体を無効化
-        
+
+        slotContainer.on('pointerdown', (pointer, localX, localY, event) => {
+            event.stopPropagation();
+            this.tooltip.hide();
+
+            if (localY > 60) {
+                if (slotContainer.getData('canBuy') !== true) return;
+                
+                // --- 2. playerDataを更新して、丸ごと保存 ---
+                const playerData = this.stateManager.sf.player_data;
+                
+                playerData.coins -= itemData.cost;
+                playerData.inventory.push(itemId);
+                
+                this.stateManager.setSF('player_data', playerData);
+                
+                // --- 3. 画面上のインベントリも更新 ---
+                const newItemContainer = this.createItem(itemId, -100, -100);
+                if (newItemContainer) {
+                    this.inventoryItemImages.push(newItemContainer);
+                    this.updateInventoryLayout();
+                }
+                
+                buyButtonText.setText('購入済み');
+                buyButtonBg.setFillStyle(0x555555);
+                slotContainer.removeInteractive();
         // 5. 他の商品の購入可否も更新する
         this.updateShopButtons();
 
