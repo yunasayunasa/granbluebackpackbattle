@@ -51,7 +51,7 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         this.receivedParams = null;
         this.stateManager = null;
         this.soundManager = null;
-        this.backpackGridSize = 6;
+       // this.backpackGridSize = 6;
         this.cellSize = 60;
         this.gridX = 0;
         this.gridY = 0;
@@ -137,7 +137,12 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
 
         // --- 1b. 戦闘パラメータを決定 ---
 // ★★★ ここからが修正箇所 ★★★
-
+  // ★★★ このブロックをここに追加 ★★★
+        if (this.stateManager.sf.player_grid_size === undefined) {
+            this.stateManager.setSF('player_grid_size', 4); // ★初期グリッドサイズを5x5に設定
+        }
+        this.backpackGridSize = this.stateManager.sf.player_grid_size;
+        // ★★★ 追加ここまで ★★★
 // 1. 素の最大HPをsf変数で管理（なければ初期化）
 if (this.stateManager.sf.player_base_max_hp === undefined) {
     this.stateManager.setSF('player_base_max_hp', 100);
@@ -211,24 +216,50 @@ const enemyFinalHp = enemyBaseHp + enemyRoundBonus;
 this.stateManager.setF('enemy_max_hp', enemyFinalHp); 
 this.stateManager.setF('enemy_hp', enemyFinalHp);
         
-        // --- 3a. 盤面レイアウトの計算と描画
+          // --- 3a. 盤面レイアウトの計算と描画 ---
         const gameWidth = this.scale.width;
         const gameHeight = this.scale.height;
-        const gridWidth = this.backpackGridSize * this.cellSize;
-        const gridHeight = this.backpackGridSize * this.cellSize;
+        
+        // ★★★ このブロックを全面的に修正 ★★★
+        
+        // --- プレイヤーグリッドのサイズと位置を計算 ---
+        const playerGridSize = this.backpackGridSize; // sfから読み込んだ値
+        const playerGridWidth = playerGridSize * this.cellSize;
+        const playerGridHeight = playerGridSize * this.cellSize;
         this.gridX = 100;
-        this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
-        this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
+        this.gridY = gameHeight / 2 - playerGridHeight / 2 - 50;
+
+        // --- 敵グリッドのサイズと位置を計算 ---
+        const enemyGridSize = 6; // ★敵のグリッドサイズは6x6で固定
+        const enemyGridWidth = enemyGridSize * this.cellSize;
+        const enemyGridHeight = enemyGridSize * this.cellSize;
+        const enemyGridX = gameWidth - 100 - enemyGridWidth;
+        const enemyGridY = this.gridY; // Y座標はプレイヤーに合わせる
+
+        // --- プレイヤーグリッドの描画 ---
+        this.backpack = Array(playerGridSize).fill(null).map(() => Array(playerGridSize).fill(0));
         this.prepareContainer = this.add.container(0, 0);
         this.ghostImage = this.add.graphics({ fillStyle: { color: 0x00ff00, alpha: 0.5 } }).setVisible(false).setDepth(5);
-        this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2); }
-        this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); }
-        this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
-
+        this.add.rectangle(this.gridX + playerGridWidth / 2, this.gridY + playerGridHeight / 2, playerGridWidth, playerGridHeight, 0x333333, 0.9).setDepth(1);
+        for (let i = 0; i <= playerGridSize; i++) {
+            this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + playerGridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2);
+            this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + playerGridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2);
+        }
+        
+        // --- プレイヤーアバターの描画 ---
+        this.playerAvatar = this.add.sprite(this.gridX + playerGridWidth + 80, this.gridY + playerGridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
+        
+        // --- 敵グリッドの描画 ---
+        this.add.rectangle(enemyGridX + enemyGridWidth / 2, enemyGridY + enemyGridHeight / 2, enemyGridWidth, enemyGridHeight, 0x500000, 0.9).setDepth(1);
+        for (let i = 0; i <= enemyGridSize; i++) {
+            this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + enemyGridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2);
+            this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + enemyGridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2);
+        }
+        
+        // --- 敵アバターの描画 ---
+        this.enemyAvatar = this.add.sprite(enemyGridX - 80, enemyGridY + enemyGridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
+        
+        // ★★★ 修正ここまで ★★★
         // ★★★【変更点】敵の生成とアバター設定ロジック ★★★
         const enemyData = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
         this.currentEnemyLayout = enemyData.layout;
