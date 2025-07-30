@@ -16,6 +16,7 @@ export default class GameClearScene extends Phaser.Scene {
     }
 
     create() {
+        this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("GameClearScene: create");
 
         this.stateManager = this.sys.registry.get('stateManager');
