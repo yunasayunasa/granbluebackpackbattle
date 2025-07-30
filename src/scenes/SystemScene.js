@@ -27,7 +27,7 @@ export default class SystemScene extends Phaser.Scene {
         this.transitionWipe = this.add.rectangle(width * 1.5, height / 2, width, height, 0x000000)
             .setDepth(10000)
             .setScrollFactor(0);
-        
+        this.transitionWipe.setInteractive(false); 
         // ★★★ 暗幕を最初は非表示にしておく ★★★
         this.transitionWipe.setVisible(false);
 
