@@ -1315,12 +1315,17 @@ endBattle(result) {
         retryButton.disableInteractive();
 
         // ScoreSceneに渡すデータを準備
+         // ★★★ このオブジェクトの構造を修正 ★★★
         const payload = {
             to: 'ScoreScene',
             from: this.scene.key,
-            result: 'lose', // 'lose' という結果を渡す
-            finalRound: this.stateManager.sf.round || 1 // 現在のラウンド数を渡す
+            // ScoreSceneに渡したいデータを 'params' オブジェクトにまとめる
+            params: {
+                result: 'lose',
+                finalRound: this.stateManager.sf.round || 1
+            }
         };
+        // ★★★ 修正ここまで ★★★
         // SystemSceneに遷移を依頼
         this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
     });
