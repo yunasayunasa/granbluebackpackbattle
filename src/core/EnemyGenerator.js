@@ -22,24 +22,21 @@ const REPRESENTATIVES = {
     wind: 'veirne', light: 'funf', dark: 'six'
 };
 
-// ★★★【変更点1】ランダムアバターの候補リストを定義 ★★★
+// ★★★ ランダムアバターの候補リストを定義 ★★★
 const RANDOM_AVATAR_POOL = [
     'avatar_angel', 
     'avatar_demon', 
     'avatar_adventurer',
-    // ここに、ラウンド2-4でランダムに出したいアバターのアセットキーを自由に追加できます
 ];
 
 // STEP 3: テーマの定義
 const THEMES = {
-    // ラウンド2-4用のテーマは avatar プロパティを持たない
+    // ★★★【案Aの仕様】混合テーマのみアバター指定なし ★★★
     'mixed_elements':    { pools: ['fire', 'wind', 'earth', 'neutral'] }, 
     
-    // ★★★【変更点】ライトとダークにも固定アバターを指定 ★★★
+    // 他のテーマは全て固定アバターを指定
     'light_specialized': { pools: ['light', 'neutral'], avatar: 'avatar_funf' }, 
     'dark_specialized':  { pools: ['dark', 'neutral'],  avatar: 'avatar_demon_lord' },
-
-    // 他の固定アバターのテーマは変更なし
     'fire_specialized':  { pools: ['fire', 'neutral'],  boss: REPRESENTATIVES.fire, avatar: 'avatar_perceval' },
     'water_specialized': { pools: ['water', 'neutral'], boss: REPRESENTATIVES.water, avatar: 'avatar_lancelot' },
     'earth_specialized': { pools: ['earth', 'neutral'], boss: REPRESENTATIVES.earth, avatar: 'avatar_siegfried' },
@@ -48,7 +45,7 @@ const THEMES = {
     'final_battle':      { pools: ['fire', 'water', 'earth', 'wind'], boss: REPRESENTATIVES.dark, avatar: 'avatar_six' }
 };
 
-// STEP 4: ラウンドごとのルール定義 (敵ランダム化の修正も含む)
+// STEP 4: ラウンドごとのルール定義
 const ROUND_RULES = {
     1: { themePool: ['tutorial'], budget: 30, count: Phaser.Math.Between(1, 2) },
     2: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 50, count: 3 },
@@ -138,14 +135,13 @@ export const EnemyGenerator = {
 
         console.log("[EnemyGenerator] Final Intelligent Layout:", layout);
         
-        // ★★★【変更点3】アバター決定ロジック ★★★
+        // ★★★ アバター決定ロジック（変更なしで案Aに対応） ★★★
         let selectedAvatar = theme.avatar;
         if (!selectedAvatar && RANDOM_AVATAR_POOL.length > 0) {
             selectedAvatar = Phaser.Utils.Array.GetRandom(RANDOM_AVATAR_POOL);
             console.log(`%c[EnemyGenerator] No fixed avatar. Selected a random avatar: "${selectedAvatar}"`, "color: cyan;");
         }
         
-        // ★★★【変更点4】戻り値の形式を変更 ★★★
         return {
             layout: layout,
             avatar: selectedAvatar
