@@ -59,6 +59,7 @@ export default class BattleScene extends Phaser.Scene {
         this.isShopVisible = false;
         this.isTimeUp = false;
         this.currentEnemyLayout = null;
+        this.transitionWipe = null;
     }
 
     init(data) {
@@ -68,7 +69,6 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     create() {
-        this.cameras.main.fadeIn(250, 0, 0, 0);
         console.log("BattleScene: create - データ永続化対応版 (sf)");
         const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
         const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
@@ -262,7 +262,10 @@ export default class BattleScene extends Phaser.Scene {
         this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
         this.anims.create({ key: 'impact_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }), frameRate: 24, repeat: 0 });
         this.anims.create({ key: 'finish_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 15 }), frameRate: 30, repeat: 0 });
-        
+        const { width, height } = this.scale;
+    this.transitionWipe = this.add.rectangle(width * 1.5, height / 2, width, height, 0x000000)
+        .setDepth(10000)
+        .setScrollFactor(0);
         this.events.emit('scene-ready');
         console.log("BattleScene: create 完了");
     }
