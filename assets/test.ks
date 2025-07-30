@@ -22,7 +22,7 @@
 ; f変数もクリア (HUD表示等に影響するため)
 
 [eval exp="sf.player_backpack = {}"]
-[eval exp="sf.player_inventory = ['sword', 'shield', 'potion']"]
+[eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
 [eval exp="sf.round = 1"]
 [eval exp="sf.coins = 20"]
 [eval exp="sf.player_base_max_hp = 100"]
