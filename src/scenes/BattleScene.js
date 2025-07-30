@@ -193,7 +193,13 @@ this.enemyStats = { block: [] };  // 敵側も同様
         // =================================================================
         // STEP 3: グローバルな状態設定と基本描画
         // =================================================================
-        this.soundManager.playBgm('ronpa_bgm');
+              const battleBgmKey = 'ronpa_bgm'; // 再生したいBGMのキー
+
+        // SoundManagerに現在再生中のBGMキーを問い合わせ、違う場合のみ再生する
+        // (同じ曲が既に流れていれば、何もしない)
+        if (this.soundManager.currentBgmKey !== battleBgmKey) {
+            this.soundManager.playBgm(battleBgmKey);
+        }
         this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
         this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
         // in create()
