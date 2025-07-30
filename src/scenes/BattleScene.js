@@ -2245,7 +2245,15 @@ updateArrowVisibility(itemContainer) {
             const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
             selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
         }
+   // --- 4.5. グリッド拡張アイテムを追加するか判定 ---
+        const currentGridSize = this.stateManager.sf.player_grid_size;
+        const maxGridSize = 8; // グリッドの最大サイズを定義 (例: 8x8)
 
+        // 現在のグリッドが最大でなく、かつラウンドが3の倍数の時などに表示
+        if (currentGridSize < maxGridSize && (this.initialBattleParams.round % 3 === 0)) {
+            // 特別なアイテムIDとして 'upgrade_grid' を使う
+            selectedItems.unshift('upgrade_grid'); // 配列の先頭に追加
+        }
         // --- 5. 商品スロットをUIに生成 ---
         const shopContentWidth = gameWidth - 200;
         const itemSpacing = shopContentWidth / slotCount;
@@ -2254,7 +2262,22 @@ updateArrowVisibility(itemContainer) {
         selectedItems.forEach((itemId, index) => {
             const x = itemStartX + (index * itemSpacing);
             const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
-            const itemData = ITEM_DATA[itemId];
+               // ★★★ この if-else ブロックを追加 ★★★
+            let itemData;
+            if (itemId === 'upgrade_grid') {
+                // グリッド拡張アイテム用の特別なデータオブジェクトを作成
+                const nextSize = (this.stateManager.sf.player_grid_size || 5) + 1;
+                itemData = {
+                    id: 'upgrade_grid', // 内部処理用のID
+                    name: `グリッド拡張 ${nextSize}x${nextSize}`, // 表示名
+                    cost: 50 * (nextSize - 5), // 価格はサイズに応じて変動
+                    storage: 'upgrade_icon' // ★表示用のアイコンキー (要アセット追加)
+                };
+            } else {
+                itemData = ITEM_DATA[itemId];
+                itemData.name = itemId; // 表示名としてIDを仮設定
+            }
+             if (!itemData) return; // 安全策
 
             const slotWidth = 160;
             const slotHeight = 200;
@@ -2299,32 +2322,38 @@ updateArrowVisibility(itemContainer) {
         // canBuyフラグがない、またはfalseなら処理を中断
         if (slotContainer.getData('canBuy') !== true) return;
 
-        // ★★★ ここからが「積極的オートセーブ」のロジック ★★★
-        
-        // 1. 更新後のデータをまず変数に用意する
-        const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
-        const newInventory = [...this.stateManager.sf.player_inventory, itemId];
+        if (itemId === 'upgrade_grid') {
+                    // --- グリッド拡張の購入処理 ---
+                    const currentSize = this.stateManager.sf.player_grid_size;
+                    const newSize = currentSize + 1;
+                    
+                    this.stateManager.setSF('player_grid_size', newSize);
+                    this.stateManager.setSF('coins', (this.stateManager.sf.coins || 0) - itemData.cost);
+                    
+                    console.log(`グリッドが ${newSize}x${newSize} に拡張されました！`);
 
-        // 2. StateManagerのsf変数を「まとめて」更新して自動保存
-        this.stateManager.setSF('coins', newCoins);
-        this.stateManager.setSF('player_inventory', newInventory);
-        
-        // ★★★ オートセーブここまで ★★★
+                    // ★重要★ シーンを再起動してグリッドの再描画を行う
+                    this.scene.restart();
 
-        // 3. 画面上のインベントリにもアイテムを追加
-        const newItemContainer = this.createItem(itemId, -100, -100);
-        if (newItemContainer) {
-            this.inventoryItemImages.push(newItemContainer);
-            this.updateInventoryLayout();
-        }
-        
-        // 4. 購入済み表示 & インタラクション無効化
-        buyButtonText.setText('購入済み');
-        buyButtonBg.setFillStyle(0x555555);
-        slotContainer.removeInteractive(); // スロット全体を無効化
-        
-        // 5. 他の商品の購入可否も更新する
-        this.updateShopButtons();
+                } else {
+                    // --- 通常アイテムの購入処理 (既存のロジック) ---
+                    const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
+                    const newInventory = [...this.stateManager.sf.player_inventory, itemId];
+                    this.stateManager.setSF('coins', newCoins);
+                    this.stateManager.setSF('player_inventory', newInventory);
+                    
+                    const newItemContainer = this.createItem(itemId, -100, -100);
+                    if (newItemContainer) {
+                        this.inventoryItemImages.push(newItemContainer);
+                        this.updateInventoryLayout();
+                    }
+                    buyButtonText.setText('購入済み');
+                    buyButtonBg.setFillStyle(0x555555);
+                    slotContainer.removeInteractive();
+                }
+
+                // 他の商品の購入可否も更新する
+                this.updateShopButtons();
 
                 } else {
                     // 画像領域がクリックされたらツールチップを表示
