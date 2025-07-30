@@ -229,8 +229,30 @@ export default class BattleScene extends Phaser.Scene {
 
         this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
-        this.startBattleButton.on('pointerdown', () => {
-            if (this.gameState !== 'prepare') return;
+       // create() の中の startBattleButton のリスナー部分
+
+    this.startBattleButton.on('pointerdown', () => {
+        if (this.gameState !== 'prepare') return;
+
+        // ★★★ このブロックを全面的に書き換え ★★★
+
+        // 1. まず、準備フェーズのUIを全て非表示にする
+        const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
+        allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
+        this.startBattleButton.input.enabled = false;
+        
+        this.tweens.add({
+            targets: this.prepareContainer, // コンテナごと非表示にする
+            alpha: 0,
+            duration: 300,
+            onComplete: () => {
+                this.prepareContainer.setVisible(false);
+            }
+        });
+
+        // 2. カットイン演出を再生し、完了後に戦闘を開始する
+        this._playVsCutin(() => {
+            // --- ここから下は、元の戦闘開始ロジック ---
             const initialBackpackData = {};
             this.placedItemImages.forEach((item, index) => {
                 const gridPos = item.getData('gridPos');
@@ -243,22 +265,14 @@ export default class BattleScene extends Phaser.Scene {
                 backpack: initialBackpackData, inventory: initialInventoryData, coins: this.stateManager.sf.coins || 0, hp: this.initialBattleParams.playerHp
             };
             console.log("Round start state checkpoint created.", this.roundStartState);
+            
             this.gameState = 'battle';
             this.prepareForBattle();
-            const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-            allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
-            this.startBattleButton.input.enabled = false;
-            this.tweens.add({
-                targets: [this.prepareContainer, ...this.inventoryItemImages],
-                alpha: 0,
-                duration: 300,
-                onComplete: () => {
-                    this.prepareContainer.setVisible(false);
-                    this.inventoryItemImages.forEach(item => item.setVisible(false));
-                }
-            });
             this.startBattle();
         });
+        
+        // ★★★ 書き換えここまで ★★★
+    });
 
         this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
         this.anims.create({ key: 'impact_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }), frameRate: 24, repeat: 0 });
