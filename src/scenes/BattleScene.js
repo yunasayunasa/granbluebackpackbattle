@@ -278,6 +278,49 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
         // =================================================================
         this.setupShop();
         this.refreshShop();
+                // =================================================================
+        // STEP 4.6: 売却ゾーンのセットアップ
+        // =================================================================
+        const gameWidth = this.scale.width;
+        const gameHeight = this.scale.height;
+        
+        // 画面右端に縦長のエリアを定義
+        const sellZoneWidth = 100;
+        const sellZoneX = gameWidth - (sellZoneWidth / 2);
+        const sellZoneY = gameHeight / 2;
+        const sellZoneHeight = gameHeight;
+
+        // 売却ゾーンの背景 (半透明の赤)
+        this.sellZoneGraphics = this.add.rectangle(
+            sellZoneX,
+            sellZoneY,
+            sellZoneWidth,
+            sellZoneHeight,
+            0xff0000, // 赤色
+            0.2       // 半透明
+        ).setDepth(9).setVisible(false); // 通常時は非表示
+
+        // 売却ゾーンのテキスト
+        this.sellZoneText = this.add.text(
+            sellZoneX, 
+            sellZoneY, 
+            'ド\nラ\nッ\nグ\nし\nて\n売\n却', // 縦書きテキスト
+            { 
+                fontSize: '24px', 
+                fill: '#ffffff', 
+                align: 'center',
+                stroke: '#000000',
+                strokeThickness: 4
+            }
+        ).setOrigin(0.5).setDepth(9).setVisible(false); // 通常時は非表示
+
+        // 後でドラッグ終了時に使うために、範囲をプロパティとして保持
+        this.sellZoneArea = new Phaser.Geom.Rectangle(
+            gameWidth - sellZoneWidth, 
+            0, 
+            sellZoneWidth, 
+            gameHeight
+        );
         // =================================================================
         // STEP 5: イベントリスナーと完了通知
         // =================================================================
