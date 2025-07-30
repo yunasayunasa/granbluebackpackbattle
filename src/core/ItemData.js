@@ -14,7 +14,7 @@ export const ITEM_DATA = {
         recast: 2.0
     },
     'luria': {
-        storage: 'item_shield',
+        storage: 'item_lurya',
         shape: [[1], [1]],
         tags: ["armor", "earth"],
         cost: 10,
