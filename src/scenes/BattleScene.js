@@ -2666,31 +2666,7 @@ playFinishBlowEffects(targetAvatar) {
     }, [], this);
     // BattleScene.js にこの新しいメソッドを追加してください
 
-    /**
-     * ゲームオーバー処理を一元管理する
-     */
-    handleGameOver() {
-        console.log("ゲームオーバー処理を開始します。");
 
-        // 1. 全てのデータをリセット
-        this.stateManager.setSF('player_backpack', {});
-        this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
-        this.stateManager.setSF('round', 1);
-        this.stateManager.setSF('coins', 0); // ★コインを0にリセットし、HUD更新をトリガー
-
-        // f変数もクリア
-        this.stateManager.f = {};
-        this.stateManager.setF('player_hp', 100);
-        this.stateManager.setF('player_max_hp', 100);
-
-        // 2. localStorageの物理削除は不要（setSFが上書き保存するため）
-
-        // 3. タイトル画面に戻るのが理想だが、今はリスタート
-        // 少しディレイを入れて、プレイヤーが何が起きたか認識する時間を与える
-        this.time.delayedCall(2000, () => {
-            this.scene.start('BattleScene');
-        }, [], this);
-    }
   shutdown() {
     // ... (既存の input.off など) ...
     if (this.battleTimerText) {
