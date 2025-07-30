@@ -1615,8 +1615,10 @@ createItem(itemId, x, y) {
         this.tooltip.hide();
         itemContainer.setDepth(99);
         this.removeItemFromBackpack(itemContainer);
-    });
 
+this.sellZoneGraphics.setVisible(true);
+        this.sellZoneText.setVisible(true);
+    });
     itemContainer.on('drag', (pointer, dragX, dragY) => {
         if (pressTimer) pressTimer.remove();
         itemContainer.setPosition(dragX, dragY);
