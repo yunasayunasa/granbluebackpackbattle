@@ -32,12 +32,14 @@ const RANDOM_AVATAR_POOL = [
 
 // STEP 3: テーマの定義
 const THEMES = {
-    // ★★★【変更点2】ラウンド2-4用のテーマから固定アバター指定を削除 ★★★
-    'light_specialized': { pools: ['light', 'neutral'] },
-    'dark_specialized':  { pools: ['dark', 'neutral'] },
-    'mixed_elements':    { pools: ['fire', 'wind', 'earth', 'neutral'] },
+    // ラウンド2-4用のテーマは avatar プロパティを持たない
+    'mixed_elements':    { pools: ['fire', 'wind', 'earth', 'neutral'] }, 
     
-    // 固定アバターのテーマは変更なし
+    // ★★★【変更点】ライトとダークにも固定アバターを指定 ★★★
+    'light_specialized': { pools: ['light', 'neutral'], avatar: 'avatar_funf' }, 
+    'dark_specialized':  { pools: ['dark', 'neutral'],  avatar: 'avatar_demon_lord' },
+
+    // 他の固定アバターのテーマは変更なし
     'fire_specialized':  { pools: ['fire', 'neutral'],  boss: REPRESENTATIVES.fire, avatar: 'avatar_perceval' },
     'water_specialized': { pools: ['water', 'neutral'], boss: REPRESENTATIVES.water, avatar: 'avatar_lancelot' },
     'earth_specialized': { pools: ['earth', 'neutral'], boss: REPRESENTATIVES.earth, avatar: 'avatar_siegfried' },
