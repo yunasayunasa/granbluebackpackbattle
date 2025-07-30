@@ -2673,8 +2673,8 @@ playFinishBlowEffects(targetAvatar) {
         this.battleTimerText.destroy();
         this.battleTimerText = null;
     }
-    
 }
+
  // BattleScene.js の末尾に追加
 
     /**
@@ -2702,4 +2702,4 @@ playFinishBlowEffects(targetAvatar) {
         //    JSON.stringifyの第2,第3引数で、見やすいように整形して出力
         console.log(JSON.stringify(rankMatchData, null, 2));
         console.log("%c[GHOST_DATA] Copy the JSON above and save it for future use.", "color: violet;");
-    }}
+    }
