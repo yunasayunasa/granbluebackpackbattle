@@ -6,8 +6,8 @@ export default class SystemScene extends Phaser.Scene {
         this.globalCharaDefs = null;
         this.isProcessingTransition = false;
         this.initialGameData = null;
+         // ★★★ ノベルシーンのBGM情報を一時的に保持する場所 ★★★
         this.novelBgmKey = null;
-        this.transitionWipe = null;
     }
 
     init(data) {
@@ -23,24 +23,22 @@ export default class SystemScene extends Phaser.Scene {
         this.input.once('pointerdown', () => soundManager.resumeContext(), this);
         console.log("SystemScene: SoundManagerを生成・登録しました。");
 
-        const { width, height } = this.scale;
-        this.transitionWipe = this.add.rectangle(width * 1.5, height / 2, width, height, 0x000000)
-            .setDepth(10000)
-            .setScrollFactor(0);
-        this.transitionWipe.setInteractive(false); 
-        // ★★★ 暗幕を最初は非表示にしておく ★★★
-        this.transitionWipe.setVisible(false);
-
+        // --- イベントリスナーを登録 ---
         this.events.on('request-scene-transition', this._handleRequestSceneTransition, this);
         this.events.on('return-to-novel', this._handleReturnToNovel, this);
         this.events.on('request-overlay', this._handleRequestOverlay, this);
         this.events.on('end-overlay', this._handleEndOverlay, this);
         
+        // ★★★ PreloadSceneから渡されたデータで初期ゲームを起動 ★★★
         if (this.initialGameData) {
             this._startInitialGame(this.initialGameData);
         }
     }
 
+    /**
+     * 初期ゲームを起動する内部メソッド
+     * @param {object} initialData - PreloadSceneから渡されたデータ
+     */
     _startInitialGame(initialData) {
         this.globalCharaDefs = initialData.charaDefs;
         console.log(`[SystemScene] 初期ゲーム起動リクエストを受信。`);
@@ -52,55 +50,94 @@ export default class SystemScene extends Phaser.Scene {
         });
     }
     
-    _handleRequestSceneTransition(data) {
+     /**
+     * [jump]などによるシーン遷移リクエストを処理 (修正版)
+     */
+       _handleRequestSceneTransition(data) {
         console.log(`[SystemScene] シーン遷移リクエスト: ${data.from} -> ${data.to}`);
+        
+        // ★ BGMの操作は一切しない ★
+
         if (this.scene.isActive(data.from)) {
             this.scene.stop(data.from); 
         }
-        // UISceneの表示制御は、各シーンが責任を持つか、
-        // あるいは 'transition-complete' イベントを購読して行うのがより堅牢です。
-        // ここでは一旦コメントアウトします。
-        // if (this.scene.isActive('UIScene')) {
-        //     this.scene.get('UIScene').setVisible(false);
-        // }
-        this._startAndMonitorScene(data.to, {
+        if (this.scene.isActive('UIScene')) {
+            this.scene.get('UIScene').setVisible(false);
+        }
+
+
+        // ★ 4. 新しいシーンを起動
+        // BattleSceneのinitに渡すデータ構造を調整
+        this._startAndMonitorScene(data.to, { 
+            // BattleSceneのinitが `data.transitionParams` を期待している場合
             transitionParams: data.params 
         });
     };
     
+
+   /**
+     * サブシーンからノベルパートへの復帰リクエストを処理 (最終修正版)
+     * @param {object} data - { from: string, params: object }
+     */
     _handleReturnToNovel(data) {
         console.log(`[SystemScene] ノベル復帰リクエスト: from ${data.from}`);
+
         if (this.scene.isActive(data.from)) {
             this.scene.stop(data.from);
         }
-        // if (this.scene.isActive('UIScene')) {
-        //     this.scene.get('UIScene').setVisible(true);
-        // }
+        if (this.scene.isActive('UIScene')) {
+            this.scene.get('UIScene').setVisible(true);
+        }
+
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ これが今回の修正の核心 ★★★
+        // ★★★ GameSceneが必要とするデータを全て渡す ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         this._startAndMonitorScene('GameScene', {
-            charaDefs: this.globalCharaDefs,
-            resumedFrom: data.from,
-            returnParams: data.params,
+            charaDefs: this.globalCharaDefs, // ★★★ 最重要: キャラ定義を渡す！ ★★★
+            resumedFrom: data.from,          // どこから来たかを伝える
+            returnParams: data.params,       // サブシーンからの戻り値を渡す
+            // startScenarioやstartLabelは、復帰処理(performLoad)で
+            // セーブデータから復元されるので、ここでは不要
         });
     }
 
+    /**
+     * オーバーレイ表示のリクエストを処理
+     * @param {object} data - { from: string, scenario: string }
+     */
     _handleRequestOverlay(data) {
         console.log(`[SystemScene] オーバーレイ表示リクエストを受信 (from: ${data.from})`);
+
+        // オーバーレイ表示中は、背後のシーンの入力を無効化する
         const fromScene = this.scene.get(data.from);
         if (fromScene && fromScene.scene.isActive()) {
             fromScene.input.enabled = false;
         }
+
+        // UISceneはオーバーレイの下に表示され続けるので、入力は有効のまま
+        
+        // NovelOverlaySceneを現在のシーンの上にlaunchする
         this.scene.launch('NovelOverlayScene', { 
             scenario: data.scenario,
             charaDefs: this.globalCharaDefs,
-            returnTo: data.from
+            returnTo: data.from // どのシーンに戻るべきかを渡す
         });
     }
 
+    /**
+     * オーバーレイ終了のリクエストを処理
+     * @param {object} data - { from: 'NovelOverlayScene', returnTo: string }
+     */
     _handleEndOverlay(data) {
         console.log(`[SystemScene] オーバーレイ終了リクエストを受信 (return to: ${data.returnTo})`);
+
+        // NovelOverlaySceneを停止する
         if (this.scene.isActive(data.from)) {
             this.scene.stop(data.from); 
         }
+
+        // 元のシーンの入力を再度有効化する
         const returnScene = this.scene.get(data.returnTo);
         if (returnScene && returnScene.scene.isActive()) { 
             returnScene.input.enabled = true; 
@@ -108,61 +145,56 @@ export default class SystemScene extends Phaser.Scene {
         }
     }
 
+// ... SystemScene.js の他のメソッド ...
+      /**
+     * ★★★ 新しいシーンを起動し、完了まで監視するコアメソッド (最終確定版) ★★★
+     * @param {string} sceneKey - 起動するシーンのキー
+     * @param {object} params - シーンに渡すデータ
+     */
+     /**
+     * ★★★ 新しいシーンを起動し、完了まで監視するコアメソッド (真・最終確定版) ★★★
+     * @param {string} sceneKey - 起動するシーンのキー
+     * @param {object} params - シーンに渡すデータ
+     */
     _startAndMonitorScene(sceneKey, params) {
         if (this.isProcessingTransition) {
             console.warn(`[SystemScene] 遷移処理中に新たな遷移リクエスト(${sceneKey})が、無視されました。`);
             return;
         }
+
         this.isProcessingTransition = true;
         this.game.input.enabled = false;
         console.log(`[SystemScene] シーン[${sceneKey}]の起動を開始。ゲーム全体の入力を無効化。`);
-        this.tweens.killAll();
+this.tweens.killAll();
         console.log("[SystemScene] すべての既存Tweenを強制終了しました。");
 
-        const { width } = this.scale;
-        const transitionSpeed = 300;
+        // ★★★ 修正の核心 ★★★
+        // 起動するシーンの「準備完了」を知らせるカスタムイベントを待つ
+        const targetScene = this.scene.get(sceneKey);
+        
+        // GameSceneは 'gameScene-load-complete' を待つ
+        if (sceneKey === 'GameScene') {
+            targetScene.events.once('gameScene-load-complete', () => {
+                this._onTransitionComplete(sceneKey);
+            });
+        } else {
+            // GameScene以外は、'scene-ready' という共通イベントを待つ
+            targetScene.events.once('scene-ready', () => {
+                this._onTransitionComplete(sceneKey);
+            });
+        }
 
-        this.transitionWipe.setVisible(true);
-
-        this.tweens.add({
-            targets: this.transitionWipe,
-            x: width / 2,
-            duration: transitionSpeed,
-            ease: 'Expo.easeInOut',
-            onComplete: () => {
-                const targetScene = this.scene.get(sceneKey);
-                const onSceneReady = () => {
-                    this._onTransitionComplete(sceneKey);
-                };
-
-                if (sceneKey === 'GameScene') {
-                    targetScene.events.once('gameScene-load-complete', onSceneReady);
-                } else {
-                    targetScene.events.once('scene-ready', onSceneReady);
-                }
-
-                this.scene.run(sceneKey, params);
-            }
-        });
+        // リスナーを登録した後に、シーンの起動をスケジュールする
+        this.scene.run(sceneKey, params);
     }
-
+    /**
+     * シーン遷移が完全に完了したときの処理
+     * @param {string} sceneKey - 完了したシーンのキー
+     */
     _onTransitionComplete(sceneKey) {
-        const { width } = this.scale;
-        const transitionSpeed = 300;
-
-        this.tweens.add({
-            targets: this.transitionWipe,
-            x: -width / 2,
-            duration: transitionSpeed,
-            ease: 'Expo.easeInOut',
-            onComplete: () => {
-                this.isProcessingTransition = false;
-                this.game.input.enabled = true;
-                console.log(`[SystemScene] シーン[${sceneKey}]の遷移が完了。ゲーム全体の入力を再有効化。`);
-                this.events.emit('transition-complete', sceneKey);
-                this.transitionWipe.setX(width * 1.5);
-                this.transitionWipe.setVisible(false);
-            }
-        });
+        this.isProcessingTransition = false;
+        this.game.input.enabled = true;
+        console.log(`[SystemScene] シーン[${sceneKey}]の遷移が完了。ゲーム全体の入力を再有効化。`);
+        this.events.emit('transition-complete', sceneKey);
     }
 }
