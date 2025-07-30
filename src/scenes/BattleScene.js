@@ -2270,8 +2270,8 @@ updateArrowVisibility(itemContainer) {
                 itemData = {
                     id: 'upgrade_grid', // 内部処理用のID
                     name: `グリッド拡張 ${nextSize}x${nextSize}`, // 表示名
-                    cost: 50 * (nextSize - 5), // 価格はサイズに応じて変動
-                    storage: 'upgrade_icon' // ★表示用のアイコンキー (要アセット追加)
+                    cost: 30 * (nextSize - 5), // 価格はサイズに応じて変動
+                    storage: 'shield' // ★表示用のアイコンキー (要アセット追加)
                 };
             } else {
                 itemData = ITEM_DATA[itemId];
@@ -2506,7 +2506,7 @@ playFinishBlowEffects(targetAvatar) {
     });
 
     // 4. スローモーション解除とバトル終了処理
-    this.time.delayedCall(1500, () => {
+    this.time.delayedCall(1000, () => {
         this.time.timeScale = 1.0;
         const currentRound = this.stateManager.sf.round || 1;
         const FINAL_ROUND = 10; // ★最終ラウンドを定義
