@@ -1650,6 +1650,8 @@ this.sellZoneGraphics.setVisible(true);
         itemContainer.setDepth(12);
         this.ghostImage.clear();
         this.ghostImage.setVisible(false);
+        this.sellZoneGraphics.setVisible(false);
+        this.sellZoneText.setVisible(false);
         
         const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
         const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
