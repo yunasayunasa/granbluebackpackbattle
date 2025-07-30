@@ -2513,16 +2513,21 @@ playFinishBlowEffects(targetAvatar) {
 
         // ★★★ このブロックを全面的に書き換え ★★★
         if (currentRound >= FINAL_ROUND) {
-            // --- ゲームクリア処理 ---
+               // --- ゲームクリア処理 ---
             console.log("★★★★ GAME CLEAR! ★★★★");
             console.log("Transitioning to GameClearScene.");
 
-            // GameClearSceneに渡すデータを準備
+            // ★★★ このオブジェクトの構造を修正 ★★★
             const payload = {
                 to: 'GameClearScene',
                 from: this.scene.key,
-                finalRound: currentRound // 到達ラウンド数を渡す
+                // GameClearSceneに渡したいデータを 'params' オブジェクトにまとめる
+                params: {
+                    finalRound: currentRound
+                }
             };
+            // ★★★ 修正ここまで ★★★
+            
             this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
 
         } else {
