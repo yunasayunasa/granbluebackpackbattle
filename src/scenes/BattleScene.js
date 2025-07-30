@@ -1658,6 +1658,30 @@ export default class BattleScene extends Phaser.Scene {
             }
         }, [], this);
     }
+    // BattleScene.js の末尾にあるヘルパーメソッド
+
+    /**
+     * ★★★ 暗幕ワイプで指定のシーンへ遷移する ★★★
+     * @private
+     */
+    _transitionToScene(payload) {
+        if (this.startBattleButton) this.startBattleButton.disableInteractive();
+
+        const transitionSpeed = 300;
+        const { width } = this.scale;
+
+        // 1. 暗幕で画面を覆う (ワイプイン)
+        this.tweens.add({
+            targets: this.transitionWipe,
+            x: width / 2,
+            duration: transitionSpeed,
+            ease: 'Expo.easeInOut',
+            onComplete: () => {
+                // 2. 画面が隠れたら、SystemSceneに遷移を依頼
+                this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
+            }
+        });
+    }
     
     shutdown() {
         if (this.battleTimerText) {
