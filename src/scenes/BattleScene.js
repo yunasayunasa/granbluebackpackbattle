@@ -114,7 +114,7 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
             this.stateManager.setSF('player_backpack', {});
         }
         if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+            this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
         }
         
         // 【新規追加】プレイヤープロファイルがなければ初期化

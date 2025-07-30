@@ -13,13 +13,13 @@ export const ITEM_DATA = {
         action: { type: 'attack', value: 10 },
         recast: 2.0
     },
-    'shield': {
+    'luria': {
         storage: 'item_shield',
         shape: [[1], [1]],
         tags: ["armor", "earth"],
         cost: 10,
         rarity: 1,
-        action: { type: 'block', value: 8 },
+        action: { type: 'block', value: 5},
         recast: 2.5
     },
     'potion': {
@@ -28,7 +28,7 @@ export const ITEM_DATA = {
         tags: ["consumable", "light"],
         cost: 12,
         rarity: 1,
-        action: { type: 'heal', value: 15 },
+        action: { type: 'heal', value: 10 },
         recast: 5.0
     },
 
@@ -123,11 +123,11 @@ export const ITEM_DATA = {
         cost: 55,
         rarity: 3,
         passive: { effects: [{ type: 'max_hp', value: 15 }] },
-        action: { type: 'attack', value: 4 },
+        action: { type: 'attack', value: 6 },
         recast: 8.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'add_recast', value: -0.2 }
+            effect: { type: 'add_recast', value: -0.4 }
         }
     },
     'poseidon': {
@@ -137,7 +137,7 @@ export const ITEM_DATA = {
         cost: 35,
         rarity: 2,
         passive: { effects: [{ type: 'defense', value: 1 }] },
-        action: { type: 'attack', value: 3 },
+        action: { type: 'attack', value: 4 },
         recast: 5.0,
         synergy: {
             direction: 'adjacent',
@@ -157,7 +157,7 @@ export const ITEM_DATA = {
         tags: ["master", "water"],
         cost: 22,
         rarity: 2,
-        action: { type: 'attack', value: 3 },
+        action: { type: 'attack', value: 5 },
         recast: 6.0,
         synergy: {
             direction: 'adjacent',
@@ -170,7 +170,7 @@ export const ITEM_DATA = {
         tags: ["dragon", "water"],
         cost: 25,
         rarity: 2,
-        action: { type: 'attack', value: 15 },
+        action: { type: 'attack', value: 30 },
         recast: 20.0,
         synergy: {
             direction: 'adjacent',

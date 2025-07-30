@@ -97,7 +97,7 @@ export default class ScoreScene extends Phaser.Scene {
             // タイトルに戻る前に、次の挑戦のために進行状況データをリセットする
             console.log("リセット前 コイン:", this.stateManager.sf.coins);
             this.stateManager.setSF('player_backpack', {});
-            this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+            this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
             this.stateManager.setSF('round', 1);
             this.stateManager.setSF('coins', 20);
             this.stateManager.setSF('player_base_max_hp', 100);
