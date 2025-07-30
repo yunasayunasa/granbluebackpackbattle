@@ -69,6 +69,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     create() {
+        this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("BattleScene: create - データ永続化対応版 (sf)");
         const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
         const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
