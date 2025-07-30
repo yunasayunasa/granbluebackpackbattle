@@ -995,6 +995,7 @@ export default class BattleScene extends Phaser.Scene {
                 const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
                 const currentCoins = this.stateManager.sf.coins || 0;
                 this.stateManager.setSF('coins', currentCoins + sellPrice);
+                this.updateShopButtons(); 
                 const indexToRemove = this.inventoryItemImages.indexOf(itemContainer);
                 if (indexToRemove > -1) {
                     this.inventoryItemImages.splice(indexToRemove, 1);
