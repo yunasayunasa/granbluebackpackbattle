@@ -165,27 +165,29 @@ export default class SystemScene extends Phaser.Scene {
         this.isProcessingTransition = true;
         this.game.input.enabled = false;
         console.log(`[SystemScene] シーン[${sceneKey}]の起動を開始。ゲーム全体の入力を無効化。`);
-this.tweens.killAll();
-        console.log("[SystemScene] すべての既存Tweenを強制終了しました。");
+        this.tweens.killAll();
 
-        // ★★★ 修正の核心 ★★★
-        // 起動するシーンの「準備完了」を知らせるカスタムイベントを待つ
-        const targetScene = this.scene.get(sceneKey);
-        
-        // GameSceneは 'gameScene-load-complete' を待つ
-        if (sceneKey === 'GameScene') {
-            targetScene.events.once('gameScene-load-complete', () => {
-                this._onTransitionComplete(sceneKey);
-            });
-        } else {
-            // GameScene以外は、'scene-ready' という共通イベントを待つ
-            targetScene.events.once('scene-ready', () => {
-                this._onTransitionComplete(sceneKey);
-            });
-        }
+        const transitionSpeed = 250; // フェードの速度(ミリ秒)
 
-        // リスナーを登録した後に、シーンの起動をスケジュールする
-        this.scene.run(sceneKey, params);
+        // 1. カメラをフェードアウトさせる
+        this.cameras.main.fadeOut(transitionSpeed, 0, 0, 0);
+
+        // 2. フェードアウト完了後、シーンを切り替える
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+            const targetScene = this.scene.get(sceneKey);
+            
+            const onSceneReady = () => {
+                this._onTransitionComplete(sceneKey);
+            };
+
+            if (sceneKey === 'GameScene') {
+                targetScene.events.once('gameScene-load-complete', onSceneReady);
+            } else {
+                targetScene.events.once('scene-ready', onSceneReady);
+            }
+
+            this.scene.run(sceneKey, params);
+        });
     }
     /**
      * シーン遷移が完全に完了したときの処理
