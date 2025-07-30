@@ -1683,6 +1683,91 @@ export default class BattleScene extends Phaser.Scene {
             }
         });
     }
+
+// BattleScene.js に追加した _playVsCutin メソッド
+
+    /**
+     * 戦闘開始時のVSカットイン演出を再生する (修正版)
+     * @param {function} onCompleteCallback - 演出完了後に実行するコールバック
+     * @private
+     */
+    _playVsCutin(onCompleteCallback) {
+        const { width, height } = this.scale;
+        const cutinSpeed = 400;
+        const vsSlamDelay = 200;
+
+        // --- 演出用のコンテナを作成 ---
+        const cutinContainer = this.add.container(0, 0).setDepth(5000);
+
+        // --- 1. プレイヤー側のカットインを作成 ---
+        // 背景画像 (奥)
+        const playerBg = this.add.image(0, height * 0.35, 'cutin_player_bg').setOrigin(0, 0.5);
+        // アバター画像 (手前)
+        const playerAvatar = this.add.image(250, height * 0.35, this.playerAvatar.texture.key).setScale(0.8);
+        
+        // playerCutinコンテナに背景とアバターを追加
+        const playerCutin = this.add.container(-width, 0, [playerBg, playerAvatar]);
+        cutinContainer.add(playerCutin);
+
+        // --- 2. 敵側のカットインを作成 ---
+        // 背景画像 (奥)
+        const enemyBg = this.add.image(width, height * 0.65, 'cutin_enemy_bg').setOrigin(1, 0.5);
+        // アバター画像 (手前)
+        const enemyAvatar = this.add.image(width - 250, height * 0.65, this.enemyAvatar.texture.key).setScale(0.8);
+
+        // enemyCutinコンテナに背景とアバターを追加
+        const enemyCutin = this.add.container(width, 0, [enemyBg, enemyAvatar]);
+        cutinContainer.add(enemyCutin);
+
+        // --- 3. VSロゴを作成 (アニメーションの前に作っておく) ---
+        const vsLogo = this.add.image(width / 2, height / 2, 'vs_logo')
+            .setAngle(-15) // 少し傾けておく
+            .setScale(4)   // 大きめにしておく
+            .setAlpha(0);  // 最初は透明
+        cutinContainer.add(vsLogo);
+        
+        // --- 4. アニメーションを開始 ---
+        this.tweens.add({
+            targets: playerCutin,
+            x: 0,
+            duration: cutinSpeed,
+            ease: 'Cubic.easeOut'
+        });
+        
+        this.tweens.add({
+            targets: enemyCutin,
+            x: 0,
+            duration: cutinSpeed,
+            ease: 'Cubic.easeOut',
+            delay: 100, // プレイヤー側より少し遅れて開始
+            onComplete: () => {
+                // 5. VSロゴを叩きつけるように表示
+                this.tweens.add({
+                    targets: vsLogo,
+                    scale: 1,
+                    alpha: 1,
+                    angle: 0,
+                    duration: 300,
+                    ease: 'Elastic.Out(1, 0.5)', // バネの強さを調整
+                    onComplete: () => {
+                        // 6. 全ての演出が終わったら、カットインを消してコールバックを実行
+                        this.tweens.add({
+                            targets: cutinContainer,
+                            alpha: 0,
+                            duration: 300,
+                            delay: 800, // ロゴ表示後の余韻
+                            onComplete: () => {
+                                cutinContainer.destroy();
+                                if (onCompleteCallback) {
+                                    onCompleteCallback();
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
     
     shutdown() {
         if (this.battleTimerText) {
