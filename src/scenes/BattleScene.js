@@ -1644,17 +1644,51 @@ this.sellZoneGraphics.setVisible(true);
         }
     });
 
+// createItem() の中
+
     itemContainer.on('dragend', (pointer) => {
         itemContainer.setDepth(12);
         this.ghostImage.clear();
         this.ghostImage.setVisible(false);
         this.sellZoneGraphics.setVisible(false);
         this.sellZoneText.setVisible(false);
+
+        // ★★★ このブロックを全面的に書き換え ★★★
         
+        // --- 1. ドロップした位置を判定 ---
+        const droppedInSellZone = Phaser.Geom.Rectangle.Contains(this.sellZoneArea, pointer.x, pointer.y);
         const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
         const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
         
-        if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+        if (droppedInSellZone) {
+            // --- 2a. 売却ゾーンにドロップされた場合の処理 ---
+            const itemId = itemContainer.getData('itemId');
+            const itemData = ITEM_DATA[itemId];
+            
+            // 売値をコストの半額（切り捨て）とする。最低1コイン。
+            const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
+            
+            // コインを加算してsfを更新
+            const currentCoins = this.stateManager.sf.coins || 0;
+            this.stateManager.setSF('coins', currentCoins + sellPrice);
+            
+            // 売却したアイテムをインベントリリストから完全に削除
+            const indexToRemove = this.inventoryItemImages.indexOf(itemContainer);
+            if (indexToRemove > -1) {
+                this.inventoryItemImages.splice(indexToRemove, 1);
+            }
+            
+            // アイテムのGameObjectを破棄
+            itemContainer.destroy();
+            
+            // インベントリのレイアウトと状態を更新・保存
+            this.updateInventoryLayout();
+            this.saveBackpackState(); // backpackは変更ないがinventoryが変更されたので保存
+
+            console.log(`アイテム'${itemId}'を ${sellPrice}コインで売却しました。`);
+
+        } else if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+            // --- 2b. グリッド内に配置できる場合の処理 (既存のロジック) ---
             const dropX = itemContainer.x;
             const dropY = itemContainer.y;
             this.placeItemInBackpack(itemContainer, gridCol, gridRow);
@@ -1662,14 +1696,24 @@ this.sellZoneGraphics.setVisible(true);
             const targetY = itemContainer.y;
             itemContainer.setPosition(dropX, dropY);
             this.tweens.add({ targets: itemContainer, x: targetX, y: targetY, duration: 150, ease: 'Power1' });
-        } else {
-            this.tweens.add({ targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'), duration: 200, ease: 'Power2' });
-        }
+            
+            // オートセーブ
+            this.time.delayedCall(250, () => {
+                this.saveBackpackState();
+            });
 
-        // オートセーブ
-        this.time.delayedCall(250, () => {
-            this.saveBackpackState();
-        });
+        } else {
+            // --- 2c. どこにも配置/売却できなかった場合の処理 (元の位置に戻す) ---
+            this.tweens.add({ 
+                targets: itemContainer, 
+                x: itemContainer.getData('originX'), 
+                y: itemContainer.getData('originY'), 
+                duration: 200, 
+                ease: 'Power2' 
+            });
+        }
+        
+        // ★★★ 書き換えここまで ★★★
     });
 
     itemContainer.on('pointerup', (pointer, localX, localY, event) => {
