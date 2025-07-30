@@ -2603,65 +2603,67 @@ playFinishBlowEffects(targetAvatar) {
     });
 
     // 4. スローモーション解除とバトル終了処理
-    this.time.delayedCall(1500, () => {
+    // playFinishBlowEffects() の中の delayedCall の部分
+
+    this.time.delayedCall(500, () => {
         this.time.timeScale = 1.0;
         const currentRound = this.stateManager.sf.round || 1;
-        const FINAL_ROUND = 10; // ★最終ラウンドを定義
-
-        // HPは遷移前に必ず保存
-        this.stateManager.setF('player_hp', this.playerStats.hp);
+        const FINAL_ROUND = 10;
 
         // ★★★ このブロックを全面的に書き換え ★★★
+
+        // --- STEP 1: 勝利/クリア共通のデータ保存処理 ---
+        // どんな場合でも、現在のHPと盤面は必ず保存する
+        this.stateManager.setF('player_hp', this.playerStats.hp);
+
+        const finalBackpackData = {};
+        this.placedItemImages.forEach((item, index) => {
+            const gridPos = item.getData('gridPos');
+            if (gridPos) {
+                finalBackpackData[`uid_${index}`] = {
+                    itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                };
+            }
+        });
+        const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+        this.stateManager.setSF('player_backpack', finalBackpackData);
+        this.stateManager.setSF('player_inventory', finalInventoryData);
+
+        // ゴーストデータも、どんな勝利でも生成・記録する
+        this._createRankMatchData();
+
+
+        // --- STEP 2: ゲームクリアか、次のラウンドに進むかを判定 ---
         if (currentRound >= FINAL_ROUND) {
-               // --- ゲームクリア処理 ---
+            // --- ゲームクリア処理 ---
             console.log("★★★★ GAME CLEAR! ★★★★");
             console.log("Transitioning to GameClearScene.");
 
-            // ★★★ このオブジェクトの構造を修正 ★★★
-            const payload = {
+            this.scene.get('SystemScene').events.emit('request-scene-transition', {
                 to: 'GameClearScene',
                 from: this.scene.key,
-                // GameClearSceneに渡したいデータを 'params' オブジェクトにまとめる
                 params: {
                     finalRound: currentRound
                 }
-            };
-            // ★★★ 修正ここまで ★★★
-            
-            this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
+            });
 
         } else {
-            // --- ラウンド勝利処理 (既存のロジック) ---
-
-            // backpackとinventoryの状態を最終保存
-            const finalBackpackData = {};
-            this.placedItemImages.forEach((item, index) => {
-                const gridPos = item.getData('gridPos');
-                if (gridPos) {
-                    finalBackpackData[`uid_${index}`] = {
-                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                    };
-                }
-            });
-            const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-            this.stateManager.setSF('player_backpack', finalBackpackData);
-            this.stateManager.setSF('player_inventory', finalInventoryData);
-
-            // コイン獲得とラウンド更新
+            // --- ラウンド勝利処理 ---
+            // コイン獲得と次のラウンドへ
             const currentCoins = this.stateManager.sf.coins || 0;
             const rewardCoins = 10 + (currentRound * 2);
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
-this._createRankMatchData();
+
             // RewardSceneへ遷移
             this.scene.get('SystemScene').events.emit('request-scene-transition', {
                 to: 'RewardScene',
                 from: this.scene.key
             });
         }
+        
         // ★★★ 書き換えここまで ★★★
     }, [], this);
-}
     // BattleScene.js にこの新しいメソッドを追加してください
 
     /**
