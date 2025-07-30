@@ -280,9 +280,7 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
         this.refreshShop();
                 // =================================================================
         // STEP 4.6: 売却ゾーンのセットアップ
-        // =================================================================
-        const gameWidth = this.scale.width;
-        const gameHeight = this.scale.height;
+
         
         // 画面右端に縦長のエリアを定義
         const sellZoneWidth = 100;
