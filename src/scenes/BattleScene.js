@@ -220,27 +220,27 @@ this.stateManager.setF('enemy_hp', enemyFinalHp);
         this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
         this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
         this.prepareContainer = this.add.container(0, 0);
-        this.ghostImage = this.add.graphics({
-    fillStyle: { color: 0x00ff00, alpha: 0.5 }
-}).setVisible(false).setDepth(5);
-
-        // --- 3b. グリッドとアバターの描画
+        this.ghostImage = this.add.graphics({ fillStyle: { color: 0x00ff00, alpha: 0.5 } }).setVisible(false).setDepth(5);
         this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2); }
         this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
         const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = this.gridY;
         this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); } // prettier-ignore
+        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); }
         this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
-        const maxAvatarHeight = gridHeight * 0.8;
-        [this.playerAvatar, this.enemyAvatar].forEach(avatar => { if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); } });
 
-        // in create()
-// ...
-// --- 3c. 敵アイテムの配置 ---
-this.currentEnemyLayout = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round); // ★ここで一度だけ生成
-this.setupEnemy(this.gridY, this.currentEnemyLayout); // ★引数として渡す
+        // ★★★【変更点】敵の生成とアバター設定ロジック ★★★
+        const enemyData = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+        this.currentEnemyLayout = enemyData.layout;
+        this.setupEnemy(this.gridY, this.currentEnemyLayout);
+        if (enemyData.avatar) {
+            this.enemyAvatar.setTexture(enemyData.avatar);
+        }
+        
+        const maxAvatarHeight = gridHeight * 0.8;
+        [this.playerAvatar, this.enemyAvatar].forEach(avatar => {
+            if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); }
+        });
         // =================================================================
         // STEP 4: プレイヤーのバックパックとインベントリの復元
         // =================================================================
