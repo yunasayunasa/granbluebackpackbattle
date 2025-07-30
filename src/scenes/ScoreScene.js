@@ -14,6 +14,7 @@ export default class ScoreScene extends Phaser.Scene {
     }
 
     create() {
+        this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("ScoreScene: create");
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
