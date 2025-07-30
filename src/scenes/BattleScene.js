@@ -2652,7 +2652,7 @@ playFinishBlowEffects(targetAvatar) {
             const rewardCoins = 10 + (currentRound * 2);
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
-
+this._createRankMatchData();
             // RewardSceneへ遷移
             this.scene.get('SystemScene').events.emit('request-scene-transition', {
                 to: 'RewardScene',
@@ -2696,4 +2696,32 @@ playFinishBlowEffects(targetAvatar) {
         this.battleTimerText = null;
     }
     
-}}
+}
+ // BattleScene.js の末尾に追加
+
+    /**
+     * 非同期対戦用のゴーストデータを生成し、コンソールに出力する
+     * @private
+     */
+    _createRankMatchData() {
+        console.log("%c[GHOST_DATA] Generating Rank Match Data...", "color: violet; font-weight: bold;");
+
+        // 1. 必要なデータをStateManagerから収集する
+        const rankMatchData = {
+            // 誰のデータか
+            rank: this.stateManager.sf.player_profile.rank,
+            // どのラウンドをクリアした時点のデータか
+            round: this.stateManager.sf.round,
+            // 盤面の状態（これが最も重要）
+            backpack: this.stateManager.sf.player_backpack,
+            // 参考情報
+            base_max_hp: this.stateManager.sf.player_base_max_hp,
+            // 生成された日時
+            createdAt: new Date().toISOString()
+        };
+
+        // 2. コンソールにJSON形式で出力する
+        //    JSON.stringifyの第2,第3引数で、見やすいように整形して出力
+        console.log(JSON.stringify(rankMatchData, null, 2));
+        console.log("%c[GHOST_DATA] Copy the JSON above and save it for future use.", "color: violet;");
+    }}
