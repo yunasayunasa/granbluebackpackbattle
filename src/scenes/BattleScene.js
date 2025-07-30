@@ -91,104 +91,145 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
         // 全ての初期化は create で行う。
         console.log("BattleScene: init (空)");
     }
-   create() {
+    // BattleScene.js の create を、この最終確定版に置き換えてください
+    create() {
         console.log("BattleScene: create - データ永続化対応版 (sf)");
-
-        // ★★★★★【最重要修正点】★★★
-        // マネージャーの取得を、全ての処理の最初に移動
-        this.stateManager = this.sys.registry.get('stateManager');
-        this.soundManager = this.sys.registry.get('soundManager');
-        // ★★★★★★★★★★★★★★★★★
-
-        // --- STEP 1: 初期化とsf変数からの設定読み込み ---
-        if (this.stateManager.sf.player_grid_size === undefined) {
-            this.stateManager.setSF('player_grid_size', 5);
-        }
-        this.backpackGridSize = this.stateManager.sf.player_grid_size;
-
-        // --- STEP 1.5: 描画とデータ準備 ---
         const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
         const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
         this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
             .setDisplaySize(this.scale.width, this.scale.height)
             .setDepth(-1);
-            
+         // =================================================================
+        // STEP 1: マネージャー取得とデータ準備
+        // =================================================================
+        this.stateManager = this.sys.registry.get('stateManager');
+        this.soundManager = this.sys.registry.get('soundManager');
         this.tooltip = new Tooltip(this);
 
-        if (this.stateManager.sf.player_profile === undefined) {
-            this.stateManager.setSF('player_profile', { totalExp: 0, rank: "駆け出し", highScore: 0, totalWins: 0 });
-        }
+        // --- 1a. StateManagerからプレイヤーデータを取得（なければsetSFで初期化）
+
+        // ★★★ このブロックを以下のように変更 ★★★
+
         if (this.stateManager.sf.player_backpack === undefined) {
             this.stateManager.setSF('player_backpack', {});
         }
         if (this.stateManager.sf.player_inventory === undefined) {
             this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
         }
+        
+        // 【新規追加】プレイヤープロファイルがなければ初期化
+        if (this.stateManager.sf.player_profile === undefined) {
+            console.log("新規プレイヤープロファイルを作成します。");
+            this.stateManager.setSF('player_profile', {
+                totalExp: 0,
+                rank: "駆け出し", // 初期ランク
+                highScore: 0,
+                totalWins: 0
+            });
+        }
+        
+        // ★★★ 変更ここまで ★★★
+
         const backpackData = this.stateManager.sf.player_backpack;
         const inventoryData = this.stateManager.sf.player_inventory;
 
-        if (this.stateManager.sf.player_base_max_hp === undefined) {
-            this.stateManager.setSF('player_base_max_hp', 100);
-        }
-        const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
-        const inheritedPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : basePlayerMaxHp;
-        const round = this.stateManager.sf.round || 1;
-        this.initialBattleParams = { playerMaxHp: basePlayerMaxHp, playerHp: inheritedPlayerHp, round: round };
+        // in create() -> STEP 1-b
 
-        if (inheritedPlayerHp <= 0) {
+        // --- 1b. 戦闘パラメータを決定 ---
+// ★★★ ここからが修正箇所 ★★★
+
+// 1. 素の最大HPをsf変数で管理（なければ初期化）
+if (this.stateManager.sf.player_base_max_hp === undefined) {
+    this.stateManager.setSF('player_base_max_hp', 100);
+}
+const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
+
+// 2. 前のラウンドから現在HPを引き継ぐ (f変数から)
+//    初回やデータがない場合は、素の最大HPから開始
+const inheritedPlayerHp = this.stateManager.f.player_hp > 0 
+    ? this.stateManager.f.player_hp 
+    : basePlayerMaxHp;
+
+const round = this.stateManager.sf.round || 1;
+
+// 3. このシーンで使うパラメータを設定
+this.initialBattleParams = { 
+    playerMaxHp: basePlayerMaxHp,  // ★基準は「素の最大HP」
+    playerHp: inheritedPlayerHp,   // ★基準は「引き継いだHP」
+    round: round 
+};
+        // --- 1c. ゲームオーバー判定
+        // 引き継いだHPが0以下なら、戦闘を開始せずにゲームオーバー処理へ
+    if (inheritedPlayerHp <= 0) {
             console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
-            this.scene.get('SystemScene').events.emit('request-scene-transition', { to: 'ScoreScene', from: this.scene.key, params: { result: 'lose', finalRound: round } });
-            return;
-        }
 
+            // 将来的には GameOverScene に遷移する
+            // 今は暫定的に、データをリセットして同じバトルシーンを再起動する（はじめから）
+            this.stateManager.sf = {}; // メモリ上のsfをリセット
+            localStorage.removeItem('my_novel_engine_system'); // ストレージのsfをリセット
+            this.stateManager.f = {}; // メモリ上のfをリセット
+
+            // SystemSceneにタイトルへの復帰などを依頼するのが理想だが、今は直接リスタート
+            this.scene.start(this.scene.key);
+
+            return; // create処理をここで中断
+        }
+        // ★★★ 追加ここまで ★★★
+
+
+        // =================================================================
+        // STEP 2: シーンのプロパティ初期化
+        // =================================================================
         this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
         this.finalizedPlayerItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
-        this.playerStats = { block: [] }; this.enemyStats = { block: [] };
+// ★★★ ここからが修正箇所 ★★★
+this.playerStats = { block: [] }; // blockを空の配列として初期化
+this.enemyStats = { block: [] };  // 敵側も同様
+// ★★★ 修正箇所ここまで ★★★
+
         this.battleEnded = false; this.gameState = 'prepare';
         this.cameras.main.setBackgroundColor('#8a2be2');
 
-        const battleBgmKey = 'ronpa_bgm';
+        // =================================================================
+        // STEP 3: グローバルな状態設定と基本描画
+        // =================================================================
+              const battleBgmKey = 'ronpa_bgm'; // 再生したいBGMのキー
+
+        // SoundManagerに現在再生中のBGMキーを問い合わせ、違う場合のみ再生する
+        // (同じ曲が既に流れていれば、何もしない)
         if (this.soundManager.currentBgmKey !== battleBgmKey) {
             this.soundManager.playBgm(battleBgmKey);
         }
         this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
         this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
-        const enemyBaseHp = 100;
-        const enemyRoundBonus = (this.initialBattleParams.round - 1) * 20;
-        const enemyFinalHp = enemyBaseHp + enemyRoundBonus;
-        this.stateManager.setF('enemy_max_hp', enemyFinalHp); 
-        this.stateManager.setF('enemy_hp', enemyFinalHp);
+        // in create()
+// ...
+const enemyBaseHp = 100;
+const enemyRoundBonus = (this.initialBattleParams.round - 1) * 20;
+const enemyFinalHp = enemyBaseHp + enemyRoundBonus;
+
+this.stateManager.setF('enemy_max_hp', enemyFinalHp); 
+this.stateManager.setF('enemy_hp', enemyFinalHp);
         
+        // --- 3a. 盤面レイアウトの計算と描画
         const gameWidth = this.scale.width;
         const gameHeight = this.scale.height;
-        
-        const playerGridSize = this.backpackGridSize;
-        const playerGridWidth = playerGridSize * this.cellSize;
-        const playerGridHeight = playerGridSize * this.cellSize;
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const gridHeight = this.backpackGridSize * this.cellSize;
         this.gridX = 100;
-        this.gridY = gameHeight / 2 - playerGridHeight / 2 - 50;
-        const enemyGridSize = 6;
-        const enemyGridWidth = enemyGridSize * this.cellSize;
-        const enemyGridHeight = enemyGridSize * this.cellSize;
-        const enemyGridX = gameWidth - 100 - enemyGridWidth;
-        const enemyGridY = this.gridY;
-
-        this.backpack = Array(playerGridSize).fill(null).map(() => Array(playerGridSize).fill(0));
+        this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
+        this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
         this.prepareContainer = this.add.container(0, 0);
         this.ghostImage = this.add.graphics({ fillStyle: { color: 0x00ff00, alpha: 0.5 } }).setVisible(false).setDepth(5);
-        this.add.rectangle(this.gridX + playerGridWidth / 2, this.gridY + playerGridHeight / 2, playerGridWidth, playerGridHeight, 0x333333, 0.9).setDepth(1);
-        for (let i = 0; i <= playerGridSize; i++) {
-            this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + playerGridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2);
-            this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + playerGridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2);
-        }
-        this.playerAvatar = this.add.sprite(this.gridX + playerGridWidth + 80, this.gridY + playerGridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
-        this.add.rectangle(enemyGridX + enemyGridWidth / 2, enemyGridY + enemyGridHeight / 2, enemyGridWidth, enemyGridHeight, 0x500000, 0.9).setDepth(1);
-        for (let i = 0; i <= enemyGridSize; i++) {
-            this.add.line(0, 0, enemyGridX, enemyGridY + i * this.cellSize, enemyGridX + enemyGridWidth, enemyGridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2);
-            this.add.line(0, 0, enemyGridX + i * this.cellSize, enemyGridY, enemyGridX + i * this.cellSize, enemyGridY + enemyGridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2);
-        }
-        this.enemyAvatar = this.add.sprite(enemyGridX - 80, enemyGridY + enemyGridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
-        
+        this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
+        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2); }
+        this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
+        const enemyGridX = gameWidth - 100 - gridWidth;
+        this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
+        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); }
+        this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
+
+        // ★★★【変更点】敵の生成とアバター設定ロジック ★★★
         const enemyData = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
         this.currentEnemyLayout = enemyData.layout;
         this.setupEnemy(this.gridY, this.currentEnemyLayout);
@@ -196,14 +237,10 @@ this.maxBattleDuration = 30; // ★最大戦闘時間（秒）
             this.enemyAvatar.setTexture(enemyData.avatar);
         }
         
-        const maxPlayerAvatarHeight = playerGridHeight * 0.8;
-        if (this.playerAvatar.height > maxPlayerAvatarHeight) {
-            this.playerAvatar.setScale(maxPlayerAvatarHeight / this.playerAvatar.height);
-        }
-        const maxEnemyAvatarHeight = enemyGridHeight * 0.8;
-        if (this.enemyAvatar.height > maxEnemyAvatarHeight) {
-            this.enemyAvatar.setScale(maxEnemyAvatarHeight / this.enemyAvatar.height);
-        }
+        const maxAvatarHeight = gridHeight * 0.8;
+        [this.playerAvatar, this.enemyAvatar].forEach(avatar => {
+            if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); }
+        });
         // =================================================================
         // STEP 4: プレイヤーのバックパックとインベントリの復元
         // =================================================================
@@ -2245,15 +2282,7 @@ updateArrowVisibility(itemContainer) {
             const randomIndex = Phaser.Math.Between(0, shopPool.length - 1);
             selectedItems.push(shopPool.splice(randomIndex, 1)[0]);
         }
-   // --- 4.5. グリッド拡張アイテムを追加するか判定 ---
-        const currentGridSize = this.stateManager.sf.player_grid_size;
-        const maxGridSize = 8; // グリッドの最大サイズを定義 (例: 8x8)
 
-        // 現在のグリッドが最大でなく、かつラウンドが3の倍数の時などに表示
-        if (currentGridSize < maxGridSize && (this.initialBattleParams.round % 3 === 0)) {
-            // 特別なアイテムIDとして 'upgrade_grid' を使う
-            selectedItems.unshift('upgrade_grid'); // 配列の先頭に追加
-        }
         // --- 5. 商品スロットをUIに生成 ---
         const shopContentWidth = gameWidth - 200;
         const itemSpacing = shopContentWidth / slotCount;
@@ -2262,22 +2291,7 @@ updateArrowVisibility(itemContainer) {
         selectedItems.forEach((itemId, index) => {
             const x = itemStartX + (index * itemSpacing);
             const y = inventoryAreaY + inventoryAreaHeight / 2 - 20;
-               // ★★★ この if-else ブロックを追加 ★★★
-            let itemData;
-            if (itemId === 'upgrade_grid') {
-                // グリッド拡張アイテム用の特別なデータオブジェクトを作成
-                const nextSize = (this.stateManager.sf.player_grid_size || 5) + 1;
-                itemData = {
-                    id: 'upgrade_grid', // 内部処理用のID
-                    name: `グリッド拡張 ${nextSize}x${nextSize}`, // 表示名
-                    cost: 30 * (nextSize - 5), // 価格はサイズに応じて変動
-                    storage: 'shield' // ★表示用のアイコンキー (要アセット追加)
-                };
-            } else {
-                itemData = ITEM_DATA[itemId];
-                itemData.name = itemId; // 表示名としてIDを仮設定
-            }
-             if (!itemData) return; // 安全策
+            const itemData = ITEM_DATA[itemId];
 
             const slotWidth = 160;
             const slotHeight = 200;
@@ -2322,38 +2336,32 @@ updateArrowVisibility(itemContainer) {
         // canBuyフラグがない、またはfalseなら処理を中断
         if (slotContainer.getData('canBuy') !== true) return;
 
-        if (itemId === 'upgrade_grid') {
-                    // --- グリッド拡張の購入処理 ---
-                    const currentSize = this.stateManager.sf.player_grid_size;
-                    const newSize = currentSize + 1;
-                    
-                    this.stateManager.setSF('player_grid_size', newSize);
-                    this.stateManager.setSF('coins', (this.stateManager.sf.coins || 0) - itemData.cost);
-                    
-                    console.log(`グリッドが ${newSize}x${newSize} に拡張されました！`);
+        // ★★★ ここからが「積極的オートセーブ」のロジック ★★★
+        
+        // 1. 更新後のデータをまず変数に用意する
+        const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
+        const newInventory = [...this.stateManager.sf.player_inventory, itemId];
 
-                    // ★重要★ シーンを再起動してグリッドの再描画を行う
-                    this.scene.restart();
+        // 2. StateManagerのsf変数を「まとめて」更新して自動保存
+        this.stateManager.setSF('coins', newCoins);
+        this.stateManager.setSF('player_inventory', newInventory);
+        
+        // ★★★ オートセーブここまで ★★★
 
-                } else {
-                    // --- 通常アイテムの購入処理 (既存のロジック) ---
-                    const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
-                    const newInventory = [...this.stateManager.sf.player_inventory, itemId];
-                    this.stateManager.setSF('coins', newCoins);
-                    this.stateManager.setSF('player_inventory', newInventory);
-                    
-                    const newItemContainer = this.createItem(itemId, -100, -100);
-                    if (newItemContainer) {
-                        this.inventoryItemImages.push(newItemContainer);
-                        this.updateInventoryLayout();
-                    }
-                    buyButtonText.setText('購入済み');
-                    buyButtonBg.setFillStyle(0x555555);
-                    slotContainer.removeInteractive();
-                }
-
-                // 他の商品の購入可否も更新する
-                this.updateShopButtons();
+        // 3. 画面上のインベントリにもアイテムを追加
+        const newItemContainer = this.createItem(itemId, -100, -100);
+        if (newItemContainer) {
+            this.inventoryItemImages.push(newItemContainer);
+            this.updateInventoryLayout();
+        }
+        
+        // 4. 購入済み表示 & インタラクション無効化
+        buyButtonText.setText('購入済み');
+        buyButtonBg.setFillStyle(0x555555);
+        slotContainer.removeInteractive(); // スロット全体を無効化
+        
+        // 5. 他の商品の購入可否も更新する
+        this.updateShopButtons();
 
                 } else {
                     // 画像領域がクリックされたらツールチップを表示
@@ -2506,7 +2514,7 @@ playFinishBlowEffects(targetAvatar) {
     });
 
     // 4. スローモーション解除とバトル終了処理
-    this.time.delayedCall(1000, () => {
+    this.time.delayedCall(1500, () => {
         this.time.timeScale = 1.0;
         const currentRound = this.stateManager.sf.round || 1;
         const FINAL_ROUND = 10; // ★最終ラウンドを定義
