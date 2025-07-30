@@ -6,11 +6,11 @@ export default class ScoreScene extends Phaser.Scene {
         this.receivedData = null;
     }
 
-    init(data) {
-        // 前のシーンから渡されたデータを受け取る
-        // 例: { from: 'GameClearScene', result: 'clear', finalRound: 10 }
-        // 例: { from: 'BattleScene', result: 'lose', finalRound: 5 }
-        this.receivedData = data;
+     init(data) {
+        // ★★★ このように修正 ★★★
+        // どんな形式でデータが来ても、正しく受け取れるようにする
+        this.receivedData = data.transitionParams || data || {};
+        console.log("ScoreScene init. Received data:", this.receivedData);
     }
 
     create() {
