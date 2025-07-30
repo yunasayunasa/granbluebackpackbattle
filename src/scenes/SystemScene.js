@@ -98,7 +98,7 @@ export default class SystemScene extends Phaser.Scene {
 
         const { width, height } = this.scale;
         const transitionSpeed = 300; // ワイプの速度(ミリ秒)
-
+this.transitionWipe.setVisible(true);
         // 1. 暗幕で画面を覆う (ワイプイン)
         this.tweens.add({
             targets: this.transitionWipe,
@@ -144,6 +144,7 @@ export default class SystemScene extends Phaser.Scene {
 
                 // 暗幕を次の遷移のために画面右側に戻しておく
                 this.transitionWipe.setX(width * 1.5);
+                this.transitionWipe.setVisible(false);
             }
         });
     }
