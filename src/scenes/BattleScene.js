@@ -696,11 +696,17 @@ export default class BattleScene extends Phaser.Scene {
                 const attackerStats = this[`${attacker}Stats`];
                 if (action.type === 'attack') {
                     let totalAttack = action.value;
-                    if (attacker === 'player' && itemData.tags.includes('dark') && attackerStats.darkResonanceLevel > 0) {
+                     if (itemData.tags.includes('dark') && attackerStats.darkResonanceLevel > 0) {
                         const hpPercent = (attackerStats.hp / attackerStats.max_hp) * 100;
                         let bonus = 0;
-                        if (hpPercent < 75) bonus += 2; if (hpPercent < 50) bonus += 3; if (hpPercent < 25) bonus += 5;
-                        if (bonus > 0) { totalAttack += bonus; console.log(`▼ 背水発動！ HP ${hpPercent.toFixed(0)}% のため攻撃力+${bonus}`); }
+                        if (hpPercent < 75) bonus += 3;
+                        if (hpPercent < 50) bonus += 4;
+                        if (hpPercent < 25) bonus += 8;
+                        
+                        if (bonus > 0) {
+                            totalAttack += bonus;
+                            console.log(`▼ ${attacker}の背水発動！ HP ${hpPercent.toFixed(0)}% のため攻撃力+${bonus}`);
+                        }
                     }
                     let damage = Math.max(0, totalAttack - defenderStats.defense);
                     if (defenderStats.block && defenderStats.block.length > 0 && damage > 0) {
