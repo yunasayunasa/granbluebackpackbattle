@@ -1,6 +1,9 @@
 // src/handlers/index.js (完成版)
 
 // --- 表示・演出系 ---
+import { handleFlash } from './flash.js';
+import { handleHideWindow } from './hidewindow.js';
+import { handleShowWindow } from './showwindow.js';
 import { handleCharaShow } from './chara_show.js';
 import { handleCharaHide } from './chara_hide.js';
 import { handleCharaMod } from './chara_mod.js';
@@ -54,6 +57,9 @@ import { handleReturn } from './return.js';
 // タグ名と関数をマッピングしたオブジェクトをエクスポート
 export const tagHandlers = {
     // 表示・演出系
+  'flash': handleFlash,
+    'hidewindow': handleHideWindow,
+    'showwindow': handleShowWindow,
     'chara_show': handleCharaShow,
     'chara_hide': handleCharaHide,
     'chara_mod': handleCharaMod,
