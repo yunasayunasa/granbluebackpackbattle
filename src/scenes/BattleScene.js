@@ -1019,7 +1019,7 @@ export default class BattleScene extends Phaser.Scene {
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (droppedInSellZone) {
-                this.soundManager.playSe('se_item_sell'); } catch (e) {} 
+                try{this.soundManager.playSe('se_item_sell'); } catch (e) {} 
                 const itemId = itemContainer.getData('itemId');
                 const itemData = ITEM_DATA[itemId];
                 const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
