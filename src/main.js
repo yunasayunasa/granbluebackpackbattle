@@ -14,6 +14,7 @@ import RewardScene from './scenes/RewardScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import GameClearScene from './scenes/GameClearScene.js';
 import ScoreScene from './scenes/ScoreScene.js';
+import BloomPipeline from './core/BloomPipeline.js'; 
 const config = {
     type: Phaser.AUTO,
     scale: {
