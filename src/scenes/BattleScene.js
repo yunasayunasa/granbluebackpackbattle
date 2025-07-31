@@ -241,7 +241,7 @@ export default class BattleScene extends Phaser.Scene {
         const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
         allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
         this.startBattleButton.input.enabled = false;
-        
+        this.tweens.add({
         targets: [this.prepareContainer, ...this.inventoryItemImages],
             alpha: 0,
             duration: 300,
