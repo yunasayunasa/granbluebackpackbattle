@@ -1,4 +1,4 @@
-// src/main.js
+// src/main.js (直接クラス渡し形式での最終修正 - ステップ1-1)
 
 import PreloadScene from './scenes/PreloadScene.js';
 import SystemScene from './scenes/SystemScene.js'; 
@@ -14,9 +14,6 @@ import RewardScene from './scenes/RewardScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import GameClearScene from './scenes/GameClearScene.js';
 import ScoreScene from './scenes/ScoreScene.js';
-// ★★★ BloomPipelineをimportするのを忘れないでください ★★★
-import BloomPipeline from './core/BloomPipeline.js'; 
-
 const config = {
     type: Phaser.AUTO,
     scale: {
@@ -25,13 +22,9 @@ const config = {
         autoCenter: Phaser.Scale.CENTER_BOTH,
         width: 1280,
         height: 720
-    }, // ★★★ scaleオブジェクトはここで閉じる ★★★
-
-    // ★★★ pipelineは、scaleの外、configの直下に置く ★★★
-    pipeline: {
-        'Bloom': BloomPipeline
+        
     },
-
+    // ★★★ 修正箇所: シーン設定を直接クラスを渡す形式に維持 ★★★
     scene: [
         PreloadScene, 
         SystemScene, 
@@ -41,12 +34,12 @@ const config = {
         ConfigScene, 
         BacklogScene, 
         ActionScene,
-        BattleScene,
+         BattleScene,
         NovelOverlayScene,
-        RewardScene,
-        GameOverScene,
+        RewardScene ,
+         GameOverScene,  // ★追加
         GameClearScene,
-        ScoreScene
+        ScoreScene  // ★追加
     ]
 };
 
