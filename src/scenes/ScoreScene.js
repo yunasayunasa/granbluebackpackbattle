@@ -93,7 +93,7 @@ export default class ScoreScene extends Phaser.Scene {
             this.stateManager.setSF('player_backpack', {});
             this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
             this.stateManager.setSF('round', 1);
-            this.stateManager.setSF('coins', 0); // 初期コインは0のはず
+            this.stateManager.setSF('coins', 20); // 初期コインは0のはず
             this.stateManager.setSF('player_base_max_hp', 100);
             this.stateManager.f = {};
             this.scene.get('SystemScene').events.emit('request-scene-transition', {
