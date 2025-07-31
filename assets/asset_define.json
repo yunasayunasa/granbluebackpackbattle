@@ -99,7 +99,37 @@
 "popopo": "assets/gyakuten_popopo.mp3",
 "cafe": "assets/cafe.mp3",
  "bgm_battle": "assets/gyakuten_bgm.mp3",
-"ronpa_bgm": "assets/ronpa_bgm.mp3"
+"ronpa_bgm": "assets/ronpa_bgm.mp3",
+
+    "bgm_prepare": "assets/sounds/bgm_prepare.mp3",
+    "bgm_battle": "assets/sounds/bgm_battle.mp3",
+    
+    "se_vs_cutin": "assets/sounds/se_vs_cutin.mp3",
+    "se_finish_blow": "assets/sounds/se_finish_blow.mp3",
+    "se_game_clear_fanfare": "assets/sounds/se_game_clear_fanfare.mp3",
+    "se_game_over": "assets/sounds/se_game_over.mp3",
+    "se_round_clear": "assets/sounds/se_round_clear.mp3",
+    "se_rank_up": "assets/sounds/se_rank_up.mp3",
+    "se_result_pop": "assets/sounds/se_result_pop.mp3",
+
+    "se_damage_01": "assets/sounds/se_damage_01.mp3",
+    "se_damage_02": "assets/sounds/se_damage_02.mp3",
+    "se_damage_03": "assets/sounds/se_damage_03.mp3",
+    "se_damage_04": "assets/sounds/se_damage_04.mp3",
+    "se_block_success": "assets/sounds/se_block_success.mp3",
+    "se_block_gain": "assets/sounds/se_block_gain.mp3",
+    "se_heal": "assets/sounds/se_heal.mp3",
+    "se_time_warning": "assets/sounds/se_time_warning.mp3",
+    "se_time_up": "assets/sounds/se_time_up.mp3",
+
+    "se_button_click": "assets/sounds/se_button_click.mp3",
+    "se_item_buy": "assets/sounds/se_item_buy.mp3",
+    "se_item_sell": "assets/sounds/se_item_sell.mp3",
+    "se_reroll": "assets/sounds/se_reroll.mp3",
+    "se_item_grab": "assets/sounds/se_item_grab.mp3",
+    "se_item_place": "assets/sounds/se_item_place.mp3",
+    "se_item_rotate": "assets/sounds/se_item_rotate.mp3",
+    "se_place_fail": "assets/sounds/se_place_fail.mp3"
 
   },
   "videos": {
