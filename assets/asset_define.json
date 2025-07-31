@@ -2,7 +2,7 @@
   "images": {
     "message_window": "assets/message_window.png",
        "particle_white": "assets/particle.png",
- "round_clear_logo": "assets/images/ui/round_clear_logo.png",
+ "round_clear_logo": "assets/round_clear_logo.png",
     "cutin_player_bg": "assets/cutin_player_bg.png",
     "cutin_enemy_bg": "assets/cutin_enemy_bg.png",
     "vs_logo": "assets/vs_logo.png",
