@@ -3,6 +3,8 @@
 
 [bg storage="title"]
 [flash time=1000 wait=false]
+[playbgm storage="bgm_prepare"]
+
 [image storage="titlelogo" time=500]
 [link target="*start_score_attack" size=28 text="スコアアタック"]
 [p]

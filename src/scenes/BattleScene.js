@@ -123,7 +123,7 @@ export default class BattleScene extends Phaser.Scene {
         this.battleEnded = false; this.gameState = 'prepare';
         this.cameras.main.setBackgroundColor('#8a2be2');
 
-        const battleBgmKey = 'ronpa_bgm';
+        const battleBgmKey = 'bgm_prepare';
         if (this.soundManager.currentBgmKey !== battleBgmKey) {
             this.soundManager.playBgm(battleBgmKey);
         }
