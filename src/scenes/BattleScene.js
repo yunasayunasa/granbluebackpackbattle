@@ -232,7 +232,8 @@ export default class BattleScene extends Phaser.Scene {
        // create() の中の startBattleButton のリスナー部分
 
     this.startBattleButton.on('pointerdown', () => {
-        if (this.gameState !== 'prepare') return;
+            try { this.soundManager.playSe('se_button_click'); } catch (e) {}
+          if (this.gameState !== 'prepare') return;
 
         // ★★★ このブロックを全面的に書き換え ★★★
 
@@ -745,6 +746,7 @@ export default class BattleScene extends Phaser.Scene {
                 else if (action.type === 'heal') {
                     const healAmount = Math.min(action.value, attackerStats.max_hp - attackerStats.hp);
                     if (healAmount > 0) {
+                        try { this.soundManager.playSe('se_heal'); } catch(e) {} 
                         attackerStats.hp += healAmount;
                         this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
                         const targetAvatar = (attacker === 'player') ? this.playerAvatar : this.enemyAvatar;
@@ -798,7 +800,7 @@ export default class BattleScene extends Phaser.Scene {
         console.log(`バトル終了。結果: ${result}`);
         if (result === 'win') {
             return;
-        }
+        }   try { this.soundManager.playSe('se_game_over'); } catch(e) {} 
         this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', {
             fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
         }).setOrigin(0.5).setDepth(999);
@@ -973,6 +975,7 @@ export default class BattleScene extends Phaser.Scene {
             });
         });
         itemContainer.on('dragstart', () => {
+               try { this.soundManager.playSe('se_item_grab'); } catch (e) {}
             isDragging = true;
             if (pressTimer) pressTimer.remove();
             this.tooltip.hide();
@@ -1015,6 +1018,7 @@ export default class BattleScene extends Phaser.Scene {
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (droppedInSellZone) {
+                this.soundManager.playSe('se_item_sell'); } catch (e) {} 
                 const itemId = itemContainer.getData('itemId');
                 const itemData = ITEM_DATA[itemId];
                 const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
@@ -1030,6 +1034,7 @@ export default class BattleScene extends Phaser.Scene {
                 this.saveBackpackState();
                 console.log(`アイテム'${itemId}'を ${sellPrice}コインで売却しました。`);
             } else if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+                try { this.soundManager.playSe('se_item_place'); } catch (e) {}
                 const dropX = itemContainer.x;
                 const dropY = itemContainer.y;
                 this.placeItemInBackpack(itemContainer, gridCol, gridRow);
@@ -1102,6 +1107,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     rotateItem(itemContainer) {
+        this.soundManager.playSe('se_item_rotate'); } catch (e) {}
         const originalRotation = itemContainer.getData('rotation');
         const newRotation = (originalRotation + 90) % 360;
         itemContainer.setData('rotation', newRotation);
@@ -1273,6 +1279,8 @@ export default class BattleScene extends Phaser.Scene {
 
     playDamageEffects(targetSide, amount) {
         if (amount <= 0) return;
+         const damageSeKeys = ['se_damage_01', 'se_damage_02', 'se_damage_03', 'se_damage_04'];
+        try { this.soundManager.playSe(Phaser.Utils.Array.GetRandom(damageSeKeys)); } catch (e) {} 
         const damage = Math.floor(amount);
         const targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
         if (!targetAvatar) return;
@@ -1400,6 +1408,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     showBlockSuccessIcon(targetSide) {
+        try { this.soundManager.playSe('se_block_success'); } catch (e) {}
         let targetObject;
         if (targetSide === 'player') {
             targetObject = this.playerAvatar;
@@ -1519,6 +1528,7 @@ export default class BattleScene extends Phaser.Scene {
                 this.tooltip.hide();
                 if (localY > 60) {
                     if (slotContainer.getData('canBuy') !== true) return;
+                       try { this.soundManager.playSe('se_item_buy'); } catch(e) {} 
                     const newCoins = (this.stateManager.sf.coins || 0) - itemData.cost;
                     const newInventory = [...this.stateManager.sf.player_inventory, itemId];
                     this.stateManager.setSF('coins', newCoins);
@@ -1610,7 +1620,7 @@ export default class BattleScene extends Phaser.Scene {
 
     async playFinishBlowEffects(targetAvatar) {
         if (!targetAvatar) return;
-
+  try { this.soundManager.playSe('se_finish_blow'); } catch (e) {}
         // --- STEP 1: トドメの瞬間のスローモーション演出 ---
         this.time.timeScale = 0.2;
         const finishSlash = this.add.graphics().setDepth(2001);
@@ -1784,6 +1794,7 @@ export default class BattleScene extends Phaser.Scene {
             ease: 'Cubic.easeOut',
             delay: 100, // プレイヤー側より少し遅れて開始
             onComplete: () => {
+                this.soundManager.playSe('se_vs_cutin'); } catch(e) {}
                 // 5. VSロゴを叩きつけるように表示
                 this.tweens.add({
                     targets: vsLogo,
