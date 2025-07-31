@@ -1795,7 +1795,7 @@ export default class BattleScene extends Phaser.Scene {
             ease: 'Cubic.easeOut',
             delay: 100, // プレイヤー側より少し遅れて開始
             onComplete: () => {
-                this.soundManager.playSe('se_vs_cutin'); } catch(e) {}
+             try{  this.soundManager.playSe('se_vs_cutin'); } catch(e) {}
                 // 5. VSロゴを叩きつけるように表示
                 this.tweens.add({
                     targets: vsLogo,
