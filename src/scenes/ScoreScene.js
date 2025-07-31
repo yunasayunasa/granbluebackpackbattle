@@ -14,48 +14,46 @@ export default class ScoreScene extends Phaser.Scene {
     }
 
     create() {
-        this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("ScoreScene: create");
+        this.cameras.main.fadeIn(300, 0, 0, 0); // フェードイン
+
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
+        this.receivedData = this.sys.settings.data.transitionParams || {};
 
         // --- 1. 背景とBGM設定 ---
         this.cameras.main.setBackgroundColor('#1a1a1a');
-       // this.soundManager.playBgm('result_music'); // 仮の結果発表BGM
+        // ★★★ 仮の背景を追加 ★★★
+        this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1')
+            .setAlpha(0.5) // 少し暗めにする
+            .setDisplaySize(this.scale.width, this.scale.height);
+        
+        try { this.soundManager.playBgm('result_music'); }
+        catch(e) { console.warn("BGM 'result_music' not found."); }
 
-        // --- 2. スコア計算ロジック ---
+        // --- 2. スコア計算ロジック (変更なし) ---
         const finalRound = this.receivedData.finalRound || 1;
         const result = this.receivedData.result || 'lose';
-
-        let score = (finalRound - 1) * 100; // 1ラウンドごとに100点
-        let expGained = (finalRound - 1) * 10;   // 1ラウンドごとに10経験値
-
-        // ゲームクリアボーナス
+        let score = (finalRound - 1) * 100;
+        let expGained = (finalRound - 1) * 10;
         if (result === 'clear') {
-            score += 1000; // クリアボーナス
+            score += 1000;
             expGained += 100;
         }
 
-        // --- 3. プレイヤープロファイルの読み込みと更新 ---
+        // --- 3. プレイヤープロファイルの読み込みと更新 (変更なし) ---
         const profile = this.stateManager.sf.player_profile;
         const oldRank = profile.rank;
         const oldHighScore = profile.highScore || 0;
-
         profile.totalExp += expGained;
         if (result === 'clear') {
             profile.totalWins = (profile.totalWins || 0) + 1;
         }
         profile.highScore = Math.max(oldHighScore, score);
-
-        // ランク判定テーブル
         const rankTable = [
-            { exp: 0,    rank: "駆け出し" },
-            { exp: 100,  rank: "ブロンズ" },
-            { exp: 300,  rank: "シルバー" },
-            { exp: 700,  rank: "ゴールド" },
-            { exp: 1500, rank: "プラチナ" },
+            { exp: 0,    rank: "駆け出し" }, { exp: 100,  rank: "ブロンズ" }, { exp: 300,  rank: "シルバー" },
+            { exp: 700,  rank: "ゴールド" }, { exp: 1500, rank: "プラチナ" },
         ];
-        
         let newRank = oldRank;
         for (let i = rankTable.length - 1; i >= 0; i--) {
             if (profile.totalExp >= rankTable[i].exp) {
@@ -64,38 +62,64 @@ export default class ScoreScene extends Phaser.Scene {
             }
         }
         profile.rank = newRank;
-
-        // StateManagerに更新後のプロファイルを保存
         this.stateManager.setSF('player_profile', profile);
 
-        // --- 4. 結果表示UIの作成 ---
+        // --- 4. 結果表示UIのアニメーション ---
         const titleText = (result === 'clear') ? 'GAME CLEAR' : 'GAME OVER';
         this.add.text(this.scale.width / 2, 80, titleText, { fontSize: '60px', fill: '#e0e0e0' }).setOrigin(0.5);
 
         const resultLines = [
-            `到達ラウンド: ${finalRound}`,
-            `獲得スコア: ${score}`,
-            `ハイスコア: ${profile.highScore} ${score > oldHighScore ? '(New!)' : ''}`,
-            `---`,
-            `獲得経験値: ${expGained}`,
-            `累計経験値: ${profile.totalExp}`,
-            `ランク: ${oldRank} ${newRank !== oldRank ? '→ ' + newRank + ' (Rank Up!)' : ''}`
+            { label: '到達ラウンド', value: finalRound },
+            { label: '獲得スコア', value: `${score} ${score > oldHighScore ? '(New!)' : ''}` },
+            { label: '獲得経験値', value: expGained },
         ];
+        
+        const lineObjects = [];
+        const startY = 200;
+        const stepY = 70;
 
+        // まずテキストオブジェクトを全て作成し、非表示にする
         resultLines.forEach((line, index) => {
-            this.add.text(this.scale.width / 2, 180 + index * 50, line, { fontSize: '32px', fill: '#ffffff' }).setOrigin(0.5);
+            const y = startY + index * stepY;
+            const labelText = this.add.text(this.scale.width / 2 - 100, y, line.label, { fontSize: '32px', fill: '#cccccc' }).setOrigin(1, 0.5).setAlpha(0);
+            const valueText = this.add.text(this.scale.width / 2 + 100, y, line.value, { fontSize: '40px', fill: '#ffffff', fontStyle: 'bold' }).setOrigin(0, 0.5).setAlpha(0);
+            lineObjects.push({ label: labelText, value: valueText });
+        });
+        
+        // Tweenのタイムラインを作成
+        const timeline = this.tweens.createTimeline();
+
+        lineObjects.forEach(line => {
+            timeline.add({
+                targets: [line.label, line.value],
+                alpha: 1,
+                scale: { from: 1.2, to: 1 },
+                duration: 250,
+                ease: 'Cubic.easeOut',
+                onStart: () => {
+                    // ★★★ SE再生をtry-catchで囲む ★★★
+                    try { this.soundManager.playSe('se_result_pop'); }
+                    catch(e) { console.warn("SE 'se_result_pop' not found."); }
+                },
+                offset: '-=50' // 前のアニメーションと少し重ねる
+            });
         });
 
-        // --- 5. 「タイトルへ」ボタン ---
-        const titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', {
-            fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive();
+        // 全てのアニメーションが終わった後に、次のステップ（経験値バーなど）に進む
+        timeline.on('complete', () => {
+            console.log("リザルト表示完了。次の演出へ。");
+            // ★ここに次の「経験値バー演出」の呼び出しを追加する
+            this._playExpBarAnimation(expGained, profile.totalExp - expGained, newRank !== oldRank);
+        });
 
-        titleButton.on('pointerdown', () => {
-            console.log("ScoreScene: Requesting a fresh start from Title screen (title.ks).");
-            titleButton.disableInteractive();
-    // ★★★★★ ここからが修正の核心 ★★★★★
-            // タイトルに戻る前に、次の挑戦のために進行状況データをリセットする
+        timeline.play();
+        
+        // --- 5. 「タイトルへ」ボタン (最初は非表示) ---
+        this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', {
+            fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive().setAlpha(0); // ★alpha: 0 に変更
+this.titleButton.on('pointerdown', () => {
+    
             console.log("リセット前 コイン:", this.stateManager.sf.coins);
             this.stateManager.setSF('player_backpack', {});
             this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
@@ -120,5 +144,15 @@ export default class ScoreScene extends Phaser.Scene {
         
         // --- 6. 遷移完了を通知 ---
         this.events.emit('scene-ready');
+    }
+    _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
+        // (次のステップでこの中身を実装します)
+        
+        // 全ての演出が終わったので、「タイトルへ」ボタンを表示する
+        this.tweens.add({
+            targets: this.titleButton,
+            alpha: 1,
+            duration: 500
+        });
     }
 }
