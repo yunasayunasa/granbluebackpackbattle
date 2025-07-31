@@ -14,6 +14,7 @@ export default class RewardScene extends Phaser.Scene {
 
     create() {
         this.cameras.main.fadeIn(300, 0, 0, 0); 
+        try { this.soundManager.playBgm('bgm_prepare'); } catch(e) {}
         console.log("RewardScene: create");
         this.add.image(this.scale.width / 2, this.scale.height / 2, 'reward_background')
             .setDisplaySize(this.scale.width, this.scale.height)
