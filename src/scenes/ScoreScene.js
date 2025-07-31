@@ -15,23 +15,19 @@ export default class ScoreScene extends Phaser.Scene {
 
     create() {
         console.log("ScoreScene: create");
-        this.cameras.main.fadeIn(300, 0, 0, 0); // フェードイン
+        this.cameras.main.fadeIn(300, 0, 0, 0);
 
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
         this.receivedData = this.sys.settings.data.transitionParams || {};
 
-        // --- 1. 背景とBGM設定 ---
-        this.cameras.main.setBackgroundColor('#1a1a1a');
-        // ★★★ 仮の背景を追加 ★★★
         this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1')
-            .setAlpha(0.5) // 少し暗めにする
+            .setAlpha(0.5)
             .setDisplaySize(this.scale.width, this.scale.height);
         
         try { this.soundManager.playBgm('result_music'); }
         catch(e) { console.warn("BGM 'result_music' not found."); }
 
-        // --- 2. スコア計算ロジック (変更なし) ---
         const finalRound = this.receivedData.finalRound || 1;
         const result = this.receivedData.result || 'lose';
         let score = (finalRound - 1) * 100;
@@ -41,7 +37,6 @@ export default class ScoreScene extends Phaser.Scene {
             expGained += 100;
         }
 
-        // --- 3. プレイヤープロファイルの読み込みと更新 (変更なし) ---
         const profile = this.stateManager.sf.player_profile;
         const oldRank = profile.rank;
         const oldHighScore = profile.highScore || 0;
@@ -64,7 +59,7 @@ export default class ScoreScene extends Phaser.Scene {
         profile.rank = newRank;
         this.stateManager.setSF('player_profile', profile);
 
-        // --- 4. 結果表示UIのアニメーション ---
+        // ★★★ このブロックを全面的に書き換え (タイムライン不使用版) ★★★
         const titleText = (result === 'clear') ? 'GAME CLEAR' : 'GAME OVER';
         this.add.text(this.scale.width / 2, 80, titleText, { fontSize: '60px', fill: '#e0e0e0' }).setOrigin(0.5);
 
@@ -74,45 +69,56 @@ export default class ScoreScene extends Phaser.Scene {
             { label: '獲得経験値', value: expGained },
         ];
         
-        const lineObjects = [];
         const startY = 200;
         const stepY = 70;
+        const startDelay = 500; // 最初のアニメーションが始まるまでの時間
+        const stepDelay = 300; // 各項目が表示される時間差
 
-        // まずテキストオブジェクトを全て作成し、非表示にする
         resultLines.forEach((line, index) => {
             const y = startY + index * stepY;
-            const labelText = this.add.text(this.scale.width / 2 - 100, y, line.label, { fontSize: '32px', fill: '#cccccc' }).setOrigin(1, 0.5).setAlpha(0);
-            const valueText = this.add.text(this.scale.width / 2 + 100, y, line.value, { fontSize: '40px', fill: '#ffffff', fontStyle: 'bold' }).setOrigin(0, 0.5).setAlpha(0);
-            lineObjects.push({ label: labelText, value: valueText });
-        });
-        
-        // Tweenのタイムラインを作成
-        const timeline = this.tweens.createTimeline();
+            
+            // ラベルと値のテキストオブジェクトを作成し、最初は見えなくしておく
+            const labelText = this.add.text(this.scale.width / 2 - 100, y, line.label, { fontSize: '32px', fill: '#cccccc' }).setOrigin(1, 0.5).setAlpha(0).setScale(1.2);
+            const valueText = this.add.text(this.scale.width / 2 + 100, y, line.value, { fontSize: '40px', fill: '#ffffff', fontStyle: 'bold' }).setOrigin(0, 0.5).setAlpha(0).setScale(1.2);
 
-        lineObjects.forEach(line => {
-            timeline.add({
-                targets: [line.label, line.value],
+            // indexを使って、各アニメーションの開始時間をずらす
+            const delay = startDelay + index * stepDelay;
+
+            // ラベル用Tween
+            this.tweens.add({
+                targets: labelText,
+                delay: delay,
                 alpha: 1,
-                scale: { from: 1.2, to: 1 },
+                scale: 1,
                 duration: 250,
                 ease: 'Cubic.easeOut',
                 onStart: () => {
-                    // ★★★ SE再生をtry-catchで囲む ★★★
                     try { this.soundManager.playSe('se_result_pop'); }
                     catch(e) { console.warn("SE 'se_result_pop' not found."); }
-                },
-                offset: '-=50' // 前のアニメーションと少し重ねる
+                }
+            });
+
+            // 値用Tween (同じタイミングで開始)
+            this.tweens.add({
+                targets: valueText,
+                delay: delay,
+                alpha: 1,
+                scale: 1,
+                duration: 250,
+                ease: 'Cubic.easeOut'
             });
         });
 
-        // 全てのアニメーションが終わった後に、次のステップ（経験値バーなど）に進む
-        timeline.on('complete', () => {
+        // 最後の項目のアニメーションが終わった後に、次のステップに進む
+        const totalAnimationTime = startDelay + resultLines.length * stepDelay + 250;
+        this.time.delayedCall(totalAnimationTime, () => {
             console.log("リザルト表示完了。次の演出へ。");
-            // ★ここに次の「経験値バー演出」の呼び出しを追加する
             this._playExpBarAnimation(expGained, profile.totalExp - expGained, newRank !== oldRank);
         });
 
-        timeline.play();
+        this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', {
+            fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive().setAlpha(0);
         
         // --- 5. 「タイトルへ」ボタン (最初は非表示) ---
         this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', {
