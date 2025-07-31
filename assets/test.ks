@@ -1,5 +1,5 @@
 ; === Odyssey Engine Title Screen ===
-[hudewindow]
+[hidewindow]
 [flash time=1000 wait=false]
 [bg storage="title"]
 [link target="*start_score_attack" size=28 text="スコアアタック"]
