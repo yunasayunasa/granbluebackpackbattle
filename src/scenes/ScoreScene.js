@@ -153,79 +153,98 @@ this.titleButton.on('pointerdown', () => {
     }
    // ScoreScene.js の末尾
 
-    // ★★★ このメソッドを全文置き換え ★★★
+   // ScoreScene.js の末尾
+
     async _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
         const { width, height } = this.scale;
         
-        // --- 1. ランク定義 ---
+        // ★★★ ランク定義を「C」から「S+」に修正 ★★★
         const rankMap = {
-            'C': { threshold: 100, image: 'rank_c' },
-            'B': { threshold: 300, image: 'rank_b' },
-            'A': { threshold: 700, image: 'rank_a' },
-            'S': { threshold: 1500, image: 'rank_s' },
-            'S+': { threshold: 99999, image: 'rank_s_plus' },
+            'C':  { threshold: 100, image: 'rank_c', next: 'B' },
+            'B':  { threshold: 300, image: 'rank_b', next: 'A' },
+            'A':  { threshold: 700, image: 'rank_a', next: 'S' },
+            'S':  { threshold: 1500, image: 'rank_s', next: 'S+' },
+            'S+': { threshold: 99999, image: 'rank_s_plus', next: null },
         };
-        const oldRankData = rankMap[this.stateManager.sf.player_profile.rank] || rankMap['C'];
+        // 初期ランクを'駆け出し'から'C'に変更する必要があるため、profileも修正
+        const profile = this.stateManager.sf.player_profile;
+        if(profile.rank === '駆け出し') profile.rank = 'C';
         
-        // --- 2. EXPバーのUIを作成 ---
-        const barWidth = 600;
-        const barHeight = 30;
-        const barX = width / 2;
-        const barY = height / 2 + 100;
+        const currentRankKey = profile.rank;
+        const currentRankData = rankMap[currentRankKey];
+        if(!currentRankData) {
+            console.error(`Rank data for '${currentRankKey}' not found.`);
+            return;
+        }
+
+        // 現在のランクの開始経験値を取得
+        const rankKeys = Object.keys(rankMap);
+        const currentRankIndex = rankKeys.indexOf(currentRankKey);
+        const prevRankThreshold = currentRankIndex > 0 ? rankMap[rankKeys[currentRankIndex - 1]].threshold : 0;
+        
+        const barWidth = 600; const barHeight = 30;
+        const barX = width / 2; const barY = height / 2 + 100;
         
         this.add.graphics().fillStyle(0x333333).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight);
         const expBar = this.add.graphics();
-        
-        // ランクアップ前のEXP割合を計算
-        const oldExpInRank = oldTotalExp - (Object.values(rankMap).find(r => r.threshold > oldTotalExp)?.threshold - rankMap[Object.keys(rankMap)[Object.keys(rankMap).indexOf(this.stateManager.sf.player_profile.rank)-1]]?.threshold || 0);
+        const expText = this.add.text(barX, barY + 40, `EXP:`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
 
-        const startWidth = (oldExpInRank / oldRankData.threshold) * barWidth;
+        let currentExp = oldTotalExp;
+        const targetExp = oldTotalExp + expGained;
+        const rankThreshold = currentRankData.threshold;
+        
+        const rankExpRange = rankThreshold - prevRankThreshold;
+        const startExpInRank = currentExp - prevRankThreshold;
+        const startWidth = (startExpInRank / rankExpRange) * barWidth;
+
         expBar.fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, startWidth, barHeight);
-        
-        const expText = this.add.text(barX, barY + 40, `EXP: ${oldTotalExp} / ${oldRankData.threshold}`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+        expText.setText(`EXP: ${Math.floor(currentExp)} / ${rankThreshold}`);
 
-        // --- 3. EXPが増えるアニメーション ---
         try { this.soundManager.playSe('se_exp_bar_fill'); } catch(e) {}
         
-        const newTotalExp = oldTotalExp + expGained;
-        let finalWidth = ((newTotalExp % oldRankData.threshold) / oldRankData.threshold) * barWidth;
-        if (didRankUp) finalWidth = barWidth; // ランクアップ時は満タンまで
-
+        // Tweenで動かす対象の値をオブジェクトにする
+        const expCounter = { value: currentExp };
+        
         this.tweens.add({
-            targets: { value: startWidth },
-            value: finalWidth,
+            targets: expCounter,
+            value: targetExp,
             duration: 1500,
             ease: 'Cubic.easeOut',
-            onUpdate: (tween) => {
-                expBar.clear().fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, tween.getValue(), barHeight);
-                const currentExp = oldTotalExp + Math.floor((tween.getValue() / barWidth) * oldRankData.threshold * (expGained/expGained));
-                 expText.setText(`EXP: ${currentExp} / ${oldRankData.threshold}`);
-
-            },
-            onComplete: async () => {
-                if (didRankUp) {
-                    await this._playRankUpEffect();
-                    // ★ ランクアップ後のバーアニメーションは、今回は省略（複雑になりすぎるため）
+            onUpdate: () => {
+                const animatedExp = expCounter.value;
+                let expInRank = animatedExp - prevRankThreshold;
+                
+                // ランクアップの瞬間を検知
+                if (expInRank >= rankExpRange && didRankUp) {
+                    expInRank = rankExpRange; // ゲージを100%で止める
+                    this.tweens.getTweensOf(expCounter)[0].pause(); // ゲージの動きを止める
+                    
+                    this._playRankUpEffect().then(() => {
+                        // ★★★ ランクアップ後の処理 ★★★
+                        // (今回は演出後にボタンを表示して終了)
+                        this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+                    });
                 }
-
-                // 全ての演出が終わったので、「タイトルへ」ボタンを表示する
-                this.tweens.add({
-                    targets: this.titleButton,
-                    alpha: 1,
-                    duration: 500
-                });
+                
+                const progress = expInRank / rankExpRange;
+                expBar.clear().fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth * progress, barHeight);
+                expText.setText(`EXP: ${Math.floor(animatedExp)} / ${rankThreshold}`);
+            },
+            onComplete: () => {
+                if (!didRankUp) {
+                    this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+                }
             }
         });
     }
     
-    // ★★★ ランクアップ演出用のメソッドを新規追加 ★★★
-    async _playRankUpEffect() {
+    _playRankUpEffect() {
         return new Promise(resolve => {
             const { width, height } = this.scale;
             const newRankKey = this.stateManager.sf.player_profile.rank;
-            const rankImageKey = {
-                'C':'rank_c', 'B':'rank_b', 'A':'rank_a', 'S':'rank_s', 'S+':'rank_s_plus'
-            }[newRankKey] || 'rank_c';
+            
+            // ★★★ ランク画像のキーマッピングを修正 ★★★
+            const rankImageKey = rankMap[newRankKey]?.image || 'rank_c';
 
             try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
             this.cameras.main.shake(300, 0.01);
@@ -235,17 +254,18 @@ this.titleButton.on('pointerdown', () => {
                 .setScale(3)
                 .setAlpha(0);
 
-            // ★★★ ブルームエフェクトを適用 ★★★
             const bloom = rankImage.setPostPipeline('Bloom');
-            bloom.bloomRadius = 0.0;
-            bloom.bloomIntensity = 0.0;
+            if (bloom) {
+                bloom.bloomRadius = 0.0;
+                bloom.bloomIntensity = 0.0;
+            }
             
             this.tweens.chain({
                 targets: rankImage,
                 tweens: [
-                    { scale: 1, alpha: 1, duration: 300, ease: 'Elastic.Out(1, 0.5)' }, // 叩きつけ
-                    { scale: 1, duration: 1000, onStart: () => { // 発光
-                        this.tweens.add({ targets: bloom, bloomRadius: 5.0, bloomIntensity: 1.5, duration: 500, ease: 'Cubic.easeOut', yoyo: true });
+                    { scale: 1, alpha: 1, duration: 300, ease: 'Elastic.Out(1, 0.5)' },
+                    { scale: 1, duration: 1000, onStart: () => {
+                        if (bloom) this.tweens.add({ targets: bloom, bloomRadius: 5.0, bloomIntensity: 1.5, duration: 500, ease: 'Cubic.easeOut', yoyo: true });
                     }},
                     { alpha: 0, duration: 300, ease: 'Cubic.easeIn' }
                 ],
@@ -255,5 +275,4 @@ this.titleButton.on('pointerdown', () => {
                 }
             });
         });
-    }
-}
+    }}
