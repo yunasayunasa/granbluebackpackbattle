@@ -234,6 +234,8 @@ export default class BattleScene extends Phaser.Scene {
     this.startBattleButton.on('pointerdown', () => {
             try { this.soundManager.playSe('se_button_click'); } catch (e) {}
           if (this.gameState !== 'prepare') return;
+        try { this.soundManager.playBgm('bgm_battle'); } catch(e) {}
+
 
         // ★★★ このブロックを全面的に書き換え ★★★
 
@@ -797,11 +799,13 @@ export default class BattleScene extends Phaser.Scene {
 
     endBattle(result) {
         if (this.battleEnded) return;
+        try { this.soundManager.stopBgm(); } catch(e) {}
         this.battleEnded = true;
         console.log(`バトル終了。結果: ${result}`);
         if (result === 'win') {
             return;
-        }   try { this.soundManager.playSe('se_game_over'); } catch(e) {} 
+        }  
+        try { this.soundManager.playSe('se_game_over'); } catch(e) {} 
         this.add.text(this.scale.width / 2, this.scale.height / 2 - 100, 'GAME OVER', {
             fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
         }).setOrigin(0.5).setDepth(999);
@@ -1636,7 +1640,7 @@ export default class BattleScene extends Phaser.Scene {
         const desiredWidth = targetAvatar.displayWidth * 2.5;
         effectSprite.setScale(desiredWidth / effectSprite.width);
         effectSprite.play('finish_anim');
-        
+        try { this.soundManager.stopBgm(); } catch(e) {}
         // アニメーションが終わるのを待つPromise
         const animPromise = new Promise(resolve => effectSprite.on('animationcomplete', () => {
              effectSprite.destroy();
