@@ -1600,9 +1600,11 @@ export default class BattleScene extends Phaser.Scene {
         console.log("Backpack & Inventory states auto-saved.");
     }
     
-    playFinishBlowEffects(targetAvatar) {
+       playFinishBlowEffects(targetAvatar) {
         if (!targetAvatar) return;
+
         this.time.timeScale = 0.2;
+
         const finishSlash = this.add.graphics().setDepth(2001);
         const centerX = this.scale.width / 2;
         const centerY = this.scale.height / 2;
@@ -1628,45 +1630,82 @@ export default class BattleScene extends Phaser.Scene {
             targets: slashContainer, scale: { from: 0.3, to: 1.5 }, alpha: { from: 1, to: 0 },
             duration: 400, ease: 'Cubic.easeOut', onComplete: () => { slashContainer.destroy(); }
         });
+
         const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
         const desiredWidth = targetAvatar.displayWidth * 2.5;
         effectSprite.setScale(desiredWidth / effectSprite.width);
         effectSprite.play('finish_anim');
         effectSprite.on('animationcomplete', () => { effectSprite.destroy(); });
-        this.time.delayedCall(1500, () => {
+        
+        // ★★★ この delayedCall のコールバックを async に変更 ★★★
+        this.time.delayedCall(800, async () => {
             this.time.timeScale = 1.0;
             const currentRound = this.stateManager.sf.round || 1;
             const FINAL_ROUND = 10;
-            this.stateManager.setF('player_hp', this.playerStats.hp);
-            const finalBackpackData = {};
-            this.placedItemImages.forEach((item, index) => {
-                const gridPos = item.getData('gridPos');
-                if (gridPos) {
-                    finalBackpackData[`uid_${index}`] = {
-                        itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                    };
-                }
+
+            // --- 1. 演出を開始 ---
+            this.soundManager.playSe('se_round_clear');
+            const roundClearLogo = this.add.image(this.scale.width / 2, this.scale.height / 2, 'round_clear_logo')
+                .setDepth(6000)
+                .setScale(0.5)
+                .setAlpha(0);
+
+            // 演出用のTween (最低表示時間を保証)
+            const effectPromise = new Promise(resolve => {
+                this.tweens.chain({
+                    targets: roundClearLogo,
+                    tweens: [
+                        { scale: 1.1, alpha: 1, duration: 200, ease: 'Cubic.easeOut' },
+                        { scale: 1, duration: 100, ease: 'Cubic.easeInOut' },
+                        { alpha: 1, duration: 800 }, // しばらく表示
+                        { alpha: 0, duration: 200, ease: 'Cubic.easeIn' }
+                    ],
+                    onComplete: () => {
+                        roundClearLogo.destroy();
+                        resolve(); // アニメーション完了を通知
+                    }
+                });
             });
-            const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-            this.stateManager.setSF('player_backpack', finalBackpackData);
-            this.stateManager.setSF('player_inventory', finalInventoryData);
-            this._createRankMatchData();
+
+            // --- 2. データ保存処理（演出と並行して実行）---
+            console.log("Saving data in background...");
+            const saveDataPromise = new Promise(resolve => {
+                this.stateManager.setF('player_hp', this.playerStats.hp);
+                const finalBackpackData = {};
+                this.placedItemImages.forEach((item, index) => {
+                    const gridPos = item.getData('gridPos');
+                    if (gridPos) {
+                        finalBackpackData[`uid_${index}`] = {
+                            itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
+                        };
+                    }
+                });
+                const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+                this.stateManager.setSF('player_backpack', finalBackpackData);
+                this.stateManager.setSF('player_inventory', finalInventoryData);
+                this._createRankMatchData();
+                
+                // setSFは同期的だが、念のため次のフレームで完了とする
+                this.time.delayedCall(1, resolve);
+            });
+
+            // --- 3. 演出とデータ保存の両方が完了するのを待つ ---
+            await Promise.all([effectPromise, saveDataPromise]);
+            console.log("Save complete and effect finished.");
+
+            // --- 4. 次のシーンへ遷移 ---
             if (currentRound >= FINAL_ROUND) {
-                console.log("★★★★ GAME CLEAR! ★★★★");
-                console.log("Transitioning to GameClearScene.");
-                this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                this._transitionToScene({
                     to: 'GameClearScene',
                     from: this.scene.key,
-                    params: {
-                        finalRound: currentRound
-                    }
+                    params: { finalRound: currentRound }
                 });
             } else {
                 const currentCoins = this.stateManager.sf.coins || 0;
                 const rewardCoins = 10 + (currentRound * 2);
                 this.stateManager.setSF('coins', currentCoins + rewardCoins);
                 this.stateManager.setSF('round', currentRound + 1);
-                this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                this._transitionToScene({
                     to: 'RewardScene',
                     from: this.scene.key
                 });
