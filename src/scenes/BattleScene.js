@@ -1600,117 +1600,101 @@ export default class BattleScene extends Phaser.Scene {
         console.log("Backpack & Inventory states auto-saved.");
     }
     
-       playFinishBlowEffects(targetAvatar) {
+           // playFinishBlowEffects メソッドを丸ごとこれに置き換え
+
+    async playFinishBlowEffects(targetAvatar) {
         if (!targetAvatar) return;
 
+        // --- STEP 1: トドメの瞬間のスローモーション演出 ---
         this.time.timeScale = 0.2;
-
         const finishSlash = this.add.graphics().setDepth(2001);
-        const centerX = this.scale.width / 2;
-        const centerY = this.scale.height / 2;
-        const lineLength = this.scale.width;
-        const centerWidth = 30;
-        finishSlash.fillStyle(0xffffff, 1.0);
-        finishSlash.lineStyle(2, 0xffff00, 1.0);
-        const points = [
-            { x: -lineLength / 2, y: 0 }, { x: 0, y: -centerWidth / 2 },
-            { x: lineLength / 2, y: 0 }, { x: 0, y: centerWidth / 2 }
-        ];
-        finishSlash.beginPath();
-        finishSlash.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) {
-            finishSlash.lineTo(points[i].x, points[i].y);
-        }
-        finishSlash.closePath();
-        finishSlash.fillPath();
-        finishSlash.strokePath();
-        const slashContainer = this.add.container(centerX, centerY).setAngle(-20);
-        slashContainer.add(finishSlash);
+        // ... (斬撃エフェクトの描画コードは変更なし) ...
+        const centerX = this.scale.width / 2; const centerY = this.scale.height / 2; const lineLength = this.scale.width; const centerWidth = 30; finishSlash.fillStyle(0xffffff, 1.0); finishSlash.lineStyle(2, 0xffff00, 1.0); const points = [ { x: -lineLength / 2, y: 0 }, { x: 0, y: -centerWidth / 2 }, { x: lineLength / 2, y: 0 }, { x: 0, y: centerWidth / 2 } ]; finishSlash.beginPath(); finishSlash.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) { finishSlash.lineTo(points[i].x, points[i].y); } finishSlash.closePath(); finishSlash.fillPath(); finishSlash.strokePath(); const slashContainer = this.add.container(centerX, centerY).setAngle(-20); slashContainer.add(finishSlash);
+        
         this.tweens.add({
             targets: slashContainer, scale: { from: 0.3, to: 1.5 }, alpha: { from: 1, to: 0 },
             duration: 400, ease: 'Cubic.easeOut', onComplete: () => { slashContainer.destroy(); }
         });
-
         const effectSprite = this.add.sprite(targetAvatar.x, targetAvatar.y, 'effect_finish').setDepth(2000);
         const desiredWidth = targetAvatar.displayWidth * 2.5;
         effectSprite.setScale(desiredWidth / effectSprite.width);
         effectSprite.play('finish_anim');
-        effectSprite.on('animationcomplete', () => { effectSprite.destroy(); });
         
-        // ★★★ この delayedCall のコールバックを async に変更 ★★★
-        this.time.delayedCall(800, async () => {
-            this.time.timeScale = 1.0;
-            const currentRound = this.stateManager.sf.round || 1;
-            const FINAL_ROUND = 10;
+        // アニメーションが終わるのを待つPromise
+        const animPromise = new Promise(resolve => effectSprite.on('animationcomplete', () => {
+             effectSprite.destroy();
+             resolve();
+        }));
+        await animPromise; // ★トドメのアニメーションが終わるまで待つ
 
-            // --- 1. 演出を開始 ---
-            //this.soundManager.playSe('se_round_clear');
-            const roundClearLogo = this.add.image(this.scale.width / 2, this.scale.height / 2, 'round_clear_logo')
-                .setDepth(6000)
-                .setScale(0.5)
-                .setAlpha(0);
+        // --- STEP 2: スローモーション解除と、間髪入れずに次の処理へ ---
+        this.time.timeScale = 1.0;
+        
+        const currentRound = this.stateManager.sf.round || 1;
+        const FINAL_ROUND = 10;
 
-            // 演出用のTween (最低表示時間を保証)
-            const effectPromise = new Promise(resolve => {
-                this.tweens.chain({
-                    targets: roundClearLogo,
-                    tweens: [
-                        { scale: 1.1, alpha: 1, duration: 200, ease: 'Cubic.easeOut' },
-                        { scale: 1, duration: 100, ease: 'Cubic.easeInOut' },
-                        { alpha: 1, duration: 800 }, // しばらく表示
-                        { alpha: 0, duration: 200, ease: 'Cubic.easeIn' }
-                    ],
-                    onComplete: () => {
-                        roundClearLogo.destroy();
-                        resolve(); // アニメーション完了を通知
-                    }
-                });
+        // --- STEP 3: 「クリア！」演出を開始 ---
+        this.soundManager.playSe('se_round_clear');
+        const roundClearLogo = this.add.image(this.scale.width / 2, this.scale.height / 2, 'round_clear_logo')
+            .setDepth(6000)
+            .setScale(0.5)
+            .setAlpha(0);
+        
+        const effectPromise = new Promise(resolve => {
+            this.tweens.chain({
+                targets: roundClearLogo,
+                tweens: [
+                    { scale: 1.1, alpha: 1, duration: 200, ease: 'Cubic.easeOut' },
+                    { scale: 1, duration: 100, ease: 'Cubic.easeInOut' },
+                    { alpha: 1, duration: 800 },
+                    { alpha: 0, duration: 200, ease: 'Cubic.easeIn' }
+                ],
+                onComplete: () => {
+                    roundClearLogo.destroy();
+                    resolve();
+                }
             });
+        });
 
-            // --- 2. データ保存処理（演出と並行して実行）---
-            console.log("Saving data in background...");
-            const saveDataPromise = new Promise(resolve => {
-                this.stateManager.setF('player_hp', this.playerStats.hp);
-                const finalBackpackData = {};
-                this.placedItemImages.forEach((item, index) => {
-                    const gridPos = item.getData('gridPos');
-                    if (gridPos) {
-                        finalBackpackData[`uid_${index}`] = {
-                            itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation')
-                        };
-                    }
-                });
-                const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-                this.stateManager.setSF('player_backpack', finalBackpackData);
-                this.stateManager.setSF('player_inventory', finalInventoryData);
-                this._createRankMatchData();
-                
-                // setSFは同期的だが、念のため次のフレームで完了とする
-                this.time.delayedCall(1, resolve);
+        // --- STEP 4: データ保存処理（演出と並行して実行）---
+        console.log("Saving data in background...");
+        const saveDataPromise = new Promise(resolve => {
+            this.stateManager.setF('player_hp', this.playerStats.hp);
+            const finalBackpackData = {};
+            this.placedItemImages.forEach((item, index) => {
+                const gridPos = item.getData('gridPos');
+                if (gridPos) {
+                    finalBackpackData[`uid_${index}`] = { itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation') };
+                }
             });
+            const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
+            this.stateManager.setSF('player_backpack', finalBackpackData);
+            this.stateManager.setSF('player_inventory', finalInventoryData);
+            this._createRankMatchData();
+            this.time.delayedCall(1, resolve);
+        });
 
-            // --- 3. 演出とデータ保存の両方が完了するのを待つ ---
-            await Promise.all([effectPromise, saveDataPromise]);
-            console.log("Save complete and effect finished.");
+        // --- STEP 5: 演出とデータ保存の両方が完了するのを待つ ---
+        await Promise.all([effectPromise, saveDataPromise]);
+        console.log("Save complete and effect finished.");
 
-            // --- 4. 次のシーンへ遷移 ---
-            if (currentRound >= FINAL_ROUND) {
-                this._transitionToScene({
-                    to: 'GameClearScene',
-                    from: this.scene.key,
-                    params: { finalRound: currentRound }
-                });
-            } else {
-                const currentCoins = this.stateManager.sf.coins || 0;
-                const rewardCoins = 10 + (currentRound * 2);
-                this.stateManager.setSF('coins', currentCoins + rewardCoins);
-                this.stateManager.setSF('round', currentRound + 1);
-                this._transitionToScene({
-                    to: 'RewardScene',
-                    from: this.scene.key
-                });
-            }
-        }, [], this);
+        // --- STEP 6: 次のシーンへフェードアウトして遷移 ---
+        if (currentRound >= FINAL_ROUND) {
+            this._transitionToScene({
+                to: 'GameClearScene',
+                from: this.scene.key,
+                params: { finalRound: currentRound }
+            });
+        } else {
+            const currentCoins = this.stateManager.sf.coins || 0;
+            const rewardCoins = 10 + (currentRound * 2);
+            this.stateManager.setSF('coins', currentCoins + rewardCoins);
+            this.stateManager.setSF('round', currentRound + 1);
+            this._transitionToScene({
+                to: 'RewardScene',
+                from: this.scene.key
+            });
+        }
     }
     // BattleScene.js の末尾にあるヘルパーメソッド
 
