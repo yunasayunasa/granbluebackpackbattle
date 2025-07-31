@@ -24,6 +24,9 @@ const config = {
         height: 720
         
     },
+      pipeline: {
+        'Bloom': BloomPipeline
+    },
     // ★★★ 修正箇所: シーン設定を直接クラスを渡す形式に維持 ★★★
     scene: [
         PreloadScene, 
