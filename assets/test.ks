@@ -1,7 +1,9 @@
 ; === Odyssey Engine Title Screen ===
 [hidewindow]
-[flash time=1000 wait=false]
+
 [bg storage="title"]
+[flash time=1000 wait=false]
+[image storage="titlelogo" time=500]
 [link target="*start_score_attack" size=28 text="スコアアタック"]
 [p]
 [link target="*not_implemented" size=28]*ストーリー (準備中)[endlink]
