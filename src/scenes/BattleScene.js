@@ -1108,7 +1108,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     rotateItem(itemContainer) {
-        this.soundManager.playSe('se_item_rotate'); } catch (e) {}
+        try{this.soundManager.playSe('se_item_rotate'); } catch (e) {}
         const originalRotation = itemContainer.getData('rotation');
         const newRotation = (originalRotation + 90) % 360;
         itemContainer.setData('rotation', newRotation);
