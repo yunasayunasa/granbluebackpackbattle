@@ -151,14 +151,109 @@ this.titleButton.on('pointerdown', () => {
         // --- 6. 遷移完了を通知 ---
         this.events.emit('scene-ready');
     }
-    _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
-        // (次のステップでこの中身を実装します)
+   // ScoreScene.js の末尾
+
+    // ★★★ このメソッドを全文置き換え ★★★
+    async _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
+        const { width, height } = this.scale;
         
-        // 全ての演出が終わったので、「タイトルへ」ボタンを表示する
+        // --- 1. ランク定義 ---
+        const rankMap = {
+            'C': { threshold: 100, image: 'rank_c' },
+            'B': { threshold: 300, image: 'rank_b' },
+            'A': { threshold: 700, image: 'rank_a' },
+            'S': { threshold: 1500, image: 'rank_s' },
+            'S+': { threshold: 99999, image: 'rank_s_plus' },
+        };
+        const oldRankData = rankMap[this.stateManager.sf.player_profile.rank] || rankMap['C'];
+        
+        // --- 2. EXPバーのUIを作成 ---
+        const barWidth = 600;
+        const barHeight = 30;
+        const barX = width / 2;
+        const barY = height / 2 + 100;
+        
+        this.add.graphics().fillStyle(0x333333).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight);
+        const expBar = this.add.graphics();
+        
+        // ランクアップ前のEXP割合を計算
+        const oldExpInRank = oldTotalExp - (Object.values(rankMap).find(r => r.threshold > oldTotalExp)?.threshold - rankMap[Object.keys(rankMap)[Object.keys(rankMap).indexOf(this.stateManager.sf.player_profile.rank)-1]]?.threshold || 0);
+
+        const startWidth = (oldExpInRank / oldRankData.threshold) * barWidth;
+        expBar.fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, startWidth, barHeight);
+        
+        const expText = this.add.text(barX, barY + 40, `EXP: ${oldTotalExp} / ${oldRankData.threshold}`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+
+        // --- 3. EXPが増えるアニメーション ---
+        try { this.soundManager.playSe('se_exp_bar_fill'); } catch(e) {}
+        
+        const newTotalExp = oldTotalExp + expGained;
+        let finalWidth = ((newTotalExp % oldRankData.threshold) / oldRankData.threshold) * barWidth;
+        if (didRankUp) finalWidth = barWidth; // ランクアップ時は満タンまで
+
         this.tweens.add({
-            targets: this.titleButton,
-            alpha: 1,
-            duration: 500
+            targets: { value: startWidth },
+            value: finalWidth,
+            duration: 1500,
+            ease: 'Cubic.easeOut',
+            onUpdate: (tween) => {
+                expBar.clear().fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, tween.getValue(), barHeight);
+                const currentExp = oldTotalExp + Math.floor((tween.getValue() / barWidth) * oldRankData.threshold * (expGained/expGained));
+                 expText.setText(`EXP: ${currentExp} / ${oldRankData.threshold}`);
+
+            },
+            onComplete: async () => {
+                if (didRankUp) {
+                    await this._playRankUpEffect();
+                    // ★ ランクアップ後のバーアニメーションは、今回は省略（複雑になりすぎるため）
+                }
+
+                // 全ての演出が終わったので、「タイトルへ」ボタンを表示する
+                this.tweens.add({
+                    targets: this.titleButton,
+                    alpha: 1,
+                    duration: 500
+                });
+            }
+        });
+    }
+    
+    // ★★★ ランクアップ演出用のメソッドを新規追加 ★★★
+    async _playRankUpEffect() {
+        return new Promise(resolve => {
+            const { width, height } = this.scale;
+            const newRankKey = this.stateManager.sf.player_profile.rank;
+            const rankImageKey = {
+                'C':'rank_c', 'B':'rank_b', 'A':'rank_a', 'S':'rank_s', 'S+':'rank_s_plus'
+            }[newRankKey] || 'rank_c';
+
+            try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
+            this.cameras.main.shake(300, 0.01);
+
+            const rankImage = this.add.image(width / 2, height / 2, rankImageKey)
+                .setDepth(7000)
+                .setScale(3)
+                .setAlpha(0);
+
+            // ★★★ ブルームエフェクトを適用 ★★★
+            const bloom = rankImage.setPostPipeline('Bloom');
+            bloom.bloomRadius = 0.0;
+            bloom.bloomIntensity = 0.0;
+            
+            this.tweens.chain({
+                targets: rankImage,
+                tweens: [
+                    { scale: 1, alpha: 1, duration: 300, ease: 'Elastic.Out(1, 0.5)' }, // 叩きつけ
+                    { scale: 1, duration: 1000, onStart: () => { // 発光
+                        this.tweens.add({ targets: bloom, bloomRadius: 5.0, bloomIntensity: 1.5, duration: 500, ease: 'Cubic.easeOut', yoyo: true });
+                    }},
+                    { alpha: 0, duration: 300, ease: 'Cubic.easeIn' }
+                ],
+                onComplete: () => {
+                    rankImage.destroy();
+                    resolve();
+                }
+            });
         });
     }
 }

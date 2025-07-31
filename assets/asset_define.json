@@ -6,6 +6,12 @@
     "cutin_player_bg": "assets/cutin_player_bg.png",
     "cutin_enemy_bg": "assets/cutin_enemy_bg.png",
     "vs_logo": "assets/vs_logo.png",
+        "rank_c": "assets/images/ranks/rank_c.png",
+    "rank_b": "assets/images/ranks/rank_b.png",
+    "rank_a": "assets/images/ranks/rank_a.png",
+    "rank_s": "assets/images/ranks/rank_s.png",
+    "rank_s_plus": "assets/images/ranks/rank_s_plus.png",
+
 
 
      "yuna_normal": "assets/yuna_smile.png",

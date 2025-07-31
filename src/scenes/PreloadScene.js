@@ -34,6 +34,7 @@ export default class PreloadScene extends Phaser.Scene {
         // --- 2. 最初に必要なアセットのみをロード ---
         this.load.json('asset_define', 'assets/asset_define.json');
         this.load.script('webfont', 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js');
+         this.load.glsl('Bloom', 'assets/shaders/Bloom.glsl');
     }
 
     create() {
