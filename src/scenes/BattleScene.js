@@ -242,12 +242,13 @@ export default class BattleScene extends Phaser.Scene {
         allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
         this.startBattleButton.input.enabled = false;
         
-        this.tweens.add({
-            targets: this.prepareContainer, // コンテナごと非表示にする
+        targets: [this.prepareContainer, ...this.inventoryItemImages],
             alpha: 0,
             duration: 300,
             onComplete: () => {
+                // ★ onCompleteの中で、両方を setVisible(false) していますか？
                 this.prepareContainer.setVisible(false);
+                this.inventoryItemImages.forEach(item => item.setVisible(false));
             }
         });
 
