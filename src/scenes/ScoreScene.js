@@ -186,38 +186,70 @@ export default class ScoreScene extends Phaser.Scene {
     
   // ScoreScene.js の末尾
 
+   // ScoreScene.js の末尾
+
     _playRankUpEffect() {
         return new Promise(resolve => {
             const { width, height } = this.scale;
             const newRankKey = this.stateManager.sf.player_profile.rank;
-            
-            // ★★★ ここを this.rankMap に修正 ★★★
             const rankImageKey = this.rankMap[newRankKey]?.image || 'rank_c';
 
             try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
             this.cameras.main.shake(300, 0.01);
+            
+            // ★★★ ここからがシェーダーを使わない演出 ★★★
 
+            // --- 1. グロー（発光）エフェクト用の背面画像を作成 ---
+            const rankGlow = this.add.image(width / 2, height / 2, rankImageKey)
+                .setDepth(6999) // 本体より奥
+                .setTint(0xffff00) // ★金色に染める
+                .setBlendMode('ADD') // ★加算ブレンドモード（光らせるキモ）
+                .setAlpha(0);
+
+            // --- 2. 本体となるランク画像を作成 ---
             const rankImage = this.add.image(width / 2, height / 2, rankImageKey)
                 .setDepth(7000)
                 .setScale(3)
                 .setAlpha(0);
 
-            const bloom = rankImage.setPostPipeline('Bloom');
-            if (bloom) {
-                bloom.bloomRadius = 0.0; bloom.bloomIntensity = 0.0;
-            }
-            
+            // --- 3. アニメーションを定義 ---
             this.tweens.chain({
                 targets: rankImage,
                 tweens: [
-                    { scale: 1, alpha: 1, duration: 300, ease: 'Elastic.Out(1, 0.5)' },
-                    { scale: 1, duration: 1000, onStart: () => {
-                        if (bloom) this.tweens.add({ targets: bloom, bloomRadius: 5.0, bloomIntensity: 1.5, duration: 500, ease: 'Cubic.easeOut', yoyo: true });
-                    }},
-                    { alpha: 0, duration: 300, ease: 'Cubic.easeIn' }
+                    { // 叩きつけ
+                        scale: 1,
+                        alpha: 1,
+                        duration: 300,
+                        ease: 'Elastic.Out(1, 0.5)'
+                    },
+                    { // しばらく表示
+                        scale: 1,
+                        duration: 800,
+                        onStart: () => {
+                            // ★叩きつけと同時に、背面のグロー画像をアニメーションさせる
+                            this.tweens.add({
+                                targets: rankGlow,
+                                alpha: 0.7,      // じんわり表示
+                                scale: 1.1,      // 本体より少し大きくする
+                                duration: 400,
+                                ease: 'Cubic.easeOut',
+                                yoyo: true       // 表示された後、また消える
+                            });
+                        }
+                    },
+                    { // 消える
+                        alpha: 0,
+                        duration: 300,
+                        ease: 'Cubic.easeIn',
+                        onStart: () => {
+                            // 本体が消えるのと一緒にグローも消す
+                            this.tweens.add({ targets: rankGlow, alpha: 0, duration: 300 });
+                        }
+                    }
                 ],
                 onComplete: () => {
                     rankImage.destroy();
+                    rankGlow.destroy(); // グロー画像も破棄
                     resolve();
                 }
             });
