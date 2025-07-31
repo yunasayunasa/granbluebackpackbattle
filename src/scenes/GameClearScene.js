@@ -16,6 +16,7 @@ export default class GameClearScene extends Phaser.Scene {
     }
 
     create() {
+        try { this.soundManager.playSe('se_game_clear_fanfare'); } catch (e) {}
         this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("GameClearScene: create");
 
