@@ -16,7 +16,7 @@
 
      "yuna_normal": "assets/yuna_smile.png",
       "kaito_normal": "assets/kaito_normal.png" ,
-     "bg_school": "assets/bg_school.jpg" ,
+     "title": "assets/bg_title.jpg" ,
     "cg01": "assets/event_cg_01.jpg" ,
      "yuna_angry": "assets/title_button.png",
      "next_arrow": "assets/next_arrow.png",
