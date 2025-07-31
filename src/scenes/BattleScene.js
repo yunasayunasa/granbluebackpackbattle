@@ -1782,6 +1782,8 @@ export default class BattleScene extends Phaser.Scene {
             }
         });
     }
+
+    
     
     shutdown() {
         if (this.battleTimerText) {
