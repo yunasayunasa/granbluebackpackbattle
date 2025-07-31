@@ -1644,7 +1644,7 @@ export default class BattleScene extends Phaser.Scene {
             const FINAL_ROUND = 10;
 
             // --- 1. 演出を開始 ---
-            this.soundManager.playSe('se_round_clear');
+            //this.soundManager.playSe('se_round_clear');
             const roundClearLogo = this.add.image(this.scale.width / 2, this.scale.height / 2, 'round_clear_logo')
                 .setDepth(6000)
                 .setScale(0.5)
