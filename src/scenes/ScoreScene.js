@@ -184,16 +184,23 @@ export default class ScoreScene extends Phaser.Scene {
         });
     }
     
+  // ScoreScene.js の末尾
+
     _playRankUpEffect() {
         return new Promise(resolve => {
             const { width, height } = this.scale;
             const newRankKey = this.stateManager.sf.player_profile.rank;
+            
+            // ★★★ ここを this.rankMap に修正 ★★★
             const rankImageKey = this.rankMap[newRankKey]?.image || 'rank_c';
 
             try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
             this.cameras.main.shake(300, 0.01);
 
-            const rankImage = this.add.image(width / 2, height / 2, rankImageKey).setDepth(7000).setScale(3).setAlpha(0);
+            const rankImage = this.add.image(width / 2, height / 2, rankImageKey)
+                .setDepth(7000)
+                .setScale(3)
+                .setAlpha(0);
 
             const bloom = rankImage.setPostPipeline('Bloom');
             if (bloom) {
