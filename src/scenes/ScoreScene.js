@@ -121,6 +121,8 @@ export default class ScoreScene extends Phaser.Scene {
 
 // ScoreScene.js の末尾 (続き)
 
+   // ScoreScene.js の _playExpBarAnimation メソッドを、これで置き換えてください
+
     async _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
         const { width, height } = this.scale;
         
@@ -134,10 +136,28 @@ export default class ScoreScene extends Phaser.Scene {
         const barWidth = 600; const barHeight = 30;
         const barX = width / 2; const barY = height / 2 + 100;
         
+        // --- バーのUIを作成 ---
         this.add.graphics().fillStyle(0x333333).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight);
         const expBar = this.add.graphics();
         const expText = this.add.text(barX, barY + 40, `EXP:`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
 
+        // ★★★ ここからが「ランク画像表示」の追加箇所 ★★★
+        // 現在のランク画像 (バーの左側)
+        const currentRankImageKey = this.rankMap[oldRankKey]?.image || 'rank_c';
+        this.add.image(barX - barWidth / 2 - 50, barY, currentRankImageKey)
+            .setScale(barHeight * 2 / 256); // 高さをバーの2倍程度に調整 (元画像256px想定)
+
+        // 次のランク画像 (バーの右側)
+        const nextRankKey = this.rankMap[oldRankKey]?.next;
+        if (nextRankKey) {
+            const nextRankImageKey = this.rankMap[nextRankKey]?.image || 'rank_c';
+            this.add.image(barX + barWidth / 2 + 50, barY, nextRankImageKey)
+                .setScale(barHeight * 2 / 256)
+                .setTint(0x333333); // 未到達なので少し暗くしておく
+        }
+        // ★★★ 追加ここまで ★★★
+
+        // --- アニメーションロジック ---
         let currentExp = oldTotalExp;
         const targetExp = oldTotalExp + expGained;
         
@@ -183,10 +203,8 @@ export default class ScoreScene extends Phaser.Scene {
             }
         });
     }
-    
-  // ScoreScene.js の末尾
 
-   // ScoreScene.js の末尾
+   // ScoreScene.js の _playRankUpEffect メソッドを、これで置き換えてください
 
     _playRankUpEffect() {
         return new Promise(resolve => {
@@ -197,13 +215,11 @@ export default class ScoreScene extends Phaser.Scene {
             try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
             this.cameras.main.shake(300, 0.01);
             
-            // ★★★ ここからがシェーダーを使わない演出 ★★★
-
             // --- 1. グロー（発光）エフェクト用の背面画像を作成 ---
             const rankGlow = this.add.image(width / 2, height / 2, rankImageKey)
                 .setDepth(6999) // 本体より奥
-                .setTint(0xffff00) // ★金色に染める
-                .setBlendMode('ADD') // ★加算ブレンドモード（光らせるキモ）
+                .setTint(0xffff00) // 金色に染める
+                .setBlendMode('ADD') // 加算ブレンドモード
                 .setAlpha(0);
 
             // --- 2. 本体となるランク画像を作成 ---
@@ -222,37 +238,50 @@ export default class ScoreScene extends Phaser.Scene {
                         duration: 300,
                         ease: 'Elastic.Out(1, 0.5)'
                     },
-                    { // しばらく表示
+                    { // しばらく表示＆発光
                         scale: 1,
                         duration: 800,
                         onStart: () => {
-                            // ★叩きつけと同時に、背面のグロー画像をアニメーションさせる
+                            // 背面のグロー画像をアニメーションさせる
                             this.tweens.add({
                                 targets: rankGlow,
-                                alpha: 0.7,      // じんわり表示
-                                scale: 1.1,      // 本体より少し大きくする
+                                alpha: 0.7,
+                                scale: 1.1,
                                 duration: 400,
                                 ease: 'Cubic.easeOut',
-                                yoyo: true       // 表示された後、また消える
+                                yoyo: true
                             });
-                        }
-                    },
-                    { // 消える
-                        alpha: 0,
-                        duration: 300,
-                        ease: 'Cubic.easeIn',
-                        onStart: () => {
-                            // 本体が消えるのと一緒にグローも消す
-                            this.tweens.add({ targets: rankGlow, alpha: 0, duration: 300 });
                         }
                     }
                 ],
                 onComplete: () => {
-                    rankImage.destroy();
-                    rankGlow.destroy(); // グロー画像も破棄
-                    resolve();
+                    // ★★★ ここからが「クリック待ち」のロジック ★★★
+                    
+                    // クリックを促すテキストを表示
+                    const continueText = this.add.text(width / 2, height - 150, 'TAP TO CONTINUE', { 
+                        fontSize: '28px', fill: '#ffffff', fontStyle: 'bold',
+                        stroke: '#000000', strokeThickness: 4
+                    }).setOrigin(0.5).setDepth(8000);
+
+                    // 画面のどこかが一度クリックされたら、次の処理へ
+                    this.input.once('pointerdown', () => {
+                        
+                        // continueTextを消す
+                        continueText.destroy();
+                        
+                        // ランクアップ画像をフェードアウトさせる
+                        this.tweens.add({
+                            targets: [rankImage, rankGlow],
+                            alpha: 0,
+                            duration: 300,
+                            onComplete: () => {
+                                rankImage.destroy();
+                                rankGlow.destroy();
+                                resolve(); // Promiseを解決して、待機していた処理を再開させる
+                            }
+                        });
+                    });
                 }
             });
         });
-    }
-}
+    }}
