@@ -811,20 +811,25 @@ export default class BattleScene extends Phaser.Scene {
             fontSize: '64px', fill: '#f00', stroke: '#000', strokeThickness: 4
         }).setOrigin(0.5).setDepth(999);
 
-        // ★★★ このブロックを全面的に書き換え ★★★
-
         const retryCount = this.stateManager.sf.retry_count || 0;
         const maxRetries = 3;
+        
+        // ★★★ この2行を修正 ★★★
+        let retryButton = null; // ifの外で変数を宣言
+        const giveUpButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 120, 'あきらめる', {
+            fontSize: '32px', fill: '#fff', backgroundColor: '#aa0000', padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive().setDepth(999);
+        // ★★★ 修正ここまで ★★★
 
-        // --- 1. 「このラウンドを再挑戦」ボタン ---
         if (retryCount < maxRetries) {
-            const retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 40, `このラウンドを再挑戦 (残り: ${maxRetries - retryCount}回)`, {
+            // ★ const を削除して、外で宣言した変数に代入する
+            retryButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 40, `このラウンドを再挑戦 (残り: ${maxRetries - retryCount}回)`, {
                 fontSize: '32px', fill: '#fff', backgroundColor: '#008800', padding: { x: 15, y: 8 }
             }).setOrigin(0.5).setInteractive().setDepth(999);
 
             retryButton.on('pointerdown', () => {
-                // ★カウンターをインクリメントして保存
                 this.stateManager.setSF('retry_count', retryCount + 1);
+                giveUpButton.disableInteractive(); // あきらめるボタンも無効化
 
                 const roundStartState = this.roundStartState;
                 if (roundStartState) {
@@ -833,7 +838,7 @@ export default class BattleScene extends Phaser.Scene {
                     this.stateManager.setSF('coins', roundStartState.coins);
                     this.stateManager.setF('player_hp', roundStartState.hp);
                     console.log("ラウンド開始時の状態に復元してリトライします。");
-                    this._transitionToScene({ to: this.scene.key, from: this.scene.key }); // フェード付きでリスタート
+                    this._transitionToScene({ to: this.scene.key, from: this.scene.key });
                 } else {
                 console.error("チェックポイントが見つかりません。スコア画面へ遷移します。");
                 const payload = {
@@ -841,33 +846,32 @@ export default class BattleScene extends Phaser.Scene {
                     params: { result: 'lose', finalRound: this.stateManager.sf.round || 1 }
                 };
                 this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
-           }
+             }
             });
         } else {
-            // 再挑戦回数が上限に達した場合
             this.add.text(this.scale.width / 2, this.scale.height / 2 + 40, '再挑戦できません', {
                 fontSize: '32px', fill: '#888888', backgroundColor: '#333333', padding: { x: 15, y: 8 }
             }).setOrigin(0.5).setDepth(999);
         }
 
-        // --- 2. 「あきらめる」ボタン (変更なし) ---
-        const giveUpButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 120, 'あきらめる', {
-            fontSize: '32px', fill: '#fff', backgroundColor: '#aa0000', padding: { x: 15, y: 8 }
-        }).setOrigin(0.5).setInteractive().setDepth(999);
-        
         giveUpButton.on('pointerdown', (pointer) => {
             console.log("敗北を認め、ScoreSceneへ遷移します。");
             giveUpButton.disableInteractive().setText('集計中...');
-            retryButton.disableInteractive();
-            const payload = {
+            
+            // ★★★ このif文を追加 ★★★
+            // retryButtonが存在する場合（＝再挑戦可能な場合）のみ、それを無効化する
+            if (retryButton) {
+                retryButton.disableInteractive();
+            }
+
+            this._transitionToScene({
                 to: 'ScoreScene',
                 from: this.scene.key,
                 params: {
                     result: 'lose',
                     finalRound: this.stateManager.sf.round || 1
                 }
-            };
-            this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
+            });
         });
     }
 
