@@ -1849,7 +1849,7 @@ recastOverlay.setVisible(hasRecast);
         // --- STEP 6: 次のシーンへフェードアウトして遷移 ---
         if (currentRound >= FINAL_ROUND) {
             this._transitionToScene({
-                to: 'GameClearScene',
+                to: 'RankMatchScoreScene',
                 from: this.scene.key,
                 params: { finalRound: currentRound }
             });
