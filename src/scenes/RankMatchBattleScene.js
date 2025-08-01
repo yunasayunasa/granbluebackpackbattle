@@ -4,8 +4,9 @@ import BattleScene from './BattleScene.js';
 import { ITEM_DATA } from '../core/ItemData.js';
 
 export default class RankMatchBattleScene extends BattleScene {
-    constructor() {
-        super(); // 親クラス(BattleScene)のコンストラクタを呼び出す
+     constructor() {
+        // ★★★ super() に、このシーン専用のユニークなキーを渡す ★★★
+        super('RankMatchBattleScene');
         this.ghostData = null; // 対戦相手のゴーストデータを保持するプロパティ
     }
 
