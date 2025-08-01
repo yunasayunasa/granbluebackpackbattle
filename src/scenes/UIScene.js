@@ -127,7 +127,7 @@ export default class UIScene extends Phaser.Scene {
         
         // ★★★ 書き換えここまで ★★★
     }
-    }
+    
     togglePanel() {
         this.isPanelOpen = !this.isPanelOpen;
         const targetY = this.isPanelOpen ? 720 - 60 : 720 + 120;
