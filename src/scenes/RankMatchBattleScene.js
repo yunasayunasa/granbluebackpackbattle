@@ -6,12 +6,12 @@ import { ITEM_DATA } from '../core/ItemData.js';
 export default class RankMatchBattleScene extends BattleScene {
      constructor() {
         // ★★★ super() に、このシーン専用のユニークなキーを渡す ★★★
-        super();
+        super('RankMatchBattleScene');
         this.ghostData = null; // 対戦相手のゴーストデータを保持するプロパティ
     }
 
     init(data) {
-        this.scene.key = 'RankMatchBattleScene';
+       
         super.init(data);
         
         // ★ ghostData -> ghostDataList に変更
