@@ -339,6 +339,8 @@ export default class RankMatchBattleScene extends Phaser.Scene {
     const baseItemId = itemContainer.getData('itemId');   //例: 'zavilbara'
 
     if (!uniqueId || !baseItemId) return;
+  // ★★★ この一行を追加 ★★★
+    const originalUid = itemContainer.getData('originalUid'); // 'uid_0' を取得
 
     // 2. ITEM_DATAからは、ベースIDを使ってデータを取得
     const itemData = ITEM_DATA[baseItemId];
