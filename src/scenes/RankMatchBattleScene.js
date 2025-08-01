@@ -25,6 +25,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
     constructor() {
        super('RankMatchBattleScene');
          this.ghostData = null;
+        this.ghostDataList = null;
         this.battleTimer = null;
         this.battleTimerText = null;
         this.maxBattleDuration = 30;
