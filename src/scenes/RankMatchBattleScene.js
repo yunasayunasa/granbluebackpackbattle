@@ -1837,7 +1837,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
             this._transitionToScene({
-                to: 'RewardScene',
+                to: 'RankMatchRewardScene',
                 from: this.scene.key
             });
         }
