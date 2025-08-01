@@ -21,14 +21,10 @@ const ELEMENT_RESONANCE_RULES = {
     dark:  { threshold: 3, description: (count) => `背水効果(小)` }
 };
 
-// ★クラス名を RankMatchBattleScene に変更
 export default class RankMatchBattleScene extends Phaser.Scene {
     constructor() {
-        // ★キーを 'RankMatchBattleScene' に変更
-        super('RankMatchBattleScene');
-
-        // ★★★ ここに ghostData プロパティを追加 ★★★
-        this.ghostData = null;
+       super('RankMatchBattleScene');
+         this.ghostData = null;
         this.battleTimer = null;
         this.battleTimerText = null;
         this.maxBattleDuration = 30;
@@ -68,8 +64,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
     }
 
     init(data) {
-            // ★★★ ここに ghostData を受け取る処理を追加 ★★★
-        this.ghostData = data.transitionParams.ghostDataList;
+          this.ghostData = data.transitionParams.ghostDataList;
         if (!this.ghostData) {
             console.error("RankMatchBattleScene: ゴーストデータが渡されませんでした！");
             this.scene.get('SystemScene').events.emit('request-scene-transition', { to: 'GameScene', from: this.scene.key, params: { storage: 'title.ks' } });
@@ -887,7 +882,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         });
     }
 
-     setupEnemy(gridY) {
+    setupEnemy(gridY) {
         // (以前提示した、ゴーストデータを使う/EnemyGeneratorで生成するロジックをここに貼り付け)
         const currentRound = this.stateManager.sf.round || 1;
         const ghostForThisRound = this.ghostData[currentRound - 1]; 
@@ -902,7 +897,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             this.currentEnemyLayout = enemyData.layout;
             
             // ★ super.setupEnemy() ではなく、元のコードを直接ここに書く
-            const gameWidth = this.scale.width;
+            const gameWidth = this.scale.widt ;
             const gridWidth = this.backpackGridSize * this.cellSize;
         const enemyGridX = gameWidth - 100 - gridWidth;
         const enemyGridY = gridY;
@@ -964,8 +959,76 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             });
             this.enemyItemImages.push(itemContainer);
         }
-    }
+    }}
+    /**
+     * ゴーストデータのbackpack情報から敵を配置するヘルパーメソッド
+     * @private
+     */
+    setupEnemyFromGhost(gridY, ghostLayout) {
+        const gameWidth = this.scale.width;
+        // backpackGridSizeは敵グリッドのサイズ(通常は6)を想定
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const enemyGridX = gameWidth - 100 - gridWidth;
+        const enemyGridY = gridY;
 
+        // 既存の敵がいればクリア
+        this.enemyItemImages.forEach(item => item.destroy());
+        this.enemyItemImages = [];
+
+        console.log("ゴーストデータから敵の盤面を再現:", ghostLayout);
+
+        // ゴーストデータのbackpack情報を元に、敵のアイテムを配置
+        for (const uid in ghostLayout) {
+            const itemInfo = ghostLayout[uid];
+            const itemData = ITEM_DATA[itemInfo.itemId];
+
+            if (!itemData) {
+                console.warn(`[GHOST] ITEM_DATAに'${itemInfo.itemId}'が見つかりません。`);
+                continue;
+            }
+
+            // アイテムの形状と回転を取得
+            const shape = this.getRotatedShape(itemInfo.itemId, itemInfo.rotation);
+            const containerWidth = shape[0].length * this.cellSize;
+            const containerHeight = shape.length * this.cellSize;
+            
+            // アイテムコンテナを作成・配置
+            const itemContainer = this.add.container(
+                enemyGridX + (itemInfo.col * this.cellSize) + (containerWidth / 2),
+                enemyGridY + (itemInfo.row * this.cellSize) + (containerHeight / 2)
+            ).setSize(containerWidth, containerHeight);
+
+            // アイテム画像を追加
+            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+            
+            // リキャストマスク用のオブジェクトも（機能させるなら）追加
+            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
+            const maskGraphics = this.add.graphics().setVisible(false);
+            recastOverlay.setMask(maskGraphics.createGeometryMask());
+            
+            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
+            
+            // 見た目の回転を適用
+            itemContainer.setAngle(itemInfo.rotation);
+            
+            // データをセット (ツールチップや戦闘ロジックで参照)
+            itemContainer.setData({
+                itemId: itemInfo.itemId,
+                uniqueId: `${itemInfo.itemId}_ghost_${uid}`, // ユニークなIDを生成
+                recastOverlay,
+                recastMask: maskGraphics
+            });
+            
+            // ツールチップ用のインタラクションを設定 (ドラッグは不可)
+            itemContainer.setDepth(3).setInteractive({ draggable: false });
+            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+                // (BattleSceneのsetupEnemyからツールチップ表示ロジックをコピー)
+            });
+
+            // リストに追加
+            this.enemyItemImages.push(itemContainer);
+        }
+    }
     playResonanceAura(targetObject, color) {
         if (!targetObject || !targetObject.active) return;
         const centerX = targetObject.x;
@@ -1886,75 +1949,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             this.battleTimerText = null;
         }
     }
-        /**
-     * ゴーストデータのbackpack情報から敵を配置するヘルパーメソッド
-     * @private
-     */
-    setupEnemyFromGhost(gridY, ghostLayout) {
-        const gameWidth = this.scale.width;
-        // backpackGridSizeは敵グリッドのサイズ(通常は6)を想定
-        const gridWidth = this.backpackGridSize * this.cellSize;
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = gridY;
-
-        // 既存の敵がいればクリア
-        this.enemyItemImages.forEach(item => item.destroy());
-        this.enemyItemImages = [];
-
-        console.log("ゴーストデータから敵の盤面を再現:", ghostLayout);
-
-        // ゴーストデータのbackpack情報を元に、敵のアイテムを配置
-        for (const uid in ghostLayout) {
-            const itemInfo = ghostLayout[uid];
-            const itemData = ITEM_DATA[itemInfo.itemId];
-
-            if (!itemData) {
-                console.warn(`[GHOST] ITEM_DATAに'${itemInfo.itemId}'が見つかりません。`);
-                continue;
-            }
-
-            // アイテムの形状と回転を取得
-            const shape = this.getRotatedShape(itemInfo.itemId, itemInfo.rotation);
-            const containerWidth = shape[0].length * this.cellSize;
-            const containerHeight = shape.length * this.cellSize;
-            
-            // アイテムコンテナを作成・配置
-            const itemContainer = this.add.container(
-                enemyGridX + (itemInfo.col * this.cellSize) + (containerWidth / 2),
-                enemyGridY + (itemInfo.row * this.cellSize) + (containerHeight / 2)
-            ).setSize(containerWidth, containerHeight);
-
-            // アイテム画像を追加
-            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-            
-            // リキャストマスク用のオブジェクトも（機能させるなら）追加
-            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
-            const maskGraphics = this.add.graphics().setVisible(false);
-            recastOverlay.setMask(maskGraphics.createGeometryMask());
-            
-            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-            
-            // 見た目の回転を適用
-            itemContainer.setAngle(itemInfo.rotation);
-            
-            // データをセット (ツールチップや戦闘ロジックで参照)
-            itemContainer.setData({
-                itemId: itemInfo.itemId,
-                uniqueId: `${itemInfo.itemId}_ghost_${uid}`, // ユニークなIDを生成
-                recastOverlay,
-                recastMask: maskGraphics
-            });
-            
-            // ツールチップ用のインタラクションを設定 (ドラッグは不可)
-            itemContainer.setDepth(3).setInteractive({ draggable: false });
-            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-                // (BattleSceneのsetupEnemyからツールチップ表示ロジックをコピー)
-            });
-
-            // リストに追加
-            this.enemyItemImages.push(itemContainer);
-        }
-    }
+    
      /**
      * 非同期対戦用のゴーストデータを生成し、Firestoreにアップロードする
      * @private
