@@ -1039,8 +1039,12 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             
             // データをセット (ツールチップや戦闘ロジックで参照)
             itemContainer.setData({
-                itemId: itemInfo.itemId,
-                uniqueId: `${itemInfo.itemId}_ghost_${uid}`, // ユニークなIDを生成
+                itemId: itemInfo.itemId, // 'zavilbara'
+                uniqueId: `${itemInfo.itemId}_ghost_${uid}`, // 'zavilbara_ghost_uid_0'
+                
+                // ★元のキーを、別の名前で保存しておく
+                originalUid: uid, // 'uid_0'
+
                 recastOverlay,
                 recastMask: maskGraphics
             });
