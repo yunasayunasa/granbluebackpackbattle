@@ -43,26 +43,17 @@ export default class MatchingScene extends Phaser.Scene {
         // FirebaseManagerに対戦相手リストの取得を依頼
         const opponentList = await this.firebaseManager.findOpponentList(playerRank);
 
-        if (opponentList) {
-            
-            // 次のランクマッチ挑戦のために、一時変数をリセットする
-            const stateManager = this.sys.registry.get('stateManager');
+         const stateManager = this.sys.registry.get('stateManager');
             const basePlayerMaxHp = stateManager.sf.player_base_max_hp || 100;
-            stateManager.f = {}; // f変数を一旦クリア
+            stateManager.f = {}; // f変数をクリア
             stateManager.setF('player_max_hp', basePlayerMaxHp);
             stateManager.setF('player_hp', basePlayerMaxHp);
-            stateManager.setF('enemy_max_hp', 100); // HUD初期化用
-            stateManager.setF('enemy_hp', 100);
-            // ★★★ 追加ここまで ★★★
-
-            // 対戦相手が見つかったので、RankMatchBattleSceneへ遷移
-            console.log("マッチング成功！戦闘シーンへ遷移します。");
+            stateManager.setF('coins', stateManager.sf.coins || 0);
+            
             this._transitionToScene({
                 to: 'RankMatchBattleScene',
                 from: this.scene.key,
-                params: {
-                    ghostDataList: opponentList // 取得した10人分のリストを渡す
-                }
+                params: { ghostDataList: opponentList }
             });
         } else {
             // 対戦相手が見つからなかった場合のエラーハンドリング
