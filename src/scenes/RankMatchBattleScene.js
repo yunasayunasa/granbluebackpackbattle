@@ -882,18 +882,24 @@ export default class RankMatchBattleScene extends Phaser.Scene {
 
   setupEnemy(gridY) {
         const currentRound = this.stateManager.sf.round || 1;
+
+        // ★★★ createではなくinitでチェックするように修正 ★★★
+        if (!this.ghostDataList) {
+            console.error("RankMatchBattleScene: ゴーストデータリストが見つかりません！");
+            // 強制的にタイトルに戻るなどのエラー処理
+            this._transitionToScene({ to: 'GameScene', from: this.scene.key, params: { storage: 'title.ks' } });
+            return; 
+        }
+
         const ghostForThisRound = this.ghostDataList[currentRound - 1]; 
 
         if (ghostForThisRound && ghostForThisRound !== 'generate') {
-            // --- A: ゴーストデータが存在する場合の処理 ---
-            console.log(`Round ${currentRound}: ゴーストデータから敵の盤面を再現します。`);
-            // ★ this.currentEnemyLayout にゴーストのバックパック情報をセット
             this.currentEnemyLayout = ghostForThisRound.backpack;
             this.setupEnemyFromGhost(gridY, this.currentEnemyLayout);
         } else {
+            console.log(`Round ${currentRound}: 通常の敵を生成します。`);
             const enemyData = EnemyGenerator.getLayoutForRound(currentRound);
             this.currentEnemyLayout = enemyData.layout;
-            
             // ★ super.setupEnemy() ではなく、元のコードを直接ここに書く
             const gameWidth = this.scale.widt ;
             const gridWidth = this.backpackGridSize * this.cellSize;
