@@ -23,6 +23,7 @@
 
 
 ; f変数もクリア (HUD表示等に影響するため)
+[eval exp="f = {}"]
 [eval exp="sf.retry_count = 0"]
 [eval exp="sf.player_backpack = {}"]
 [eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
@@ -36,6 +37,7 @@
 ; ★★★ このラベルを新規追加 ★★★
 *start_rank_match
 ; ランクマッチを開始する
+[eval exp="f = {}"]
 [eval exp="sf.retry_count = 0"]
 [eval exp="sf.player_backpack = {}"]
 [eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
