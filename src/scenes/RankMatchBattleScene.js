@@ -107,12 +107,12 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         if (this.stateManager.sf.player_base_max_hp === undefined) {
             this.stateManager.setSF('player_base_max_hp', 100);
         }
+          // --- 1b. 戦闘パラメータを決定 ---
+        // (MatchingSceneでf変数が初期化されたので、BattleSceneと同じロジックで動作する)
         const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
         const inheritedPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : basePlayerMaxHp;
         const round = this.stateManager.sf.round || 1;
-        this.initialBattleParams = { 
-            playerMaxHp: basePlayerMaxHp, playerHp: inheritedPlayerHp, round: round 
-        };
+        this.initialBattleParams = { playerMaxHp: basePlayerMaxHp, playerHp: inheritedPlayerHp, round: round };
 
         if (inheritedPlayerHp <= 0) {
             console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
@@ -880,13 +880,11 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         });
     }
 
-  setupEnemy(gridY) {
+    setupEnemy(gridY) {
         const currentRound = this.stateManager.sf.round || 1;
 
-        // ★★★ createではなくinitでチェックするように修正 ★★★
         if (!this.ghostDataList) {
-            console.error("RankMatchBattleScene: ゴーストデータリストが見つかりません！");
-            // 強制的にタイトルに戻るなどのエラー処理
+            console.error("RankMatchBattleScene: ゴーストデータリストが見つかりません！タイトルに戻ります。");
             this._transitionToScene({ to: 'GameScene', from: this.scene.key, params: { storage: 'title.ks' } });
             return; 
         }
@@ -894,16 +892,17 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         const ghostForThisRound = this.ghostDataList[currentRound - 1]; 
 
         if (ghostForThisRound && ghostForThisRound !== 'generate') {
+            // --- A: ゴーストデータから敵を生成 ---
+            console.log(`Round ${currentRound}: ゴーストデータから敵の盤面を再現します。`);
             this.currentEnemyLayout = ghostForThisRound.backpack;
             this.setupEnemyFromGhost(gridY, this.currentEnemyLayout);
         
-              } else {
-            // --- B: ゴーストデータがない場合の処理 ---
+        } else {
+            // --- B: 通常の敵を生成 (BattleSceneのロジックを展開) ---
             console.log(`Round ${currentRound}: 通常の敵を生成します。`);
             const enemyData = EnemyGenerator.getLayoutForRound(currentRound);
             this.currentEnemyLayout = enemyData.layout;
 
-            // --- ここから下は、BattleSceneのsetupEnemyのロジック ---
             const gameWidth = this.scale.width;
             const gridWidth = this.backpackGridSize * this.cellSize;
             const enemyGridX = gameWidth - 100 - gridWidth;
@@ -912,66 +911,73 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             this.enemyItemImages.forEach(item => item.destroy());
             this.enemyItemImages = [];
 
-            // ★★★ この2箇所を修正 ★★★
-            const layoutToUse = this.currentEnemyLayout; // 新しい変数に代入
-            console.log(`Round ${this.initialBattleParams.round} enemy layout:`, layoutToUse);
+            console.log(`Round ${this.initialBattleParams.round} enemy layout:`, this.currentEnemyLayout);
 
-            for (const uniqueId in layoutToUse) { // ★ layoutToUse を使う
-                const layoutInfo = layoutToUse[uniqueId];
-            const baseItemId = uniqueId.split('_')[0];
-            const itemData = ITEM_DATA[baseItemId];
-            if (!itemData) {
-                console.warn(`ITEM_DATAに'${baseItemId}'が見つかりません。`);
-                continue;
+            for (const uniqueId in this.currentEnemyLayout) {
+                const layoutInfo = this.currentEnemyLayout[uniqueId];
+                const baseItemId = uniqueId.split('_')[0];
+                const itemData = ITEM_DATA[baseItemId];
+
+                if (!itemData) {
+                    console.warn(`ITEM_DATAに'${baseItemId}'が見つかりません。`);
+                    continue;
+                }
+
+                const containerWidth = itemData.shape[0].length * this.cellSize;
+                const containerHeight = itemData.shape.length * this.cellSize;
+                
+                const itemContainer = this.add.container(
+                    enemyGridX + (layoutInfo.col * this.cellSize) + (containerWidth / 2),
+                    enemyGridY + (layoutInfo.row * this.cellSize) + (containerHeight / 2)
+                ).setSize(containerWidth, containerHeight);
+                
+                const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+                const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
+                const maskGraphics = this.add.graphics().setVisible(false);
+                recastOverlay.setMask(maskGraphics.createGeometryMask());
+                
+                itemContainer.add([itemImage, recastOverlay, maskGraphics]);
+                itemContainer.setData({ itemId: baseItemId, uniqueId: uniqueId, recastOverlay, recastMask: maskGraphics });
+
+                const hasRecast = itemData.recast && itemData.recast > 0;
+                recastOverlay.setVisible(hasRecast);
+                itemContainer.setDepth(3).setInteractive({ draggable: false });
+                
+                itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+                    event.stopPropagation();
+                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                    let tooltipText = `【${baseItemId}】\n`;
+                    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+                    if (itemElements.length > 0) {
+                        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
+                    }
+                    const sizeH = itemData.shape.length;
+                    const sizeW = itemData.shape[0].length;
+                    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+                    if (itemData.action) {
+                        const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
+                        actions.forEach(action => {
+                            tooltipText += `効果: ${action.type} ${action.value}\n`;
+                        });
+                    }
+                    if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+                    if (itemData.synergy) {
+                        tooltipText += `\nシナジー:\n`;
+                        const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
+                        const dir = t(itemData.synergy.direction);
+                        effects.forEach(effect => {
+                            const effectType = t(effect.type);
+                            tooltipText += `  - ${dir}の味方に\n`;
+                            tooltipText += `    効果: ${effectType} +${effect.value}\n`;
+                        });
+                    }
+                    this.tooltip.show(itemContainer, tooltipText);
+                });
+                
+                this.enemyItemImages.push(itemContainer);
             }
-            const containerWidth = itemData.shape[0].length * this.cellSize;
-            const containerHeight = itemData.shape.length * this.cellSize;
-            const itemContainer = this.add.container(
-                enemyGridX + (layoutInfo.col * this.cellSize) + (containerWidth / 2),
-                enemyGridY + (layoutInfo.row * this.cellSize) + (containerHeight / 2)
-            ).setSize(containerWidth, containerHeight);
-            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
-            const maskGraphics = this.add.graphics().setVisible(false);
-            recastOverlay.setMask(maskGraphics.createGeometryMask());
-            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-            itemContainer.setData({ itemId: baseItemId, uniqueId: uniqueId, recastOverlay, recastMask: maskGraphics });
-            const hasRecast = itemData.recast && itemData.recast > 0;
-            recastOverlay.setVisible(hasRecast);
-            itemContainer.setDepth(3).setInteractive({ draggable: false });
-            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-                event.stopPropagation();
-                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                let tooltipText = `【${baseItemId}】\n`;
-                const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                if (itemElements.length > 0) {
-                    tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-                }
-                const sizeH = itemData.shape.length;
-                const sizeW = itemData.shape[0].length;
-                tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-                if (itemData.action) {
-                    const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
-                    actions.forEach(action => {
-                        tooltipText += `効果: ${action.type} ${action.value}\n`;
-                    });
-                }
-                if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-                if (itemData.synergy) {
-                    tooltipText += `\nシナジー:\n`;
-                    const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
-                    const dir = t(itemData.synergy.direction);
-                    effects.forEach(effect => {
-                        const effectType = t(effect.type);
-                        tooltipText += `  - ${dir}の味方に\n`;
-                        tooltipText += `    効果: ${effectType} +${effect.value}\n`;
-                    });
-                }
-                this.tooltip.show(itemContainer, tooltipText);
-            });
-            this.enemyItemImages.push(itemContainer);
         }
-    }}
+    }
     /**
      * ゴーストデータのbackpack情報から敵を配置するヘルパーメソッド
      * @private

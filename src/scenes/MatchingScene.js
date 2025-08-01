@@ -39,23 +39,25 @@ export default class MatchingScene extends Phaser.Scene {
         const playerRank = this.stateManager.sf.player_profile.rank || 'C';
         const opponentList = await this.firebaseManager.findOpponentList(playerRank);
 
-        if (opponentList) {
-            // HUD初期化のためにf変数をリセット
-            const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp || 100;
-            this.stateManager.f = {};
-            this.stateManager.setF('player_max_hp', basePlayerMaxHp);
-            this.stateManager.setF('player_hp', basePlayerMaxHp);
-            this.stateManager.setF('coins', this.stateManager.sf.coins || 20);
+         if (opponentList) {
+            // ★★★ このブロックを全面的に書き換え ★★★
+            console.log("マッチング成功！ランクマッチセッションを初期化します。");
+            const stateManager = this.sys.registry.get('stateManager');
 
-            console.log("マッチング成功！戦闘シーンへ遷移します。");
-            this._transitionToScene({
-                to: 'RankMatchBattleScene',
-                from: this.scene.key,
-                params: {
-                    ghostDataList: opponentList,
-                    isFirstRound: this.isFirstRound
-                }
-            });
+            // --- 次の挑戦のためにsf変数をリセット ---
+            stateManager.setSF('round', 1);
+            // stateManager.setSF('coins', 0); // コインは挑戦料支払いなどで変動するので、ここではリセットしない
+            stateManager.setSF('player_backpack', {}); // backpackは空から
+            stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']); // 初期装備
+            
+            // --- HUD表示のためにf変数をリセット＆初期化 ---
+            const basePlayerMaxHp = stateManager.sf.player_base_max_hp || 100;
+            stateManager.f = {}; 
+            stateManager.setF('player_max_hp', basePlayerMaxHp);
+            stateManager.setF('player_hp', basePlayerMaxHp);
+            stateManager.setF('coins', stateManager.sf.coins || 0);
+            // ★★★ 書き換えここまで ★★★
+
         } else {
             console.error("マッチングに失敗しました。タイトルに戻ります。");
             this._transitionToScene({
