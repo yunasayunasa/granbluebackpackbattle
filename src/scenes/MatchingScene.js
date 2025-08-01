@@ -57,7 +57,14 @@ export default class MatchingScene extends Phaser.Scene {
             stateManager.setF('player_hp', basePlayerMaxHp);
             stateManager.setF('coins', stateManager.sf.coins || 0);
             // ★★★ 書き換えここまで ★★★
-
+this._transitionToScene({
+                to: 'RankMatchBattleScene',
+                from: this.scene.key,
+                params: {
+                    ghostDataList: opponentList,
+                    isFirstRound: this.isFirstRound
+                }
+            });
         } else {
             console.error("マッチングに失敗しました。タイトルに戻ります。");
             this._transitionToScene({
