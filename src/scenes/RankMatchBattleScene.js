@@ -1851,7 +1851,7 @@ recastOverlay.setVisible(hasRecast);
             this._transitionToScene({
                 to: 'RankMatchScoreScene',
                 from: this.scene.key,
-                params: { finalRound: currentRound }
+                params: { result: 'win', finalRound: currentRound }
             });
         } else {
             const currentCoins = this.stateManager.sf.coins || 0;
@@ -1859,10 +1859,10 @@ recastOverlay.setVisible(hasRecast);
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
                   this._transitionToScene({
-                to: 'RewardScene',
+                to: 'RankMatchRewardScene',
                 from: this.scene.key,
                 // ★★★ この params を追加 ★★★
-                params: {
+                params: {result: 'lose',
                     returnTo: 'RankMatchBattleScene'
                 }
                 });
