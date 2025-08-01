@@ -334,22 +334,30 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         const enemyInitialItems = [];
         const currentLayout = this.currentEnemyLayout;
         this.enemyItemImages.forEach(itemContainer => {
-            const uniqueId = itemContainer.getData('uniqueId');
-            if (!uniqueId) return;
-            const baseItemId = uniqueId.split('_')[0];
-            const itemData = ITEM_DATA[baseItemId];
-            const layoutInfo = currentLayout[uniqueId];
-            if (itemData && layoutInfo) {
-                const itemInstance = JSON.parse(JSON.stringify(itemData));
-                itemInstance.id = uniqueId;
-                itemInstance.row = layoutInfo.row;
-                itemInstance.col = layoutInfo.col;
-                itemInstance.rotation = layoutInfo.rotation || 0;
-                itemInstance.gameObject = itemContainer;
-                enemyInitialItems.push(itemInstance);
-            } else {
-                console.warn(`敵アイテム[${uniqueId}]のデータが見つからないため、戦闘から除外されます。`);
-            }
+                // 1. itemContainerから、setupEnemyFromGhostでセットしたデータを取得
+    const uniqueId = itemContainer.getData('uniqueId'); //例: 'zavilbara_ghost_uid_0'
+    const baseItemId = itemContainer.getData('itemId');   //例: 'zavilbara'
+
+    if (!uniqueId || !baseItemId) return;
+
+    // 2. ITEM_DATAからは、ベースIDを使ってデータを取得
+    const itemData = ITEM_DATA[baseItemId];
+    const layoutInfo = currentLayout[uniqueId.split('_ghost_')[1]]; // 'uid_0' などを取得
+
+    if (itemData && layoutInfo) {
+        const itemInstance = JSON.parse(JSON.stringify(itemData));
+        itemInstance.id = uniqueId; // 戦闘中はユニークIDで管理
+        itemInstance.row = layoutInfo.row;
+        itemInstance.col = layoutInfo.col;
+        itemInstance.rotation = layoutInfo.rotation || 0;
+        itemInstance.gameObject = itemContainer;
+        
+        enemyInitialItems.push(itemInstance);
+    } else {
+        // 現在のエラーメッセージ
+        console.warn(`敵アイテム[${uniqueId}]のデータが見つからないため、戦闘から除外されます。`);
+    }
+
         });
 
         const enemyInitialStats = {
