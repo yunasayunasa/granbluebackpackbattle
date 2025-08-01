@@ -1886,7 +1886,75 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             this.battleTimerText = null;
         }
     }
-    
+        /**
+     * ゴーストデータのbackpack情報から敵を配置するヘルパーメソッド
+     * @private
+     */
+    setupEnemyFromGhost(gridY, ghostLayout) {
+        const gameWidth = this.scale.width;
+        // backpackGridSizeは敵グリッドのサイズ(通常は6)を想定
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const enemyGridX = gameWidth - 100 - gridWidth;
+        const enemyGridY = gridY;
+
+        // 既存の敵がいればクリア
+        this.enemyItemImages.forEach(item => item.destroy());
+        this.enemyItemImages = [];
+
+        console.log("ゴーストデータから敵の盤面を再現:", ghostLayout);
+
+        // ゴーストデータのbackpack情報を元に、敵のアイテムを配置
+        for (const uid in ghostLayout) {
+            const itemInfo = ghostLayout[uid];
+            const itemData = ITEM_DATA[itemInfo.itemId];
+
+            if (!itemData) {
+                console.warn(`[GHOST] ITEM_DATAに'${itemInfo.itemId}'が見つかりません。`);
+                continue;
+            }
+
+            // アイテムの形状と回転を取得
+            const shape = this.getRotatedShape(itemInfo.itemId, itemInfo.rotation);
+            const containerWidth = shape[0].length * this.cellSize;
+            const containerHeight = shape.length * this.cellSize;
+            
+            // アイテムコンテナを作成・配置
+            const itemContainer = this.add.container(
+                enemyGridX + (itemInfo.col * this.cellSize) + (containerWidth / 2),
+                enemyGridY + (itemInfo.row * this.cellSize) + (containerHeight / 2)
+            ).setSize(containerWidth, containerHeight);
+
+            // アイテム画像を追加
+            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+            
+            // リキャストマスク用のオブジェクトも（機能させるなら）追加
+            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
+            const maskGraphics = this.add.graphics().setVisible(false);
+            recastOverlay.setMask(maskGraphics.createGeometryMask());
+            
+            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
+            
+            // 見た目の回転を適用
+            itemContainer.setAngle(itemInfo.rotation);
+            
+            // データをセット (ツールチップや戦闘ロジックで参照)
+            itemContainer.setData({
+                itemId: itemInfo.itemId,
+                uniqueId: `${itemInfo.itemId}_ghost_${uid}`, // ユニークなIDを生成
+                recastOverlay,
+                recastMask: maskGraphics
+            });
+            
+            // ツールチップ用のインタラクションを設定 (ドラッグは不可)
+            itemContainer.setDepth(3).setInteractive({ draggable: false });
+            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+                // (BattleSceneのsetupEnemyからツールチップ表示ロジックをコピー)
+            });
+
+            // リストに追加
+            this.enemyItemImages.push(itemContainer);
+        }
+    }
      /**
      * 非同期対戦用のゴーストデータを生成し、Firestoreにアップロードする
      * @private
