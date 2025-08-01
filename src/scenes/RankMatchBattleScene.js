@@ -896,20 +896,28 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         if (ghostForThisRound && ghostForThisRound !== 'generate') {
             this.currentEnemyLayout = ghostForThisRound.backpack;
             this.setupEnemyFromGhost(gridY, this.currentEnemyLayout);
-        } else {
+        
+              } else {
+            // --- B: ゴーストデータがない場合の処理 ---
             console.log(`Round ${currentRound}: 通常の敵を生成します。`);
             const enemyData = EnemyGenerator.getLayoutForRound(currentRound);
             this.currentEnemyLayout = enemyData.layout;
-            // ★ super.setupEnemy() ではなく、元のコードを直接ここに書く
-            const gameWidth = this.scale.widt ;
+
+            // --- ここから下は、BattleSceneのsetupEnemyのロジック ---
+            const gameWidth = this.scale.width;
             const gridWidth = this.backpackGridSize * this.cellSize;
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = gridY;
-        this.enemyItemImages.forEach(item => item.destroy());
-        this.enemyItemImages = [];
-        console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
-        for (const uniqueId in currentLayout) {
-            const layoutInfo = currentLayout[uniqueId];
+            const enemyGridX = gameWidth - 100 - gridWidth;
+            const enemyGridY = gridY;
+
+            this.enemyItemImages.forEach(item => item.destroy());
+            this.enemyItemImages = [];
+
+            // ★★★ この2箇所を修正 ★★★
+            const layoutToUse = this.currentEnemyLayout; // 新しい変数に代入
+            console.log(`Round ${this.initialBattleParams.round} enemy layout:`, layoutToUse);
+
+            for (const uniqueId in layoutToUse) { // ★ layoutToUse を使う
+                const layoutInfo = layoutToUse[uniqueId];
             const baseItemId = uniqueId.split('_')[0];
             const itemData = ITEM_DATA[baseItemId];
             if (!itemData) {
