@@ -101,23 +101,32 @@ export default class UIScene extends Phaser.Scene {
         console.log("UI作成");
     }
 
-    // --- 以下、このクラスが持つメソッド群 ---
-   onSceneTransition(newSceneKey) {
+    // scenes/UIScene.js 内
+
+    onSceneTransition(newSceneKey) {
         console.log(`[UIScene] シーン遷移を検知。HUD表示を更新します。新しいシーン: ${newSceneKey}`);
 
-        const isGameScene = (newSceneKey === 'GameScene');
-        const isBattleScene = (newSceneKey === 'BattleScene');
+        // ★★★ このブロックを全面的に書き換え ★★★
 
-        // シーンに応じてHUDの表示/非表示を切り替える
-        if (this.coinHud) this.coinHud.setVisible(isGameScene || isBattleScene);
+        // --- 1. シーンの種類を判定するフラグを作成 ---
+        const isGameScene = (newSceneKey === 'GameScene');
+        const isBattleRelated = (newSceneKey === 'BattleScene' || newSceneKey === 'RankMatchBattleScene');
+        const isRewardRelated = (newSceneKey === 'RewardScene' || newSceneKey === 'RankMatchRewardScene');
         
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ★★★ ここを修正 ★★★
-        // ★★★ playerHpBarはBattleSceneの時だけ表示 ★★★
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        if (this.playerHpBar) this.playerHpBar.setVisible(isBattleScene); 
+        // --- 2. 各HUDの表示/非表示を、フラグに基づいて決定 ---
+
+        // メニューボタンは、ノベルパートでのみ表示
+        if (this.menuButton) this.menuButton.setVisible(isGameScene);
         
-        if (this.enemyHpBar) this.enemyHpBar.setVisible(isBattleScene);
+        // HPバーは、バトル関連シーンでのみ表示
+        if (this.playerHpBar) this.playerHpBar.setVisible(isBattleRelated);
+        if (this.enemyHpBar) this.enemyHpBar.setVisible(isBattleRelated);
+
+        // コインHUDは、バトルとリワード関連シーンで表示
+        if (this.coinHud) this.coinHud.setVisible(isBattleRelated || isRewardRelated);
+        
+        // ★★★ 書き換えここまで ★★★
+    }
     }
     togglePanel() {
         this.isPanelOpen = !this.isPanelOpen;
