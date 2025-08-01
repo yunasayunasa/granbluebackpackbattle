@@ -857,7 +857,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
                 } else {
                 console.error("チェックポイントが見つかりません。スコア画面へ遷移します。");
                 const payload = {
-                    to: 'ScoreScene', from: this.scene.key,
+                    to: 'RankMatchScoreScene', from: this.scene.key,
                     params: { result: 'lose', finalRound: this.stateManager.sf.round || 1 }
                 };
                 this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
@@ -880,7 +880,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             }
 
             this._transitionToScene({
-                to: 'ScoreScene',
+                to: 'RankMatchScoreScene',
                 from: this.scene.key,
                 params: {
                     result: 'lose',
