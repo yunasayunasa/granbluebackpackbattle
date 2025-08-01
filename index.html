@@ -2,27 +2,12 @@
 <html>
 <head>
     <meta charset="UTF-8" />
-    <title>ハンドバッグバトル</title>
+    <title>ナップサックバトル</title>
     <script src="//cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; }
         
-        /* ★★★ ここからオーバーレイ用のCSSを追加 ★★★ */
-     /*   #orientation-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            color: white;
-            font-size: 24px;
-            text-align: center;
-            /* Flexboxを使って、テキストを画面のど真ん中に配置する 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;  ゲーム画面より必ず手前に表示 */
+     
         
     </style>
 </head>
@@ -30,10 +15,40 @@
     <!-- ゲーム画面のコンテナ -->
     <div id="phaser-game"></div>
 
-    <!-- ★★★ 回転促進オーバーレイ（普段は隠しておく）★★★ -->
-    <div id="orientation-overlay" style="display: none;">
-        <p>画面を横向きにして<br>お楽しみください</p>
-    </div>
+
+    <!-- Firebase SDKをインポート -->
+    <script type="module">
+        // 必要な関数をインポート
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        // ★ Firestoreを使うために、getFirestore をインポート
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+       const firebaseConfig = {
+    apiKey: "AIzaSyB6n1WdR3xHvR_Wqv3GjQQNdVjzj2W_ElU",
+    authDomain: "knapsackbattle.firebaseapp.com",
+    projectId: "knapsackbattle",
+    storageBucket: "knapsackbattle.firebasestorage.app",
+    messagingSenderId: "324783664191",
+    appId: "1:324783664191:web:47d9e80a67cda7aafedc8a",
+    measurementId: "G-Q8B3DRM8HM"
+  };
+
+        // Firebaseを初期化
+        const app = initializeApp(firebaseConfig);
+        
+        // ★ Firestoreのインスタンスを取得
+        const firestore = getFirestore(app);
+
+        // ★★★ 最も重要 ★★★
+        // ゲームの他の部分から使えるように、グローバル変数として公開する
+        window.firebaseServices = {
+            app: app,
+            db: firestore
+        };
+    </script>
+    
+   
 
     <script type="module" src="src/main.js"></script>
 </body>
