@@ -1050,7 +1050,9 @@ export default class RankMatchBattleScene extends Phaser.Scene {
                 recastOverlay,
                 recastMask: maskGraphics
             });
-            
+            // BattleScene.js -> setupEnemy
+const hasRecast = itemData.recast && itemData.recast > 0;
+recastOverlay.setVisible(hasRecast);
             // ツールチップ用のインタラクションを設定 (ドラッグは不可)
             itemContainer.setDepth(3).setInteractive({ draggable: false });
             itemContainer.on('pointerup', (pointer, localX, localY, event) => {
