@@ -8,7 +8,7 @@ import SaveLoadScene from './scenes/SaveLoadScene.js';
 import ConfigScene from './scenes/ConfigScene.js';
 import BacklogScene from './scenes/BacklogScene.js';
 import ActionScene from './scenes/ActionScene.js';
-import ScoreAttackBattleScene from './scenes/ScoreAttackBattleScene.js';
+import BattleScene from './scenes/BattleScene.js';
 import NovelOverlayScene from './scenes/NovelOverlayScene.js';
 import RewardScene from './scenes/RewardScene.js'; 
 import GameOverScene from './scenes/GameOverScene.js';
@@ -41,7 +41,7 @@ const config = {
         ConfigScene, 
         BacklogScene, 
         ActionScene,
-        ScoreAttackBattleScene,
+         BattleScene,
         NovelOverlayScene,
         RewardScene ,
          GameOverScene,  // ★追加

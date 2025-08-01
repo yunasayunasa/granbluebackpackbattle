@@ -31,7 +31,7 @@
 [eval exp="sf.coins = 20"]
 [eval exp="sf.player_base_max_hp = 100"]
 ; BattleSceneへジャンプ
-[jump storage="ScoreAttackBattleScene" params="{ mode: 'new_game' }"]
+[jump storage="BattleScene" params="{ mode: 'new_game' }"]
 
 
 ; ★★★ このラベルを新規追加 ★★★

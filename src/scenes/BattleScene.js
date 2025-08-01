@@ -23,7 +23,7 @@ const ELEMENT_RESONANCE_RULES = {
 
 export default class BattleScene extends Phaser.Scene {
     constructor() {
-      super();
+       super('BattleScene');
         this.battleTimer = null;
         this.battleTimerText = null;
         this.maxBattleDuration = 30;
