@@ -63,7 +63,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     init(data) {
-           this.scene.key = 'BattleScene';
+          
         this.enemyItemImages = [];
         this.isTimeUp = false;
         console.log("BattleScene: init (空)");
