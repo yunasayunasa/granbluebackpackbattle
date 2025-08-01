@@ -79,6 +79,7 @@ export default class BattleScene extends Phaser.Scene {
         
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
+        this.firebaseManager = this.sys.registry.get('firebaseManager');
         this.tooltip = new Tooltip(this);
 
         if (this.stateManager.sf.player_backpack === undefined) {
@@ -1703,7 +1704,7 @@ export default class BattleScene extends Phaser.Scene {
 
         // --- STEP 4: データ保存処理（演出と並行して実行）---
         console.log("Saving data in background...");
-        const saveDataPromise = new Promise(resolve => {
+          const saveDataPromise = new Promise(async resolve => { // ★ここもasyncに
             this.stateManager.setF('player_hp', this.playerStats.hp);
             const finalBackpackData = {};
             this.placedItemImages.forEach((item, index) => {
@@ -1715,7 +1716,7 @@ export default class BattleScene extends Phaser.Scene {
             const finalInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
             this.stateManager.setSF('player_backpack', finalBackpackData);
             this.stateManager.setSF('player_inventory', finalInventoryData);
-            this._createRankMatchData();
+            await this._createRankMatchData();
             this.time.delayedCall(1, resolve);
         });
 
@@ -1861,8 +1862,16 @@ export default class BattleScene extends Phaser.Scene {
         }
     }
     
-    _createRankMatchData() {
-        console.log("%c[GHOST_DATA] Generating Rank Match Data...", "color: violet; font-weight: bold;");
+     /**
+     * 非同期対戦用のゴーストデータを生成し、Firestoreにアップロードする
+     * @private
+     */
+    async _createRankMatchData() { // ★ async を追加
+        // firebaseManagerがなければ何もしない
+        if (!this.firebaseManager) return;
+
+        console.log("%c[GHOST_DATA] Generating and Uploading Rank Match Data...", "color: violet; font-weight: bold;");
+
         const rankMatchData = {
             rank: this.stateManager.sf.player_profile.rank,
             round: this.stateManager.sf.round,
@@ -1870,7 +1879,8 @@ export default class BattleScene extends Phaser.Scene {
             base_max_hp: this.stateManager.sf.player_base_max_hp,
             createdAt: new Date().toISOString()
         };
-        console.log(JSON.stringify(rankMatchData, null, 2));
-        console.log("%c[GHOST_DATA] Copy the JSON above and save it for future use.", "color: violet;");
+
+        // ★★★ console.log の代わりに、uploadGhostData を呼び出す ★★★
+        await this.firebaseManager.uploadGhostData(rankMatchData);
     }
 }

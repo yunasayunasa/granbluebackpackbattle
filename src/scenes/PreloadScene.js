@@ -1,5 +1,7 @@
 // src/scenes/PreloadScene.js (フリーズ問題を解決するための修正)
 
+// ★★★ ファイルの先頭で FirebaseManager をインポート ★★★
+import FirebaseManager from '../core/FirebaseManager.js'; 
 import ConfigManager from '../core/ConfigManager.js';
 import StateManager from '../core/StateManager.js';
 import SoundManager from '../core/SoundManager.js';
@@ -46,6 +48,12 @@ export default class PreloadScene extends Phaser.Scene {
         
         const stateManager = new StateManager();
         this.sys.registry.set('stateManager', stateManager);
+          // ★★★ このブロックを追加 ★★★
+        console.log("PreloadScene: FirebaseManagerのセットアップを開始。");
+        const firebaseManager = new FirebaseManager();
+        this.sys.registry.set('firebaseManager', firebaseManager);
+        console.log("PreloadScene: FirebaseManagerを生成・登録しました。");
+        // ★★★ 追加ここまで ★★★
         // --- asset_define.jsonに基づいて残りのアセットをロードキューに追加 ---
         const assetDefine = this.cache.json.get('asset_define');
         for (const key in assetDefine.images) { this.load.image(key, assetDefine.images[key]); }
