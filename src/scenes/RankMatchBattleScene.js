@@ -1836,10 +1836,14 @@ export default class RankMatchBattleScene extends Phaser.Scene {
             const rewardCoins = 10 + (currentRound * 2);
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
-            this._transitionToScene({
-                to: 'RankMatchRewardScene',
-                from: this.scene.key
-            });
+                  this._transitionToScene({
+                to: 'RewardScene',
+                from: this.scene.key,
+                // ★★★ この params を追加 ★★★
+                params: {
+                    returnTo: 'RankMatchBattleScene'
+                }
+                });
         }
     }
     // BattleScene.js の末尾にあるヘルパーメソッド

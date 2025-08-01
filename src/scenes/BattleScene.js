@@ -1737,9 +1737,13 @@ export default class BattleScene extends Phaser.Scene {
             const rewardCoins = 10 + (currentRound * 2);
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
-            this._transitionToScene({
+             this._transitionToScene({
                 to: 'RewardScene',
-                from: this.scene.key
+                from: this.scene.key,
+                // ★★★ この params を追加 ★★★
+                params: {
+                    returnTo: 'BattleScene'
+                }
             });
         }
     }

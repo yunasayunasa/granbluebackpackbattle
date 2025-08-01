@@ -7,20 +7,20 @@ export default class RewardScene extends Phaser.Scene {
         super('RewardScene');
         this.stateManager = null;
         this.soundManager = null;
-        
-        // デフォルトの戻り先シーンキー
-        this.returnSceneKey = 'BattleScene'; 
+        this.returnSceneKey = 'BattleScene'; // デフォルトの戻り先
     }
 
     init(data) {
         console.log("RewardScene: init", data);
-        // 遷移元のシーンキーがあれば、それを戻り先として記憶する
-        if (data && data.from) {
-            this.returnSceneKey = data.from; 
+        // ★★★ data.params.returnTo を参照する ★★★
+        if (data && data.transitionParams && data.transitionParams.returnTo) {
+            this.returnSceneKey = data.transitionParams.returnTo;
             console.log(`次の戻り先シーンを設定: ${this.returnSceneKey}`);
+        } else {
+            // もしreturnToが渡されなかった場合、安全のためにデフォルト値に戻す
+            this.returnSceneKey = 'BattleScene';
         }
     }
-
     create() {
         this.cameras.main.fadeIn(300, 0, 0, 0); 
         this.stateManager = this.sys.registry.get('stateManager');
@@ -68,8 +68,8 @@ export default class RewardScene extends Phaser.Scene {
         // フェードアウトしてから、記憶しておいたシーンキーを使って戻る
         this.cameras.main.fadeOut(300, 0, 0, 0, (camera, progress) => {
             if (progress === 1) {
-                this.scene.get('SystemScene').events.emit('request-scene-transition', {
-                    to: this.returnSceneKey, // ★記憶したキーを使う
+               this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                    to: this.returnSceneKey,
                     from: this.scene.key
                 });
             }
