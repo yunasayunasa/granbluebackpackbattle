@@ -1,95 +1,76 @@
-import { ITEM_DATA } from '../core/ItemData.js';
+// scenes/MatchingScene.js
 
-export default class RankMatchRewardScene extends Phaser.Scene {
+export default class MatchingScene extends Phaser.Scene {
     constructor() {
-        // ★ 1. シーンキーをユニークなものに変更
-        super('RankMatchRewardScene');
+        super('MatchingScene');
         this.stateManager = null;
-        this.soundManager = null;
+        this.firebaseManager = null;
     }
 
     init(data) {
-        // このシーンは遷移元を気にする必要がないので、シンプルにログ出力のみ
-        console.log("RankMatchRewardScene: init", data);
+        console.log("MatchingScene: init", data);
+        // isFirstRound フラグを受け取るため、initも定義しておく
+        this.isFirstRound = (data && data.transitionParams && data.transitionParams.isFirstRound) || false;
     }
 
     create() {
         this.cameras.main.fadeIn(300, 0, 0, 0);
+
         this.stateManager = this.sys.registry.get('stateManager');
-        this.soundManager = this.sys.registry.get('soundManager');
+        this.firebaseManager = this.sys.registry.get('firebaseManager');
 
-        try { this.soundManager.playBgm('bgm_prepare'); } catch (e) { console.warn("BGM 'bgm_prepare' not found."); }
+        this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1')
+            .setAlpha(0.5).setDisplaySize(this.scale.width, this.scale.height);
 
-        console.log("RankMatchRewardScene: create");
-        this.add.image(this.scale.width / 2, this.scale.height / 2, 'reward_background')
-            .setDisplaySize(this.scale.width, this.scale.height)
-            .setDepth(-1);
-
-        this.add.text(this.scale.width / 2, 100, '報酬を選択', {
+        this.add.text(this.scale.width / 2, this.scale.height / 2, '対戦相手を探しています...', {
             fontSize: '48px',
-            fill: '#ecf0f1'
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 5
         }).setOrigin(0.5);
 
-        // --- 報酬候補のランダム選択 ---
-        const rewardPool = Object.keys(ITEM_DATA).filter(id =>
-            !['sword', 'shield', 'potion'].includes(id)
-        );
-        const selectedRewards = [];
-        const rewardCount = Math.min(3, rewardPool.length);
-        for (let i = 0; i < rewardCount; i++) {
-            const randomIndex = Phaser.Math.Between(0, rewardPool.length - 1);
-            selectedRewards.push(rewardPool.splice(randomIndex, 1)[0]);
-        }
-        console.log("提示される報酬:", selectedRewards);
-
-        // --- 報酬を画面に表示 ---
-        selectedRewards.forEach((itemId, index) => {
-            const x = (this.scale.width / 4) * (index + 1);
-            const y = this.scale.height / 2;
-
-            const card = this.add.rectangle(x, y, 150, 200, 0xbdc3c7).setInteractive();
-            card.setStrokeStyle(4, 0x7f8c8d);
-
-            const itemData = ITEM_DATA[itemId];
-            if (itemData && itemData.storage) {
-                const itemImage = this.add.image(x, y - 20, itemData.storage);
-                const scale = Math.min(120 / itemImage.width, 120 / itemImage.height);
-                itemImage.setScale(scale);
-            }
-
-            this.add.text(x, y + 80, itemId, {
-                fontSize: '20px',
-                fill: '#2c3e50'
-            }).setOrigin(0.5);
-
-            card.on('pointerdown', () => {
-                this.selectReward(itemId);
-            });
-        });
+        this.startMatching();
 
         this.events.emit('scene-ready');
     }
 
-    /**
-     * 報酬が選択された時の処理
-     * @param {string} selectedItemId - 選択されたアイテムのID
-     */
-    selectReward(selectedItemId) {
-        console.log(`報酬として ${selectedItemId} を選択しました`);
+    async startMatching() {
+        // TODO: 将来的に sf.rank_match_profile.rank を参照
+        const playerRank = this.stateManager.sf.player_profile.rank || 'C';
+        const opponentList = await this.firebaseManager.findOpponentList(playerRank);
 
-        const currentInventory = this.stateManager.sf.player_inventory || [];
-        const newInventory = [...currentInventory, selectedItemId];
-        this.stateManager.setSF('player_inventory', newInventory);
+        if (opponentList) {
+            // HUD初期化のためにf変数をリセット
+            const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp || 100;
+            this.stateManager.f = {};
+            this.stateManager.setF('player_max_hp', basePlayerMaxHp);
+            this.stateManager.setF('player_hp', basePlayerMaxHp);
+            this.stateManager.setF('coins', this.stateManager.sf.coins || 20);
 
-        // フェードアウトしてから、次のラウンドへ進む
-        this.cameras.main.fadeOut(300, 0, 0, 0, (camera, progress) => {
-            if (progress === 1) {
-                // ★ 2. 遷移先を 'RankMatchBattleScene' に変更
-                this.scene.get('SystemScene').events.emit('request-scene-transition', {
-                    to: 'RankMatchBattleScene',
-                    from: this.scene.key
-                });
-            }
+            console.log("マッチング成功！戦闘シーンへ遷移します。");
+            this._transitionToScene({
+                to: 'RankMatchBattleScene',
+                from: this.scene.key,
+                params: {
+                    ghostDataList: opponentList,
+                    isFirstRound: this.isFirstRound
+                }
+            });
+        } else {
+            console.error("マッチングに失敗しました。タイトルに戻ります。");
+            this._transitionToScene({
+                to: 'GameScene',
+                from: this.scene.key,
+                params: { storage: 'title.ks' }
+            });
+        }
+    }
+
+    _transitionToScene(payload) {
+        const transitionSpeed = 300;
+        this.cameras.main.fadeOut(transitionSpeed, 0, 0, 0);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+            this.scene.get('SystemScene').events.emit('request-scene-transition', payload);
         });
     }
 }
