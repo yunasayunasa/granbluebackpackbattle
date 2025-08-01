@@ -51,8 +51,8 @@ export default class MatchingScene extends Phaser.Scene {
             stateManager.f = {}; // f変数を一旦クリア
             stateManager.setF('player_max_hp', basePlayerMaxHp);
             stateManager.setF('player_hp', basePlayerMaxHp);
-            stateManager.setF('enemy_max_hp', 0); // HUD初期化用
-            stateManager.setF('enemy_hp', 0);
+            stateManager.setF('enemy_max_hp', 100); // HUD初期化用
+            stateManager.setF('enemy_hp', 100);
             // ★★★ 追加ここまで ★★★
 
             // 対戦相手が見つかったので、RankMatchBattleSceneへ遷移
