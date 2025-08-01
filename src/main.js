@@ -15,6 +15,9 @@ import GameOverScene from './scenes/GameOverScene.js';
 import GameClearScene from './scenes/GameClearScene.js';
 import ScoreScene from './scenes/ScoreScene.js';
 import BloomPipeline from './core/BloomPipeline.js'; 
+import RankMatchBattleScene from './scenes/RankMatchBattleScene.js';
+import MatchingScene from './scenes/MatchingScene.js';
+
 const config = {
     type: Phaser.AUTO,
     scale: {
@@ -43,7 +46,9 @@ const config = {
         RewardScene ,
          GameOverScene,  // ★追加
         GameClearScene,
-        ScoreScene  // ★追加
+        ScoreScene,
+        MatchingScene, 
+        RankMatchBattleScene // ★追加
     ]
 };
 

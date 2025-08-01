@@ -7,10 +7,9 @@
 
 [image storage="titlelogo" time=500]
 [link target="*start_score_attack" size=28 text="スコアアタック"]
-[p]
-[link target="*not_implemented" size=28]*ストーリー (準備中)[endlink]
-[p]
-[link target="*not_implemented" size=28]*チュートリアル (準備中)[endlink]
+[link target="*start_rank_match" size=28 text-"ランクマッチ"]
+
+[link target="*not_implemented" size=28 text-"ストーリー" (準備中)]
 [p][s]
 
 
@@ -35,13 +34,26 @@
 [jump storage="BattleScene" params="{ mode: 'new_game' }"]
 
 
+; ★★★ このラベルを新規追加 ★★★
+*start_rank_match
+; ランクマッチを開始する
+[eval exp="sf.retry_count = 0"]
+[eval exp="sf.player_backpack = {}"]
+[eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
+[eval exp="sf.round = 1"]
+[eval exp="sf.coins = 20"]
+[eval exp="sf.player_base_max_hp = 100"]
+; TODO: ここに挑戦料の支払いロジックを後で追加する
+
+; MatchingSceneへジャンプ
+[jump storage="MatchingScene"]
+
 *not_implemented
 ; 未実装の機能が選択された場合の処理
-[cm]
-[position layer="message0" left=440 top=450]
-[font color=0xff0000]
-このモードは現在準備中です。
-[resetfont]
+
+
+
+
 [wait time=1500]
 ; 再度タイトル画面の選択肢に戻る
 [jump storage="title.ks" target="*start_over"]

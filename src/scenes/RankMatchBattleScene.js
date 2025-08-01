@@ -10,9 +10,10 @@ export default class RankMatchBattleScene extends BattleScene {
     }
 
     init(data) {
-        super.init(data); // 親クラスのinitを呼び出す
-        // マッチングシーンから渡されたゴーストデータを取得
-        this.ghostData = data.transitionParams.ghostData;
+      
+        super.init(data);
+        // ★ ghostData -> ghostDataList に変更
+        this.ghostData = data.transitionParams.ghostDataList; 
         if (!this.ghostData) {
             console.error("RankMatchBattleScene: ゴーストデータが渡されませんでした！");
             // エラーハンドリング: タイトルに戻るなど
@@ -40,50 +41,70 @@ export default class RankMatchBattleScene extends BattleScene {
         console.log(`ランクマッチ開始！ Round ${this.ghostData.round} のゴーストと対戦します。`);
     }
 
+    // RankMatchBattleScene.js 内
+
     /**
      * ★★★ 敵のセットアップ処理をオーバーライド ★★★
-     * EnemyGeneratorを使わず、ゴーストデータから盤面を再現する
+     * ゴーストデータがあれば盤面を再現し、なければEnemyGeneratorで生成する
      */
     setupEnemy(gridY) {
+        // 現在のラウンドに対応するゴーストデータをリストから取得
+        const currentRound = this.stateManager.sf.round || 1;
+        // this.ghostData は init で受け取った10人分のリスト
+        const ghostForThisRound = this.ghostData[currentRound - 1]; 
+
+        if (ghostForThisRound && ghostForThisRound !== 'generate') {
+            // --- A: ゴーストデータが存在する場合の処理 ---
+            console.log(`Round ${currentRound}: ゴーストデータから敵の盤面を再現します。`);
+            this.setupEnemyFromGhost(gridY, ghostForThisRound.backpack);
+            
+            // 敵のHPもゴーストのものを反映
+            const enemyHp = ghostForThisRound.base_max_hp || 100;
+            this.stateManager.setF('enemy_max_hp', enemyHp);
+            this.stateManager.setF('enemy_hp', enemyHp);
+
+        } else {
+            // --- B: ゴーストデータがない('generate')、またはnullだった場合の処理 ---
+            console.log(`Round ${currentRound}: 通常の敵を生成します。`);
+            // 親クラス(BattleScene)の敵生成ロジックを借用
+            const enemyData = EnemyGenerator.getLayoutForRound(currentRound);
+            this.currentEnemyLayout = enemyData.layout;
+            super.setupEnemy(gridY, this.currentEnemyLayout);
+        }
+    }
+
+    /**
+     * ゴーストデータのbackpack情報から敵を配置するヘルパーメソッド
+     * @private
+     */
+    setupEnemyFromGhost(gridY, ghostLayout) {
         const gameWidth = this.scale.width;
-        // 敵グリッドサイズは親クラス(BattleScene)で定義されたものを使う
         const gridWidth = this.backpackGridSize * this.cellSize;
         const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = gridY;
 
         this.enemyItemImages.forEach(item => item.destroy());
         this.enemyItemImages = [];
 
-        const ghostLayout = this.ghostData.backpack;
-        console.log("ゴーストデータから敵の盤面を再現:", ghostLayout);
-
-        // ゴーストデータのbackpack情報を元に、敵のアイテムを配置
         for (const uid in ghostLayout) {
             const itemInfo = ghostLayout[uid];
             const itemData = ITEM_DATA[itemInfo.itemId];
+            if (!itemData) { continue; }
 
-            if (!itemData) {
-                console.warn(`ITEM_DATAに'${itemInfo.itemId}'が見つかりません。`);
-                continue;
-            }
-
-            // 親クラスのsetupEnemyからコードを拝借・簡略化
             const shape = this.getRotatedShape(itemInfo.itemId, itemInfo.rotation);
             const containerWidth = shape[0].length * this.cellSize;
             const containerHeight = shape.length * this.cellSize;
             
             const itemContainer = this.add.container(
                 enemyGridX + (itemInfo.col * this.cellSize) + (containerWidth / 2),
-                enemyGridY + (itemInfo.row * this.cellSize) + (containerHeight / 2)
+                gridY + (itemInfo.row * this.cellSize) + (containerHeight / 2)
             ).setSize(containerWidth, containerHeight);
 
-            // ... (ツールチップやリキャストマスクなどの表示設定は親クラスのものを参考に実装) ...
             const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
             itemContainer.add(itemImage);
             itemContainer.setAngle(itemInfo.rotation);
             itemContainer.setData({
                 itemId: itemInfo.itemId,
-                uniqueId: `${itemInfo.itemId}_ghost` // 識別用ID
+                uniqueId: `${itemInfo.itemId}_ghost`
             });
             
             this.enemyItemImages.push(itemContainer);

@@ -46,48 +46,70 @@ export default class FirebaseManager {
         }
     }
 
+  // core/FirebaseManager.js 内
+
     /**
-     * 指定された条件に合う対戦相手のゴーストデータを取得する
+     * ★★★ findOpponent をこの findOpponentList に置き換え ★★★
+     * ランクマッチ10ラウンド分の対戦相手リストを取得する
      * @param {string} playerRank - プレイヤーの現在のランク (例: 'C')
-     * @param {number} playerRound - プレイヤーの現在のラウンド
-     * @returns {Promise<object|null>}
+     * @returns {Promise<Array|null>} 10人分のゴーストデータの配列、または見つからなかった場合はnull
      */
-    async findOpponent(playerRank, playerRound) {
+    async findOpponentList(playerRank) {
         if (!this.db) return null;
 
-        console.log(`%c[Firebase] 対戦相手を探しています... Rank: ${playerRank}, Round: ${playerRound}`, "color: blue;");
+        console.log(`%c[Firebase] ランクマッチの対戦相手リストを探しています... Rank: ${playerRank}`, "color: blue;");
+        
+        const opponentList = [];
+        const numRounds = 10;
 
-        // --- マッチングロジック (近傍マッチング) ---
-        const searchPaths = [
-            `ghosts/${playerRank}/round_${playerRound}`,     // 同格
-            `ghosts/${playerRank}/round_${playerRound - 1}`, // 少し格下
-            `ghosts/${playerRank}/round_${playerRound + 1}`, // 少し格上
-        ];
+        for (let i = 1; i <= numRounds; i++) {
+            const targetRound = i;
+            let opponentData = null;
 
-        for (const path of searchPaths) {
-            if (path.includes("round_0")) continue; // round 0は存在しないのでスキップ
+            // --- マッチングロジック (ラウンドごとに相手を探す) ---
+            const searchPaths = [
+                `ghosts/${playerRank}/round_${targetRound}`,     // 同格
+                `ghosts/${playerRank}/round_${targetRound - 1}`, // 少し格下
+                `ghosts/${playerRank}/round_${targetRound + 1}`, // 少し格上
+                // ★ 将来的には、別ランクのパスも検索候補に加えるとマッチング率が上がる
+                // `ghosts/B/round_${targetRound}` など
+            ];
 
-            try {
-                const collectionRef = collection(this.db, path);
-                
-                // パスからランダムに1件取得するクエリ
-                // (Firestoreには直接ランダム取得がないため、IDで並び替えて先頭1件を取る疑似ランダム)
-                const q = query(collectionRef, orderBy('__name__'), limit(1));
-                const querySnapshot = await getDocs(q);
+            for (const path of searchPaths) {
+                if (path.includes("round_0")) continue;
 
-                if (!querySnapshot.empty) {
-                    // データが見つかった
-                    const opponentData = querySnapshot.docs[0].data();
-                    console.log(`%c[Firebase] 対戦相手が見つかりました！ Path: ${path}`, "color: blue;");
-                    return opponentData;
+                try {
+                    const collectionRef = collection(this.db, path);
+                    const q = query(collectionRef, orderBy('__name__'), limit(1)); // 簡易ランダム取得
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        opponentData = querySnapshot.docs[0].data();
+                        console.log(` > Round ${targetRound} の相手が見つかりました。 Path: ${path}`);
+                        break; // このラウンドの相手が見つかったので、次のラウンドを探しに行く
+                    }
+                } catch (error) {
+                    // このパスにデータがない場合はエラーになるが、処理は続ける
                 }
-            } catch (error) {
-                // このパスにコレクションが存在しない場合など
-                console.warn(`[Firebase] Path '${path}' の検索中にエラー:`, error.message);
+            }
+
+            if (opponentData) {
+                opponentList.push(opponentData);
+            } else {
+                console.warn(` > Round ${targetRound} の相手が見つかりませんでした。代わりに通常エネミーを生成します。`);
+                
+                // ★★★ 'null' の代わりに 'generate' という文字列を入れる ★★★
+                opponentList.push('generate');
             }
         }
 
-        console.warn(`%c[Firebase] 適切な対戦相手が見つかりませんでした。`, "color: orange;");
-        return null; // 全てのパスで相手が見つからなかった
+        // 10人分のデータ（または'generate'）が揃ったかチェック
+        if (opponentList.length === numRounds) {
+            console.log(`%c[Firebase] 対戦相手リスト(10人分)の準備が完了しました。`, "color: blue;");
+            return opponentList;
+        } else {
+            console.error("[Firebase] 対戦相手リストの作成に失敗しました。");
+            return null;
+        }
     }
 }
