@@ -86,7 +86,10 @@
     "char_nier": "assets/char/nier.png",
     "char_cassius": "assets/char/cassius.png",
     "char_bowman": "assets/char/bowman.png",
-    "char_rei": "assets/char/rei.png"
+    "char_rei": "assets/char/rei.png",
+
+    "avatar_ghost": "assets/images/avatars/avatar_ghost.png"
+}
   },
    "spritesheets": {
     "effect_impact": {
