@@ -65,10 +65,9 @@ export default class RankMatchBattleScene extends Phaser.Scene {
     }
 
     init(data) {
-          this.ghostData = data.transitionParams.ghostDataList;
-        if (!this.ghostData) {
-            console.error("RankMatchBattleScene: ゴーストデータが渡されませんでした！");
-            this.scene.get('SystemScene').events.emit('request-scene-transition', { to: 'GameScene', from: this.scene.key, params: { storage: 'title.ks' } });
+          if (data && data.transitionParams && data.transitionParams.ghostDataList) {
+            this.ghostDataList = data.transitionParams.ghostDataList;
+            console.log("RankMatchBattleScene: ゴーストデータのリストを受け取りました。");
         }
         this.enemyItemImages = [];
         this.isTimeUp = false;
