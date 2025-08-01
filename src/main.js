@@ -17,7 +17,7 @@ import ScoreScene from './scenes/ScoreScene.js';
 import BloomPipeline from './core/BloomPipeline.js'; 
 import RankMatchBattleScene from './scenes/RankMatchBattleScene.js';
 import MatchingScene from './scenes/MatchingScene.js';
-import RankMatchRewardScene from './scenes/RankMatchRewardScene.js';
+
 const config = {
     type: Phaser.AUTO,
     scale: {
@@ -48,8 +48,7 @@ const config = {
         GameClearScene,
         ScoreScene,
         MatchingScene, 
-        RankMatchBattleScene,
-        RankMatchRewardScene
+        RankMatchBattleScene
     ]
 };
 
