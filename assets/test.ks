@@ -25,7 +25,7 @@
 
 
 ; f変数もクリア (HUD表示等に影響するため)
-
+[eval exp="sf.retry_count = 0"]
 [eval exp="sf.player_backpack = {}"]
 [eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
 [eval exp="sf.round = 1"]
