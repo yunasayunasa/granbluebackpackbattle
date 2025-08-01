@@ -8,9 +8,8 @@
 [image storage="titlelogo" time=500]
 [link target="*start_score_attack" size=28 text="スコアアタック"]
 [link target="*start_rank_match" size=28 text-"ランクマッチ"]
-
-[link target="*not_implemented" size=28 text-"ストーリー" (準備中)]
-[p][s]
+[p]
+[s]
 
 
 ; === ラベル定義 ===
