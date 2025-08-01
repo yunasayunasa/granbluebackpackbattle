@@ -44,7 +44,7 @@ export default class MatchingScene extends Phaser.Scene {
         const opponentList = await this.firebaseManager.findOpponentList(playerRank);
 
         if (opponentList) {
-            追加 ★★★
+            
             // 次のランクマッチ挑戦のために、一時変数をリセットする
             const stateManager = this.sys.registry.get('stateManager');
             const basePlayerMaxHp = stateManager.sf.player_base_max_hp || 100;
