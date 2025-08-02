@@ -67,7 +67,7 @@
 ; TODO: ここに挑戦料の支払いロジックを後で追加する
 
 ; MatchingSceneへジャンプ
-[jump storage="MatchingScene"]
+  [jump storage="MatchingScene" params="{ entryFee: f.entry_fee }"]
 
 [else]
     ; --- 4b. RPが足りていない場合：テキストで通知 ---
