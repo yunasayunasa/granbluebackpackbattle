@@ -57,7 +57,7 @@
 [if exp="sf.rank_match_profile.rp >= f.entry_fee"]
     ; --- 4a. RPが足りている場合：確認なしで支払い、即座に遷移 ---
     [eval exp="sf.rank_match_profile.rp -= f.entry_fee"]
-    [jump storage="MatchingScene"]
+    [jump target="start_rank_match"]
 [else]
     ; --- 4b. RPが足りていない場合：テキストで通知 ---
     [position layer="message0" left=440 top=400]
