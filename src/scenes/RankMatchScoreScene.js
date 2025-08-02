@@ -1,13 +1,12 @@
-// scenes/RankMatchScoreScene.js
-
 export default class RankMatchScoreScene extends Phaser.Scene {
     constructor() {
         super('RankMatchScoreScene');
         this.stateManager = null;
         this.soundManager = null;
-        this.receivedData = null; // BattleSceneから受け取るデータ
+        this.receivedData = null;
+        this.titleButton = null;
 
-        // ★ランクマッチ専用のランク定義
+        // ランク定義を一元管理
         this.rankMap = {
             'C':  { threshold: 100, image: 'rank_c', name: 'ランク C' },
             'B':  { threshold: 300, image: 'rank_b', name: 'ランク B' },
@@ -26,90 +25,98 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
         
-        // --- 1. ランクマッチプロファイルの初期化 ---
+        this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1')
+            .setAlpha(0.5).setDisplaySize(this.scale.width, this.scale.height);
+        
+        try { this.soundManager.playBgm('bgm_prepare'); }
+        catch(e) { console.warn("BGM 'bgm_prepare' not found."); }
+
+        // --- 1. ランクマッチプロファイルの初期化 (念のため) ---
         if (!this.stateManager.sf.rank_match_profile) {
-            this.stateManager.setSF('rank_match_profile', {
-                rp: 0,
-                rank: 'C',
-                wins: 0,
-                losses: 0
-            });
+            this.stateManager.setSF('rank_match_profile', { rp: 0, rank: 'C', wins: 0, losses: 0 });
         }
         
         // --- 2. 結果に基づいてRPを計算 ---
-        const result = this.receivedData.result || 'lose'; // 'win' or 'lose'
-        const finalRound = this.receivedData.finalRound || 1; // 勝利/敗北したラウンド
+        const result = this.receivedData.result || 'lose';
+        const finalRound = this.receivedData.finalRound || 1;
         
         const profile = this.stateManager.sf.rank_match_profile;
         const oldRp = profile.rp;
         const oldRank = profile.rank;
 
-        // ★挑戦料 (仮の計算式)
         const entryFee = (Object.keys(this.rankMap).indexOf(oldRank) || 0) * 20;
-
-        // ★勝利時の獲得RP (仮の計算式)
-        const rewardRp = 50 + (finalRound * 5);
+        const rewardRp = (result === 'win') ? (50 + (finalRound * 5)) : 0;
+        const rpChange = rewardRp - entryFee;
         
-        let rpChange = 0;
-        if (result === 'win') {
-            rpChange = rewardRp;
-            profile.wins++;
-        } else { // 敗北時
-            rpChange = -entryFee;
-            profile.losses++;
-        }
-        
-        profile.rp = Math.max(0, profile.rp + rpChange); // RPは0未満にならない
+        profile.rp = Math.max(0, profile.rp + rpChange);
+        if (result === 'win') profile.wins++; else profile.losses++;
 
-        // ★ランクの再計算
-        // (getRankKeyForExpを参考に、getRankKeyForRpを後で作成)
-        profile.rank = this.getRankKeyForRp(profile.rp);
-        const newRank = profile.rank;
-
+        const newRank = this.getRankKeyForRp(profile.rp);
+        profile.rank = newRank;
         this.stateManager.setSF('rank_match_profile', profile);
 
-        // --- 3. 結果表示UI ---
-        const titleText = (result === 'win') ? 'VICTORY' : 'DEFEAT';
-        this.add.text(this.scale.width / 2, 80, titleText, { fontSize: '60px', fill: '#e0e0e0' }).setOrigin(0.5);
+        const rankChangeKey = Object.keys(this.rankMap).indexOf(newRank) - Object.keys(this.rankMap).indexOf(oldRank);
+        let rankChangeText = '';
+        if (rankChangeKey > 0) rankChangeText = '(昇格!)';
+        if (rankChangeKey < 0) rankChangeText = '(降格…)';
+
+        // --- 3. 結果表示UIのアニメーション ---
+        const titleTextStr = (result === 'win') ? 'VICTORY' : 'DEFEAT';
+        this.add.text(this.scale.width / 2, 80, titleTextStr, { fontSize: '60px', fill: '#e0e0e0' }).setOrigin(0.5);
 
         const resultLines = [
             { label: '挑戦料', value: `-${entryFee} RP` },
             { label: '勝利ボーナス', value: (result === 'win' ? `+${rewardRp} RP` : '---') },
-            { label: '結果', value: `${rpChange >= 0 ? '+' : ''}${rpChange} RP` },
-            '---',
-            { label: '現在ランク', value: `${oldRank} → ${newRank} ${newRank !== oldRank ? '(昇格!)' : ''}` },
-            { label: '現在RP', value: `${profile.rp}` },
+            { label: '結果', value: `${rpChange >= 0 ? '+' : ''}${rpChange} RP`, isDivider: true },
+            { label: '現在ランク', value: `${oldRank} → ${newRank} ${rankChangeText}` },
+            { label: '現在RP', value: profile.rp },
         ];
         
-        // (ここに、ScoreSceneと同じ「デン！デン！」と表示するアニメーションロジックが入る)
-        // 今回はまず静的に表示
+        // --- 4. 「デン！デン！」アニメーション (タイムライン不使用版) ---
+        const startY = 200; const stepY = 70; const startDelay = 500; const stepDelay = 400;
         resultLines.forEach((line, index) => {
-            if (line === '---') {
-                this.add.line(0, 0, this.scale.width/2 - 200, 200 + index * 60, this.scale.width/2 + 200, 200 + index * 60, 0xffffff).setLineWidth(2);
-            } else {
-                 this.add.text(this.scale.width / 2, 200 + index * 60, `${line.label}: ${line.value}`, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
-            }
-        });
+            const y = startY + index * stepY;
+            const delay = startDelay + index * stepDelay;
 
-        // --- 4. 「タイトルへ」ボタン ---
-        const titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', { /* ... */ }).setOrigin(0.5).setInteractive();
-        titleButton.on('pointerdown', () => {
-            // ... (タイトルへ戻る遷移処理) ...
+            if (line.isDivider) {
+                const lineObj = this.add.line(0, 0, this.scale.width/2 - 200, y, this.scale.width/2 + 200, y, 0xffffff).setLineWidth(2).setAlpha(0);
+                this.tweens.add({ targets: lineObj, delay: delay, alpha: 0.5, duration: 250 });
+                return;
+            }
+
+            const labelText = this.add.text(this.scale.width / 2 - 10, y, `${line.label}:`, { fontSize: '32px', fill: '#cccccc' }).setOrigin(1, 0.5).setAlpha(0).setScale(1.2);
+            const valueText = this.add.text(this.scale.width / 2 + 10, y, line.value, { fontSize: '36px', fill: '#ffffff', fontStyle: 'bold' }).setOrigin(0, 0.5).setAlpha(0).setScale(1.2);
+            
+            this.tweens.add({ targets: [labelText, valueText], delay: delay, alpha: 1, scale: 1, duration: 250, ease: 'Cubic.easeOut',
+                onStart: () => {
+                    try { this.soundManager.playSe('se_result_pop'); }
+                    catch(e) { console.warn("SE 'se_result_pop' not found."); }
+                }
+            });
+        });
+        
+        // --- 5. 「タイトルへ」ボタンの表示 ---
+        this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', { fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setAlpha(0);
+        const totalAnimationTime = startDelay + resultLines.length * stepDelay + 500;
+        this.time.delayedCall(totalAnimationTime, () => {
+            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+        });
+        
+        this.titleButton.on('pointerdown', () => {
+            // (タイトルへ戻る遷移処理)
         });
         
         this.events.emit('scene-ready');
     }
     
-    // ★RPからランクキー('C', 'B'...)を返すヘルパーメソッド
     getRankKeyForRp(rp) {
-        const rankKeys = Object.keys(this.rankMap);
-        for (let i = rankKeys.length - 1; i >= 0; i--) {
-            const key = rankKeys[i];
-            const prevThreshold = i > 0 ? this.rankMap[rankKeys[i-1]].threshold : 0;
+        const rankKeys = Object.keys(this.rankMap).reverse(); // S+からチェック
+        for (const key of rankKeys) {
+            const prevThreshold = Object.keys(this.rankMap).indexOf(key) > 0 ? this.rankMap[Object.keys(this.rankMap)[Object.keys(this.rankMap).indexOf(key) - 1]].threshold : 0;
             if (rp >= prevThreshold) {
                 return key;
             }
         }
-        return rankKeys[0]; // C
+        return 'C';
     }
 }
