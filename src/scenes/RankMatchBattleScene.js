@@ -1859,7 +1859,7 @@ recastOverlay.setVisible(hasRecast);
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
                   this._transitionToScene({
-                to: 'RankMatchRewardScene',
+                to: 'RewardScene',
                 from: this.scene.key,
                 // ★★★ この params を追加 ★★★
                 params: {result: 'lose',
