@@ -2,6 +2,8 @@
 
 // --- 表示・演出系 ---
 import { handleFlash } from './flash.js';
+import { handleCallOverlay } from './call_overlay.js';
+import { handleEndOverlay } from './end_overlay.js';
 import { handleHideWindow } from './hidewindow.js';
 import { handleShowWindow } from './showwindow.js';
 import { handleCharaShow } from './chara_show.js';
@@ -58,6 +60,8 @@ import { handleReturn } from './return.js';
 export const tagHandlers = {
     // 表示・演出系
   'flash': handleFlash,
+   'call_overlay': handleCallOverlay,
+    'end_overlay': handleEndOverlay,
     'hidewindow': handleHideWindow,
     'showwindow': handleShowWindow,
     'chara_show': handleCharaShow,

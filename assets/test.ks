@@ -23,64 +23,48 @@
 ; ... (変更なし) ...
 
 
-; ★★★ このラベルを全面的に書き換え ★★★
-*start_rank_match
-
-
 ; --- 1. ランクマッチの解放条件をチェック ---
 [if exp="sf.player_profile && sf.player_profile.highScore > 0"]
-    ; 解放されている場合の処理へジャンプ
     [jump target="*rank_match_entry"]
 [else]
-    ; 解放されていない場合のメッセージを表示
-    [position layer="message0" left=440 top=450]
-    [font color=0xffdd00]
-    ランクマッチは、一度スコアアタックをプレイすると解放されます。
-    [resetfont]
-    [wait time="2500"]
-    ; タイトルの選択肢に何もせず戻る
+    [eval exp="f.popup_message = 'ランクマッチは、一度スコアアタックをプレイすると解放されます。'"]
+    [call_overlay storage="popup_info.ks"] 
+    ; ★ お知らせ用の別シナリオが良い
     [jump storage="title.ks" target="*show_menu_again"]
 [endif]
-
 
 *rank_match_entry
-; --- 2. ランクマッチプロファイルの初期化 ---
-[eval exp="sf.rank_match_profile = sf.rank_match_profile || { rp: 100, rank: 'C' }"]
-; (初回は挑戦料を払えるように、少しだけ初期RPを与えておく)
-
-; --- 3. 挑戦料の計算と確認 ---
+; --- 2. ランクマッチプロファイルの初期化と挑戦料計算 ---
+[eval exp="sf.rank_match_profile = sf.rank_match_profile || { rp: 100, rank: 'C', wins: 0, losses: 0 }"]
 [eval exp="f.rank_keys = ['C', 'B', 'A', 'S', 'S+']"]
 [eval exp="f.current_rank_index = f.rank_keys.indexOf(sf.rank_match_profile.rank)"]
-[eval exp="f.entry_fee = f.current_rank_index * 20"] 
+[eval exp="f.entry_fee = f.current_rank_index * 20"]
 
 [if exp="sf.rank_match_profile.rp >= f.entry_fee"]
-    ; RPが足りている場合
-    [position layer="message0" left=440 top=400]
-    現在のランク: &sf.rank_match_profile.rank
+    ; --- 3a. RPが足りている場合：ポップアップで確認 ---
+    [eval exp="f.popup_message = '挑戦料として ' + f.entry_fee + ' RP を支払いますか？\n（現在のRP: ' + sf.rank_match_profile.rp + '）'"]
+    [eval exp="sf.popup_result = 'no'"]
+    [call_overlay storage="popup_confirm.ks"]
     
-    挑戦料として [emb exp="f.entry_fee"] RP を支払いますか？
-   
-    [link target="*pay_fee_and_start" size="24" text="はい"]
-    [link target="*show_menu_again" size="24"text="いいえ"]
-    [p]
-[s]
+    [if exp="sf.popup_result == 'yes'"]
+        [jump target="*pay_fee_and_start"]
+    [else]
+        [jump target="*show_menu_again"]
+    [endif]
 [else]
-    ; RPが足りていない場合
-    [position layer="message0" left=440 top=400]
-    ランクマッチに挑戦するには [emb exp="f.entry_fee"] RP が必要です。
-    
-    現在のRP: &sf.rank_match_profile.rp
-    
-    [wait time="2500"]
+    ; --- 3b. RPが足りていない場合：ポップアップでお知らせ ---
+    [eval exp="f.popup_message = 'RPが不足しています。\n必要なRP: ' + f.entry_fee + '\n現在のRP: ' + sf.rank_match_profile.rp"]
+    ; ★ お知らせ用のpopup_info.ks を呼び出すのが理想
+    [call_overlay storage="popup_info.ks"]
     [jump storage="title.ks" target="*show_menu_again"]
 [endif]
 
-
 *pay_fee_and_start
-; --- 4. 挑戦料を支払ってマッチング開始 ---
 [eval exp="sf.rank_match_profile.rp -= f.entry_fee"]
 
 [jump storage="MatchingScene"]
+
+
 
 
 *show_menu_again

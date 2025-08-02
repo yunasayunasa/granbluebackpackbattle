@@ -141,8 +141,10 @@ export default class SystemScene extends Phaser.Scene {
         const returnScene = this.scene.get(data.returnTo);
         if (returnScene && returnScene.scene.isActive()) { 
             returnScene.input.enabled = true; 
+
             console.log(`[SystemScene] シーン[${data.returnTo}]の入力を再有効化しました。`);
         }
+        this.events.emit('end-overlay-complete');
     }
 
 // ... SystemScene.js の他のメソッド ...
