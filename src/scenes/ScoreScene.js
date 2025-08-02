@@ -8,11 +8,14 @@ export default class ScoreScene extends Phaser.Scene {
         this.receivedData = null;
         this.titleButton = null;
 
-        // スコアアタック用のランクテーブル
-        this.rankTable = [
-            { exp: 0,    rank: "駆け出し" }, { exp: 100,  rank: "ブロンズ" }, { exp: 300,  rank: "シルバー" },
-            { exp: 700,  rank: "ゴールド" }, { exp: 1500, rank: "プラチナ" },
-        ];
+        // スコアアタック用のランク定義
+        this.rankMap = {
+            '駆け出し': { threshold: 100,  image: 'rank_c', next: 'ブロンズ' },
+            'ブロンズ': { threshold: 300,  image: 'rank_b', next: 'シルバー' },
+            'シルバー': { threshold: 700,  image: 'rank_a', next: 'ゴールド' },
+            'ゴールド': { threshold: 1500, image: 'rank_s', next: 'プラチナ' },
+            'プラチナ': { threshold: 99999, image: 'rank_s_plus', next: null },
+        };
     }
 
     init(data) {
@@ -20,25 +23,20 @@ export default class ScoreScene extends Phaser.Scene {
     }
 
     create() {
-        console.log("ScoreScene: create");
         this.cameras.main.fadeIn(300, 0, 0, 0);
-
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
 
         this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1')
             .setAlpha(0.5).setDisplaySize(this.scale.width, this.scale.height);
         
-        try { this.soundManager.playBgm('bgm_prepare'); }
-        catch(e) { console.warn("BGM 'bgm_prepare' not found."); }
+        try { this.soundManager.playBgm('bgm_prepare'); } catch(e) {}
 
         const finalRound = this.receivedData.finalRound || 1;
         const result = this.receivedData.result || 'lose';
         let score = (finalRound - 1) * 100;
         let expGained = (finalRound - 1) * 10;
-        if (result === 'clear') {
-            score += 1000; expGained += 100;
-        }
+        if (result === 'clear') { score += 1000; expGained += 100; }
 
         const profile = this.stateManager.sf.player_profile;
         const oldRank = profile.rank;
@@ -76,8 +74,8 @@ export default class ScoreScene extends Phaser.Scene {
         
         const totalAnimationTime = startDelay + resultLines.length * stepDelay + 250;
         this.time.delayedCall(totalAnimationTime, () => {
-            // TODO: EXPバーとランクアップ演出
-            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+            console.log("リザルト表示完了。経験値バー演出へ。");
+            this._playExpBarAnimation(expGained, oldTotalExp, newRank !== oldRank);
         });
 
         this.titleButton.on('pointerdown', () => {
@@ -94,12 +92,110 @@ export default class ScoreScene extends Phaser.Scene {
     }
 
     getRankForExp(exp) {
-        let currentRank = "駆け出し";
-        for (const rankInfo of this.rankTable) {
-            if (exp >= rankInfo.exp) {
-                currentRank = rankInfo.rank;
+        let currentRank = '駆け出し';
+        const rankKeys = Object.keys(this.rankMap);
+        for(const key of rankKeys) {
+            if (exp >= this.rankMap[key].threshold) {
+                currentRank = key;
+            } else {
+                break;
             }
         }
         return currentRank;
+    }
+
+    async _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
+        const { width, height } = this.scale;
+        const oldRankKey = this.getRankForExp(oldTotalExp);
+        const oldRankData = this.rankMap[oldRankKey];
+        if (!oldRankData) return;
+        
+        const rankKeys = Object.keys(this.rankMap);
+        const oldRankIndex = rankKeys.indexOf(oldRankKey);
+        const prevRankThreshold = oldRankIndex > 0 ? this.rankMap[rankKeys[oldRankIndex - 1]].threshold : 0;
+        
+        const barWidth = 600; const barHeight = 30;
+        const barX = width / 2; const barY = height / 2 + 100;
+        
+        this.add.graphics().fillStyle(0x333333).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight);
+        const expBar = this.add.graphics();
+        const expText = this.add.text(barX, barY + 40, `EXP:`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+
+        const currentRankImageKey = oldRankData.image || 'rank_c';
+        this.add.image(barX - barWidth / 2 - 50, barY, currentRankImageKey).setScale(barHeight * 2 / 256);
+        const nextRankKey = oldRankData.next;
+        if (nextRankKey) {
+            const nextRankImageKey = this.rankMap[nextRankKey]?.image || 'rank_c';
+            this.add.image(barX + barWidth / 2 + 50, barY, nextRankImageKey).setScale(barHeight * 2 / 256).setTint(0x333333);
+        }
+
+        const targetExp = oldTotalExp + expGained;
+        const rankThreshold = oldRankData.threshold;
+        const rankExpRange = rankThreshold - prevRankThreshold;
+        const startExpInRank = oldTotalExp - prevRankThreshold;
+        const startWidth = (startExpInRank / rankExpRange) * barWidth;
+
+        expBar.fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, startWidth, barHeight);
+        expText.setText(`EXP: ${Math.floor(oldTotalExp)} / ${rankThreshold}`);
+        try { this.soundManager.playSe('se_exp_bar_fill'); } catch(e) {}
+        
+        const expCounter = { value: oldTotalExp };
+        const tween = this.tweens.add({
+            targets: expCounter, value: targetExp, duration: 1500, ease: 'Cubic.easeOut',
+            onUpdate: () => {
+                const animatedExp = expCounter.value;
+                const expInRank = animatedExp - prevRankThreshold;
+                let progress = expInRank / rankExpRange;
+                if (progress >= 1.0 && didRankUp) {
+                    progress = 1.0;
+                    tween.pause();
+                    this._playRankUpEffect().then(() => {
+                        this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+                    });
+                }
+                expBar.clear().fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth * progress, barHeight);
+                expText.setText(`EXP: ${Math.floor(animatedExp)} / ${rankThreshold}`);
+            },
+            onComplete: () => {
+                if (!didRankUp) {
+                    this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+                }
+            }
+        });
+    }
+    
+    _playRankUpEffect() {
+        return new Promise(resolve => {
+            const { width, height } = this.scale;
+            const newRankKey = this.stateManager.sf.player_profile.rank;
+            const rankImageKey = this.rankMap[newRankKey]?.image || 'rank_c';
+            try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
+            this.cameras.main.shake(300, 0.01);
+            const rankGlow = this.add.image(width / 2, height / 2, rankImageKey).setDepth(6999).setTint(0xffff00).setBlendMode('ADD').setAlpha(0);
+            const rankImage = this.add.image(width / 2, height / 2, rankImageKey).setDepth(7000).setScale(3).setAlpha(0);
+            this.tweens.chain({
+                targets: rankImage,
+                tweens: [
+                    { scale: 1, alpha: 1, duration: 300, ease: 'Elastic.Out(1, 0.5)' },
+                    { scale: 1, duration: 800, onStart: () => {
+                        this.tweens.add({ targets: rankGlow, alpha: 0.7, scale: 1.1, duration: 400, ease: 'Cubic.easeOut', yoyo: true });
+                    }}
+                ],
+                onComplete: () => {
+                    const continueText = this.add.text(width / 2, height - 150, 'TAP TO CONTINUE', { fontSize: '28px', fill: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(8000);
+                    this.input.once('pointerdown', () => {
+                        continueText.destroy();
+                        this.tweens.add({
+                            targets: [rankImage, rankGlow], alpha: 0, duration: 300,
+                            onComplete: () => {
+                                rankImage.destroy();
+                                rankGlow.destroy();
+                                resolve();
+                            }
+                        });
+                    });
+                }
+            });
+        });
     }
 }
