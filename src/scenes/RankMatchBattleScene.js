@@ -62,11 +62,13 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         this.isTimeUp = false;
         this.currentEnemyLayout = null;
         this.transitionWipe = null;
+        this.entryFee = 0; 
     }
 
     init(data) {
           if (data && data.transitionParams && data.transitionParams.ghostDataList) {
             this.ghostDataList = data.transitionParams.ghostDataList;
+            this.entryFee = data.transitionParams.entryFee || 0;
             console.log("RankMatchBattleScene: ゴーストデータのリストを受け取りました。");
         }
         this.enemyItemImages = [];
@@ -901,7 +903,8 @@ const enemyInitialStats = {
                 from: this.scene.key,
                 params: {
                     result: 'lose',
-                    finalRound: this.stateManager.sf.round || 1
+                    finalRound: this.stateManager.sf.round || 1,
+                    entryFee: this.entryFee
                 }
             });
         });
@@ -1927,7 +1930,7 @@ recastOverlay.setVisible(hasRecast);
             this._transitionToScene({
                 to: 'RankMatchScoreScene',
                 from: this.scene.key,
-                params: { result: 'win', finalRound: currentRound }
+                params: { result: 'win', finalRound: currentRound ,   entryFee: this.entryFee}
             });
         } else {
             const currentCoins = this.stateManager.sf.coins || 0;
