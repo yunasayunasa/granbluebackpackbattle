@@ -1,6 +1,6 @@
 ; === 確認ポップアップ汎用シナリオ ===
 
-
+pop
 
 ; 背景を少し暗くする
 [image storage="black_overlay" layer="1" width="1280" height="720" opacity="150" time="200"]
