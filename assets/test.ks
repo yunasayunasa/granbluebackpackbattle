@@ -57,7 +57,18 @@
 [if exp="sf.rank_match_profile.rp >= f.entry_fee"]
     ; --- 4a. RPが足りている場合：確認なしで支払い、即座に遷移 ---
     [eval exp="sf.rank_match_profile.rp -= f.entry_fee"]
-    [jump target="start_rank_match"]
+[eval exp="f = {}"]
+[eval exp="sf.retry_count = 0"]
+[eval exp="sf.player_backpack = {}"]
+[eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
+[eval exp="sf.round = 1"]
+[eval exp="sf.coins = 20"]
+[eval exp="sf.player_base_max_hp = 100"]
+; TODO: ここに挑戦料の支払いロジックを後で追加する
+
+; MatchingSceneへジャンプ
+[jump storage="MatchingScene"]
+
 [else]
     ; --- 4b. RPが足りていない場合：テキストで通知 ---
     [position layer="message0" left=440 top=400]
@@ -105,17 +116,6 @@
 ; ★★★ このラベルを新規追加 ★★★
 *start_rank_match
 ; ランクマッチを開始する
-[eval exp="f = {}"]
-[eval exp="sf.retry_count = 0"]
-[eval exp="sf.player_backpack = {}"]
-[eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
-[eval exp="sf.round = 1"]
-[eval exp="sf.coins = 20"]
-[eval exp="sf.player_base_max_hp = 100"]
-; TODO: ここに挑戦料の支払いロジックを後で追加する
-
-; MatchingSceneへジャンプ
-[jump storage="MatchingScene"]
 
 *not_implemented
 ; 未実装の機能が選択された場合の処理
