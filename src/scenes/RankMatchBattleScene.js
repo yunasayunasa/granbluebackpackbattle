@@ -1037,8 +1037,8 @@ const enemyInitialStats = {
 
             // アイテムの形状と回転を取得
             const shape = this.getRotatedShape(itemInfo.itemId, itemInfo.rotation);
-            const containerWidth = shape[0].length * this.cellSize;
-            const containerHeight = shape.length * this.cellSize;
+            let containerWidth = shape[0].length * this.cellSize;
+            let containerHeight = shape.length * this.cellSize;
                if (itemInfo.rotation === 90 || itemInfo.rotation === 270) {
                 [containerWidth, containerHeight] = [containerHeight, containerWidth];
             }
