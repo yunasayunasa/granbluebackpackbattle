@@ -1862,7 +1862,7 @@ recastOverlay.setVisible(hasRecast);
                 to: 'RewardScene',
                 from: this.scene.key,
                 // ★★★ この params を追加 ★★★
-                params: {result: 'lose',
+                params: {result: 'win',
                     returnTo: 'RankMatchBattleScene'
                 }
                 });
