@@ -3,6 +3,11 @@
     "message_window": "assets/message_window.png",
      "message_window_clear": "assets/message_window_clear.png",
        "particle_white": "assets/particle.png",
+
+    "black_overlay": "assets/images/ui/black_overlay.png",
+    "popup_window_bg": "assets/images/ui/popup_window_bg.png",
+
+
  "round_clear_logo": "assets/round_clear_logo.png",
     "cutin_player_bg": "assets/cutin_player_bg.png",
     "cutin_enemy_bg": "assets/cutin_enemy_bg.png",
