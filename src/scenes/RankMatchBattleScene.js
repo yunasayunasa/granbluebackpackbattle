@@ -13,7 +13,7 @@ const TOOLTIP_TRANSLATIONS = {
     'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復効果'
 };
 const ELEMENT_RESONANCE_RULES = {
-    fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor(count / 2)}` },
+    fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor count}` },
     wind: { threshold: 3, description: (count) => `リキャスト-${(0.2 * (count - 2)).toFixed(1)}s` },
     earth: { threshold: 3, description: (count) => `ブロック効果+${count * 2}` },
     light: { threshold: 3, description: (count) => `回復効果+${count * 2}` },
