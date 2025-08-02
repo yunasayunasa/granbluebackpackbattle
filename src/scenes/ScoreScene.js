@@ -85,36 +85,47 @@ export default class ScoreScene extends Phaser.Scene {
         });
 
         // --- 「タイトルへ」ボタンの作成 ---
-        this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', {
-            fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive().setAlpha(0);
+        // scenes/RankMatchScoreScene.js -> create()
+
+        // --- 5. 「タイトルへ」ボタンの表示 ---
+        this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', { fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setAlpha(0);
+        const totalAnimationTime = startDelay + resultLines.length * stepDelay + 500;
+        this.time.delayedCall(totalAnimationTime, () => {
+            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+        });
         
+        // ★★★ この on('pointerdown', ...) の中身を修正 ★★★
         this.titleButton.on('pointerdown', () => {
-            this.stateManager.setSF('player_backpack', {});
-            this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
-            this.stateManager.setSF('round', 1);
-            this.stateManager.setSF('coins', 20); // 初期コインは0のはず
-            this.stateManager.setSF('player_base_max_hp', 100);
-            this.stateManager.f = {};
-            this.scene.get('SystemScene').events.emit('request-scene-transition', {
-                to: 'GameScene', from: this.scene.key, params: { storage: 'title.ks' }
+            console.log("RankMatchScoreScene: タイトルに戻ります。");
+            this.titleButton.disableInteractive();
+
+            // フェードアウトしてから遷移する
+            this.cameras.main.fadeOut(300, 0, 0, 0, (camera, progress) => {
+                if (progress === 1) {
+                    this.scene.get('SystemScene').events.emit('request-scene-transition', {
+                        to: 'GameScene',
+                        from: this.scene.key,
+                        params: { storage: 'title.ks' }
+                    });
+                }
             });
         });
+        // ★★★ 修正ここまで ★★★
         
         this.events.emit('scene-ready');
     }
 
     // 経験値からランクキー('C', 'B'...)を返すヘルパーメソッド
-    getRankKeyForExp(exp) {
-        const rankKeys = Object.keys(this.rankMap);
-        for (let i = rankKeys.length - 1; i >= 0; i--) {
-            const key = rankKeys[i];
-            const prevThreshold = i > 0 ? this.rankMap[rankKeys[i-1]].threshold : 0;
-            if (exp >= prevThreshold) {
-                return key;
-            }
-        }
-        return rankKeys[0]; // C
+    // scenes/RankMatchScoreScene.js
+
+    // ★★★ このメソッドを全文置き換え ★★★
+    getRankKeyForRp(rp) {
+        // S+から順番にチェックしていく
+        if (rp >= this.rankMap['S'].threshold) return 'S+';
+        if (rp >= this.rankMap['A'].threshold) return 'S';
+        if (rp >= this.rankMap['B'].threshold) return 'A';
+        if (rp >= this.rankMap['C'].threshold) return 'B';
+        return 'C'; // どれにも当てはまらなければC
     }
     
     // ... (_playExpBarAnimation と _playRankUpEffect は次のコードブロック) ...
