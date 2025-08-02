@@ -1477,66 +1477,60 @@ export default class BattleScene extends Phaser.Scene {
         });
     }
 
+    // scenes/BattleScene.js
+
     setupShop() {
         const gameWidth = this.scale.width;
-        const inventoryAreaY = 520;
-        const inventoryAreaHeight = 500;
+
         this.shopContainer = this.add.container(0, 0).setVisible(false);
         this.prepareContainer.add(this.shopContainer);
-         // --- リロールボタン ---
-        const rerollButton = this.add.text(gameWidth / 2 + 200, inventoryAreaY - 40, 'リロール (1 coin)', {
-            fontSize: '24px', fill: '#fff', backgroundColor: '#555', padding: {x: 10, y: 5}
-        }).setOrigin(0.5).setInteractive().setDepth(999);
+
+        // --- ボタンを配置するX座標と、縦の間隔を定義 ---
+        const buttonX = 50; // 画面左端から50pxの位置 (グリッド(x=100)より左)
+        const startY = this.gridY + 50; // グリッドの上端から少し下の位置
+        const stepY = 80;   // ボタンごとの縦の間隔
+
+        // --- HP回復ボタン ---
+        const healCost = 2;
+        const healPercent = 25;
+        const healButton = this.add.text(buttonX, startY, `HP回復\n(${healCost} coin)`, {
+            fontSize: '20px', fill: '#fff', backgroundColor: '#27ae60',
+            padding: {x: 10, y: 5}, align: 'center'
+        }).setOrigin(0.5).setInteractive().setDepth(12);
+        
+        healButton.setData({ cost: healCost, percent: healPercent });
+        healButton.on('pointerdown', () => {
+            const currentCoins = this.stateManager.sf.coins || 0;
+            const currentHp = this.stateManager.f.player_hp || 0;
+            const maxHp = this.stateManager.f.player_max_hp || 100;
+            if (currentCoins >= healCost && currentHp < maxHp) {
+                this.stateManager.setSF('coins', currentCoins - healCost);
+                const healAmount = maxHp * (healPercent / 100);
+                const newHp = Math.min(maxHp, currentHp + healAmount);
+                this.stateManager.setF('player_hp', newHp);
+                healButton.disableInteractive().setBackgroundColor('#555').setText('回復済み');
+                this.updateShopButtons();
+            }
+        });
+        this.shopContainer.add(healButton);
+        this.healButton = healButton;
+
+        // --- リロールボタン ---
+        const rerollButton = this.add.text(buttonX, startY + stepY, `リロール\n(1 coin)`, {
+            fontSize: '20px', fill: '#fff', backgroundColor: '#3498db',
+            padding: {x: 10, y: 5}, align: 'center'
+        }).setOrigin(0.5).setInteractive().setDepth(12);
 
         rerollButton.on('pointerdown', () => {
+            try { this.soundManager.playSe('se_reroll'); } catch(e) {}
             const rerollCost = 1;
             const currentCoins = this.stateManager.sf.coins || 0;
             if (currentCoins >= rerollCost) {
                 this.stateManager.setSF('coins', currentCoins - rerollCost);
                 this.refreshShop();
-            } else {
-                console.log("コインが足りません！");
             }
         });
         this.shopContainer.add(rerollButton);
-          // --- HP回復ボタン ---
-        const healCost = 2;
-        const healPercent = 25;
-
-        const healButton = this.add.text(gameWidth / 2 - 200, inventoryAreaY - 40, `HP${healPercent}%回復 (${healCost} coin)`, {
-            fontSize: '24px', fill: '#fff', backgroundColor: '#27ae60', padding: {x: 10, y: 5}
-        }).setOrigin(0.5).setInteractive().setDepth(999);
-        
-        // ボタン自体にデータを紐付けておく
-        healButton.setData({ cost: healCost, percent: healPercent });
-
-        healButton.on('pointerdown', () => {
-            const currentCoins = this.stateManager.sf.coins || 0;
-            const currentHp = this.stateManager.f.player_hp || 0;
-            const maxHp = this.stateManager.f.player_max_hp || 100;
-
-            // 回復可能かチェック (コインが足りるか？HPは満タンでないか？)
-            if (currentCoins >= healCost && currentHp < maxHp) {
-                // コインを消費
-                this.stateManager.setSF('coins', currentCoins - healCost);
-
-                // HPを回復 (最大HPを超えないように)
-                const healAmount = maxHp * (healPercent / 100);
-                const newHp = Math.min(maxHp, currentHp + healAmount);
-                this.stateManager.setF('player_hp', newHp);
-
-                // ボタンを無効化する
-                healButton.disableInteractive().setBackgroundColor('#555').setText('回復済み');
-                
-                // 他のショップアイテムの購入可否も更新
-                this.updateShopButtons();
-            }
-        });
-        
-        this.shopContainer.add(healButton);
-
-        // 後で状態を更新するために、ボタンへの参照を保持
-        this.healButton = healButton;
     }
 
     refreshShop() {
