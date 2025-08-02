@@ -275,7 +275,10 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
             });
             const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
             this.roundStartState = {
-                backpack: initialBackpackData, inventory: initialInventoryData, coins: this.stateManager.sf.coins || 0, hp: this.initialBattleParams.playerHp
+                backpack: initialBackpackData, inventory: initialInventoryData, coins: this.stateManager.sf.coins || 0, 
+                   hp: this.stateManager.f.player_hp
+        };
+        console.log("Round start state checkpoint created with HP:", this.stateManager.f.player_hp);
             };
             console.log("Round start state checkpoint created.", this.roundStartState);
             
@@ -314,7 +317,7 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
         
         const playerInitialStats = {
             max_hp: this.initialBattleParams.playerMaxHp,
-            hp: this.initialBattleParams.playerHp
+              hp: this.stateManager.f.player_hp
         };
         
         const playerResult = this.calculateFinalBattleState(playerInitialItems, playerInitialStats);
