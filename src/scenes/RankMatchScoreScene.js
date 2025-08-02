@@ -22,38 +22,48 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         this.receivedData = data.transitionParams || {};
     }
 
-    create() {
+  create() {
         this.cameras.main.fadeIn(300, 0, 0, 0);
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
         
         this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1')
             .setAlpha(0.5).setDisplaySize(this.scale.width, this.scale.height);
-        
-        try { this.soundManager.playBgm('bgm_prepare'); }
-        catch(e) { console.warn("BGM 'bgm_prepare' not found."); }
+        try { this.soundManager.playBgm('bgm_prepare'); } catch(e) {}
 
-        // --- 1. 必要なデータを取得 ---
+        if (!this.stateManager.sf.rank_match_profile) {
+            this.stateManager.setSF('rank_match_profile', { rp: 0, rank: 'C', wins: 0, losses: 0 });
+        }
+        
         const result = this.receivedData.result || 'lose';
         const finalRound = this.receivedData.finalRound || 1;
         const profile = this.stateManager.sf.rank_match_profile;
-        const entryFee = this.receivedData.entryFee || 0; // ★リレーされてきた挑戦料
-
-        // --- 2. 表示用の数値を計算 ---
+        
+        // ★★★ このブロックを全面的に書き換え ★★★
+        
+        // --- 1. 勝利数と獲得RPを計算 ---
         const wins = (result === 'win') ? finalRound : finalRound - 1;
         const roundWinBonus = wins * 10;
         const clearBonus = (result === 'win' && finalRound >= 10) ? 100 : 0;
         const totalReward = roundWinBonus + clearBonus;
+        
+        // --- 2. sf.rank_match_profile.rp に、報酬を加算する ---
+        const rpBeforeReward = profile.rp;
+        profile.rp += totalReward;
+        const finalRp = profile.rp;
+        
+        // --- 3. 表示用の数値を計算 ---
+        const rankAtStart = this.getRankKeyForRp(rpBeforeReward);
+        const entryFee = this.rankFeeMap[rankAtStart] || 0;
         const rpChange = totalReward - entryFee;
-
-        // --- 3. ランクの最終確定と、戦績の更新 ---
-        // RPの増減は title.ks と BattleScene で既に行われているので、
-        // ここでは最終的なRPを元にランクを確定させ、戦績を更新するだけ
-        const oldRank = this.getRankKeyForRp(profile.rp - rpChange); // 変化前のRPから計算
-        const newRank = this.getRankKeyForRp(profile.rp);
+        
+        // --- 4. ランクの最終確定と戦績の更新 ---
+        const oldRank = rankAtStart;
+        const newRank = this.getRankKeyForRp(finalRp);
         profile.rank = newRank;
         if (result === 'win') profile.wins++; else profile.losses++;
         this.stateManager.setSF('rank_match_profile', profile);
+
 
         const rankChangeKey = Object.keys(this.rankMap).indexOf(newRank) - Object.keys(this.rankMap).indexOf(oldRank);
         let rankChangeText = '';
