@@ -138,6 +138,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
         
        const enemyBaseHp = 100; // 仮の初期
+const hpPenaltyMultiplier = 0.9;
 const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
         this.stateManager.setF('enemy_max_hp', enemyBaseHp); 
         this.stateManager.setF('enemy_hp', enemyBaseHp);
