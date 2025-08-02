@@ -24,49 +24,41 @@
 
 
 ; ★★★ このラベルを全面的に書き換え ★★★
+; assets/scenario/title.ks
+
+; ...
+
 *start_rank_match
 
 
 ; --- 1. ランクマッチの解放条件をチェック ---
 [if exp="sf.player_profile && sf.player_profile.highScore > 0"]
-    ; 解放されている場合の処理へジャンプ
     [jump target="*rank_match_entry"]
 [else]
-    ; 解放されていない場合のメッセージを表示
+    ; ★ 解放されていない場合は、シンプルなテキストで通知する ★
     [position layer="message0" left=440 top=450]
     [font color=0xffdd00]
     ランクマッチは、一度スコアアタックをプレイすると解放されます。
     [resetfont]
     [wait time="2500"]
-    ; タイトルの選択肢に何もせず戻る
     [jump storage="title.ks" target="*show_menu_again"]
 [endif]
 
-
 *rank_match_entry
 ; --- 2. ランクマッチプロファイルの初期化 ---
-[eval exp="sf.rank_match_profile = sf.rank_match_profile || { rp: 100, rank: 'C' }"]
-; (初回は挑戦料を払えるように、少しだけ初期RPを与えておく)
+[eval exp="sf.rank_match_profile = sf.rank_match_profile || { rp: 0, rank: 'C', wins: 0, losses: 0 }"]
 
-; --- 3. 挑戦料の計算と確認 ---
+; --- 3. 挑戦料の計算 ---
 [eval exp="f.rank_keys = ['C', 'B', 'A', 'S', 'S+']"]
 [eval exp="f.current_rank_index = f.rank_keys.indexOf(sf.rank_match_profile.rank)"]
-[eval exp="f.entry_fee = f.current_rank_index * 20"] 
+[eval exp="f.entry_fee = f.current_rank_index * 20"] ; C:0, B:20, A:40...
 
 [if exp="sf.rank_match_profile.rp >= f.entry_fee"]
-    ; RPが足りている場合
-    [position layer="message0" left=440 top=400]
-[showwindow]
-    現在のランク: &sf.rank_match_profile.rank
-    
-    挑戦料として [emb exp="f.entry_fee"] RP を支払いますか？
-   
-    [link target="*pay_fee_and_start" size="24" text="はい"]
-    [link target="*show_menu_again" size="24"text="いいえ"]
-    [p]
-[s]
+    ; --- 4a. RPが足りている場合：確認なしで支払い、即座に遷移 ---
+    [eval exp="sf.rank_match_profile.rp -= f.entry_fee"]
+    [jump storage="MatchingScene"]
 [else]
-    ; RPが足りていない場合
+    ; --- 4b. RPが足りていない場合：テキストで通知 ---
     [position layer="message0" left=440 top=400]
     ランクマッチに挑戦するには [emb exp="f.entry_fee"] RP が必要です。
     
@@ -75,15 +67,6 @@
     [wait time="2500"]
     [jump storage="title.ks" target="*show_menu_again"]
 [endif]
-
-
-*pay_fee_and_start
-; --- 4. 挑戦料を支払ってマッチング開始 ---
-[eval exp="sf.rank_match_profile.rp -= f.entry_fee"]
-
-[jump storage="MatchingScene"]
-
-
 *show_menu_again
 ; 何もせずにタイトル選択肢に戻るための共通ラベル
 [cm]
