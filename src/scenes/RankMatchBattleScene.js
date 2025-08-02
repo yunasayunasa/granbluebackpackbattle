@@ -1039,13 +1039,8 @@ const enemyInitialStats = {
                 [containerWidth, containerHeight] = [containerHeight, containerWidth];
             }
             
-            const itemContainer = this.add.container(
-                enemyGridX + (itemInfo.col * this.cellSize) + (containerWidth / 2),
-                enemyGridY + (itemInfo.row * this.cellSize) + (containerHeight / 2)
-            ).setSize(containerWidth, containerHeight);
-
-            const itemImage = this.add.image(0, 0, itemData.storage)
-                // ★★★ 表示サイズも入れ替えた後のコンテナサイズに合わせる ★★★
+            
+            // ★★★ 表示サイズも入れ替えた後のコンテナサイズに合わせる ★★★
                 .setDisplaySize(containerWidth, containerHeight);
             // アイテムコンテナを作成・配置
             const itemContainer = this.add.container(
