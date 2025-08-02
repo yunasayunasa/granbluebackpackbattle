@@ -1878,7 +1878,7 @@ recastOverlay.setVisible(hasRecast);
             });
         } else {
             const currentCoins = this.stateManager.sf.coins || 0;
-            const rewardCoins = 10 + (currentRound * 2);
+            const rewardCoins = 15 + (currentRound * 2);
             this.stateManager.setSF('coins', currentCoins + rewardCoins);
             this.stateManager.setSF('round', currentRound + 1);
                   this._transitionToScene({
