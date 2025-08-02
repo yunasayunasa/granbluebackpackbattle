@@ -138,6 +138,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
         this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
         
        const enemyBaseHp = 100; // 仮の初期
+const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
         this.stateManager.setF('enemy_max_hp', enemyBaseHp); 
         this.stateManager.setF('enemy_hp', enemyBaseHp);
         
@@ -333,6 +334,7 @@ export default class RankMatchBattleScene extends Phaser.Scene {
 
         const enemyInitialItems = [];
         const currentLayout = this.currentEnemyLayout;
+        const hpPenaltyMultiplier = 0.9;
         this.enemyItemImages.forEach(itemContainer => {
                 // 1. itemContainerから、setupEnemyFromGhostでセットしたデータを取得
     const uniqueId = itemContainer.getData('uniqueId'); //例: 'zavilbara_ghost_uid_0'
@@ -362,10 +364,24 @@ export default class RankMatchBattleScene extends Phaser.Scene {
 
         });
 
-        const enemyInitialStats = {
-            max_hp: this.stateManager.f.enemy_max_hp,
-            hp: this.stateManager.f.enemy_max_hp
-        };
+        const currentRound = this.stateManager.sf.round || 1;
+const ghostForThisRound = this.ghostDataList[currentRound - 1];
+
+// 2. ゴーストデータがあるか、通常生成かで最大HPを決定
+let enemyMaxHp;
+if (ghostForThisRound && ghostForThisRound !== 'generate') {
+    // ゴーストデータがある場合：ゴーストのHPにペナルティを適用
+    enemyMaxHp = (ghostForThisRound.base_max_hp || 100) * hpPenaltyMultiplier;
+    console.log(`ゴーストのHPにペナルティを適用: ${enemyMaxHp.toFixed(0)}`);
+} else {
+    // 通常生成の場合：createで設定したHPをそのまま使う
+    enemyMaxHp = this.stateManager.f.enemy_max_hp;
+}
+
+const enemyInitialStats = {
+    max_hp: enemyMaxHp,
+    hp: enemyMaxHp
+};
 
         const enemyResult = this.calculateFinalBattleState(enemyInitialItems, enemyInitialStats);
         this.enemyStats = enemyResult.finalStats;
