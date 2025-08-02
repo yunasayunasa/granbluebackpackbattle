@@ -308,7 +308,7 @@ export default class BattleScene extends Phaser.Scene {
         
         const playerInitialStats = {
             max_hp: this.initialBattleParams.playerMaxHp,
-            hp: this.initialBattleParams.playerHp
+              hp: this.stateManager.f.player_hp
         };
         
         const playerResult = this.calculateFinalBattleState(playerInitialItems, playerInitialStats);
