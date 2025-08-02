@@ -268,7 +268,8 @@ export default class BattleScene extends Phaser.Scene {
             });
             const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
             this.roundStartState = {
-                backpack: initialBackpackData, inventory: initialInventoryData, coins: this.stateManager.sf.coins || 0, hp: this.initialBattleParams.playerHp
+                backpack: initialBackpackData, inventory: initialInventoryData, coins: this.stateManager.sf.coins || 0, 
+                hp: this.stateManager.f.player_hp
             };
             console.log("Round start state checkpoint created.", this.roundStartState);
             
