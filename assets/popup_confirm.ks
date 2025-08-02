@@ -14,10 +14,10 @@ pop
 
 ; 「はい」「いいえ」の選択肢
 [position layer="2" left="490" top="420"]
-[link target="*answer_yes" size="24"]*はい[endlink]
+[link target="*answer_yes" size="24" text="はい"]
 
 [position layer="2" left="690" top="420"]
-[link target="*answer_no" size="24"]*いいえ[endlink]
+[link target="*answer_no" size="24" text="いいえ"]
 [p]
 [s]
 
