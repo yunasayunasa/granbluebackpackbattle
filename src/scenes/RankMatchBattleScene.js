@@ -13,7 +13,7 @@ const TOOLTIP_TRANSLATIONS = {
     'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復効果'
 };
 const ELEMENT_RESONANCE_RULES = {
-    fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor count}}` },
+    fire: { threshold: 3, description: (count) => `攻撃力+${count}` },
     wind: { threshold: 3, description: (count) => `リキャスト-${(0.2 * (count - 2)).toFixed(1)}s` },
     earth: { threshold: 3, description: (count) => `ブロック効果+${count * 2}` },
     light: { threshold: 3, description: (count) => `回復効果+${count * 2}` },
@@ -445,8 +445,8 @@ const enemyInitialStats = {
                         if (item.tags.includes(element)) {
                             let isBoosted = false;
                             if (element === 'fire' && item.action) {
-                                if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += Math.floor(count / 2); }); }
-                                else if(item.action.type === 'attack') { item.action.value += Math.floor(count / 2); }
+                                if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += count ; }
+                                else if(item.action.type === 'attack') { item.action.value += count ; }
                                 isBoosted = true;
                             }
                             if (element === 'wind' && item.recast) { item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2))); isBoosted = true; }
