@@ -1041,7 +1041,7 @@ const enemyInitialStats = {
             
             
             // ★★★ 表示サイズも入れ替えた後のコンテナサイズに合わせる ★★★
-                .setDisplaySize(containerWidth, containerHeight);
+              
             // アイテムコンテナを作成・配置
             const itemContainer = this.add.container(
                 enemyGridX + (itemInfo.col * this.cellSize) + (containerWidth / 2),
