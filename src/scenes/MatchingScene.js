@@ -62,7 +62,10 @@ this._transitionToScene({
                 from: this.scene.key,
                 params: {
                     ghostDataList: opponentList,
-                    isFirstRound: this.isFirstRound
+                    isFirstRound: this.isFirstRound,
+                    entryFee: this.sys.settings.data.transitionParams.entryFee
+        
+    
                 }
             });
         } else {
