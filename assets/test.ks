@@ -51,7 +51,7 @@
 ; --- 3. 挑戦料の計算と確認 ---
 [eval exp="f.rank_keys = ['C', 'B', 'A', 'S', 'S+']"]
 [eval exp="f.current_rank_index = f.rank_keys.indexOf(sf.rank_match_profile.rank)"]
-[eval exp="f.entry_fee = f.current_rank_index * 20"] ; C:0, B:20, A:40...
+[eval exp="f.entry_fee = f.current_rank_index * 20"] 
 
 [if exp="sf.rank_match_profile.rp >= f.entry_fee"]
     ; RPが足りている場合
@@ -60,8 +60,8 @@
     
     挑戦料として [emb exp="f.entry_fee"] RP を支払いますか？
    
-    [link target="*pay_fee_and_start" size="24"]*はい[endlink]
-    [link target="*show_menu_again" size="24"]*いいえ[endlink]
+    [link target="*pay_fee_and_start" size="24" text="はい"]
+    [link target="*show_menu_again" size="24"text="いいえ"]
     [p]
 [s]
 [else]
