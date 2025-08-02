@@ -1,4 +1,5 @@
 ; === Odyssey Engine Title Screen ===
+*start
 [hidewindow]
 
 [bg storage="title"]
@@ -37,11 +38,11 @@
 [else]
     ; ★ 解放されていない場合は、シンプルなテキストで通知する ★
     [position layer="message0" left=440 top=450]
-    [font color=0xffdd00]
+[showwindow]
     ランクマッチは、一度スコアアタックをプレイすると解放されます。
-    [resetfont]
+    [hidewindow]
     [wait time="2500"]
-    [jump storage="title.ks" target="*show_menu_again"]
+    [jump storage="title.ks" target="*start"]
 [endif]
 
 *rank_match_entry
