@@ -279,8 +279,7 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
                    hp: this.stateManager.f.player_hp
         };
         console.log("Round start state checkpoint created with HP:", this.stateManager.f.player_hp);
-            };
-            console.log("Round start state checkpoint created.", this.roundStartState);
+            
             
             this.gameState = 'battle';
             this.prepareForBattle();
