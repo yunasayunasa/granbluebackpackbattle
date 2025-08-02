@@ -445,8 +445,8 @@ const enemyInitialStats = {
                         if (item.tags.includes(element)) {
                             let isBoosted = false;
                             if (element === 'fire' && item.action) {
-                                if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += count ; }
-                                else if(item.action.type === 'attack') { item.action.value += count ; }
+                                       if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += count; }); }
+                            else if(item.action.type === 'attack') { item.action.value += count; }
                                 isBoosted = true;
                             }
                             if (element === 'wind' && item.recast) { item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2))); isBoosted = true; }
