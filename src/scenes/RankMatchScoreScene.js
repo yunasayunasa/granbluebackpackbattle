@@ -8,7 +8,7 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         this.receivedData = null;
         this.titleButton = null;
 
-        // ランク定義を一元管理 (ランク判定と画像表示で使用)
+        // ランク定義を一元管理
         this.rankMap = {
             'C':  { threshold: 100, image: 'rank_c', name: 'ランク C' },
             'B':  { threshold: 300, image: 'rank_b', name: 'ランク B' },
@@ -16,13 +16,16 @@ export default class RankMatchScoreScene extends Phaser.Scene {
             'S':  { threshold: 1500, image: 'rank_s', name: 'ランク S' },
             'S+': { threshold: 99999, image: 'rank_s_plus', name: 'ランク S+' },
         };
+        
+        // ★★★ この挑戦料の一覧定義が抜けていました ★★★
+        this.rankFeeMap = { 'C': 0, 'B': 20, 'A': 40, 'S': 60, 'S+': 80 };
     }
 
     init(data) {
         this.receivedData = data.transitionParams || {};
     }
 
-  create() {
+    create() {
         this.cameras.main.fadeIn(300, 0, 0, 0);
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
@@ -39,8 +42,6 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         const finalRound = this.receivedData.finalRound || 1;
         const profile = this.stateManager.sf.rank_match_profile;
         
-        // ★★★ このブロックを全面的に書き換え ★★★
-        
         // --- 1. 勝利数と獲得RPを計算 ---
         const wins = (result === 'win') ? finalRound : finalRound - 1;
         const roundWinBonus = wins * 10;
@@ -54,7 +55,7 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         
         // --- 3. 表示用の数値を計算 ---
         const rankAtStart = this.getRankKeyForRp(rpBeforeReward);
-        const entryFee = this.rankFeeMap[rankAtStart] || 0;
+        const entryFee = this.rankFeeMap[rankAtStart] || 0; // ここで this.rankFeeMap を参照
         const rpChange = totalReward - entryFee;
         
         // --- 4. ランクの最終確定と戦績の更新 ---
@@ -64,13 +65,12 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         if (result === 'win') profile.wins++; else profile.losses++;
         this.stateManager.setSF('rank_match_profile', profile);
 
-
         const rankChangeKey = Object.keys(this.rankMap).indexOf(newRank) - Object.keys(this.rankMap).indexOf(oldRank);
         let rankChangeText = '';
         if (rankChangeKey > 0) rankChangeText = '(昇格!)';
         if (rankChangeKey < 0) rankChangeText = '(降格…)';
 
-        // --- 4. 結果表示UI ---
+        // --- UI表示 ---
         const titleTextStr = (result === 'win') ? 'VICTORY' : 'DEFEAT';
         this.add.text(this.scale.width / 2, 80, titleTextStr, { fontSize: '60px', fill: '#e0e0e0' }).setOrigin(0.5);
 
@@ -79,10 +79,10 @@ export default class RankMatchScoreScene extends Phaser.Scene {
             { label: '獲得RP', value: `+${totalReward} RP` },
             { label: '最終収支', value: `${rpChange >= 0 ? '+' : ''}${rpChange} RP`, isDivider: true },
             { label: 'ランク', value: `${oldRank} → ${newRank} ${rankChangeText}` },
-            { label: '最終RP', value: profile.rp },
+            { label: '最終RP', value: finalRp },
         ];
         
-        // --- 5. アニメーション表示 ---
+        // --- アニメーション表示 ---
         const startY = 200; const stepY = 70; const startDelay = 500; const stepDelay = 400;
         resultLines.forEach((line, index) => {
             const y = startY + index * stepY;
@@ -97,7 +97,7 @@ export default class RankMatchScoreScene extends Phaser.Scene {
             this.tweens.add({ targets: [labelText, valueText], delay: delay, alpha: 1, scale: 1, duration: 250, ease: 'Cubic.easeOut', onStart: () => { try { this.soundManager.playSe('se_result_pop'); } catch(e) {} } });
         });
         
-        // --- 6. 「タイトルへ」ボタン ---
+        // --- 「タイトルへ」ボタン ---
         this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', { fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setAlpha(0);
         const totalAnimationTime = startDelay + resultLines.length * stepDelay + 500;
         this.time.delayedCall(totalAnimationTime, () => {
