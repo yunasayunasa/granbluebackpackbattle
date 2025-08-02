@@ -775,7 +775,7 @@ const enemyInitialStats = {
                 }
                 else if (action.type === 'block') {
                     if (!Array.isArray(attackerStats.block)) attackerStats.block = [];
-                    attackerStats.block.push({ amount: action.value, expireTime: this.time.now + 3000 });
+                    attackerStats.block.push({ amount: action.value, expireTime: this.time.now + 2000 });
                     this.showGainBlockPopup(attackerObject, action.value);
                 }
                 else if (action.type === 'heal') {
