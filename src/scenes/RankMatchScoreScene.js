@@ -1,5 +1,3 @@
-// scenes/RankMatchScoreScene.js
-
 export default class RankMatchScoreScene extends Phaser.Scene {
     constructor() {
         super('RankMatchScoreScene');
@@ -8,7 +6,7 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         this.receivedData = null;
         this.titleButton = null;
 
-        // ランクマッチ専用のランク定義
+        // ランク定義を一元管理
         this.rankMap = {
             'C':  { threshold: 100, image: 'rank_c', name: 'ランク C' },
             'B':  { threshold: 300, image: 'rank_b', name: 'ランク B' },
@@ -37,17 +35,24 @@ export default class RankMatchScoreScene extends Phaser.Scene {
             this.stateManager.setSF('rank_match_profile', { rp: 0, rank: 'C', wins: 0, losses: 0 });
         }
         
+        // --- 2. 結果に基づいてRPを計算 ---
         const result = this.receivedData.result || 'lose';
         const finalRound = this.receivedData.finalRound || 1;
         
         const profile = this.stateManager.sf.rank_match_profile;
         const oldRank = profile.rank;
         const entryFee = (Object.keys(this.rankMap).indexOf(oldRank) || 0) * 20;
-        const rewardRp = (result === 'win') ? (50 + (finalRound * 5)) : 0;
-        const rpChange = rewardRp - entryFee;
+
+        // ★★★ 新しいRP計算ロジック ★★★
+        const wins = (result === 'win') ? finalRound : finalRound - 1;
+        const roundWinBonus = wins * 10;
+        const clearBonus = (result === 'win' && finalRound >= 10) ? 100 : 0;
+        const totalReward = roundWinBonus + clearBonus;
+        const rpChange = totalReward - entryFee;
         
-        profile.rp = Math.max(0, profile.rp + rpChange);
         if (result === 'win') profile.wins++; else profile.losses++;
+        profile.rp = Math.max(0, profile.rp + rpChange);
+        
         const newRank = this.getRankKeyForRp(profile.rp);
         profile.rank = newRank;
         this.stateManager.setSF('rank_match_profile', profile);
@@ -60,9 +65,11 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         const titleTextStr = (result === 'win') ? 'VICTORY' : 'DEFEAT';
         this.add.text(this.scale.width / 2, 80, titleTextStr, { fontSize: '60px', fill: '#e0e0e0' }).setOrigin(0.5);
 
+        // ★ 表示する内容も、新しい計算に合わせて変更 ★
         const resultLines = [
             { label: '挑戦料', value: `-${entryFee} RP` },
-            { label: '勝利ボーナス', value: (result === 'win' ? `+${rewardRp} RP` : '---') },
+            { label: 'ラウンド勝利', value: `+${roundWinBonus} RP (${wins}勝)` },
+            { label: '全勝ボーナス', value: (clearBonus > 0 ? `+${clearBonus} RP` : '---') },
             { label: '結果', value: `${rpChange >= 0 ? '+' : ''}${rpChange} RP`, isDivider: true },
             { label: '現在ランク', value: `${oldRank} → ${newRank} ${rankChangeText}` },
             { label: '現在RP', value: profile.rp },
