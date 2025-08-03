@@ -121,7 +121,7 @@ init(data) {
         const inventoryData = this.stateManager.sf.player_inventory;
 
         if (this.stateManager.sf.player_base_max_hp === undefined) {
-            this.stateManager.setSF('player_base_max_hp', 100);
+            this.stateManager.setSF('player_base_max_hp', 200);
         }
         const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
         const inheritedPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : basePlayerMaxHp;
