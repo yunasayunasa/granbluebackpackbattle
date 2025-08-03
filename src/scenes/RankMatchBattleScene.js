@@ -297,11 +297,11 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
         .setDepth(10000)
         .setScrollFactor(0);
        const currentCoins = this.stateManager.sf.coins || 0;
-        if (this.isFirstRound) { // 初回ラウンドでのみ実行
+
             console.log("コイン表示を強制更新します。");
             this.stateManager.setSF('coins', currentCoins + 1);
             this.stateManager.setSF('coins', currentCoins);
-        }
+        
         this.events.emit('scene-ready');
         console.log("BattleScene: create 完了");
     }
