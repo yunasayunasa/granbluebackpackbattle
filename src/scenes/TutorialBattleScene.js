@@ -1993,26 +1993,38 @@ export default class TutorialBattleScene extends Phaser.Scene {
     // ファイルの末尾、shutdown() の後などに追加
 
     // f.tutorial_step の変化に応じて、操作可能なアイテムを制限する
+    // scenes/TutorialBattleScene.js
+
+    // f.tutorial_step の変化に応じて、操作可能なアイテムを制限する
     onTutorialStepChange(key, value) {
         if (key !== 'f.tutorial_step') return;
         
         console.log(`チュートリアルのステップが [${value}] に変わりました。`);
         
-        // 全てのインベントリアイテムを取得
+        // 全てのインベントリアイテムを取得 (配置済みのものは含まない)
         const allItems = this.inventoryItemImages.filter(item => item.active);
 
-        // 一旦、全てのアイテムの操作をできなくする
-        allItems.forEach(item => item.disableInteractive());
-        
         if (value === 'place_sword') {
-            // "sword" だけを探して、操作可能にする
-            const sword = allItems.find(item => item.getData('itemId') === 'sword');
-            if (sword) {
-                sword.setInteractive();
-                console.log("剣だけが操作可能です。");
-            }
+            allItems.forEach(item => {
+                if (item.getData('itemId') === 'sword') {
+                    // ★剣は、表示して操作可能にする
+                    item.setVisible(true).setInteractive();
+                    console.log("剣だけが操作可能です。");
+                } else {
+                    // ★剣以外は、非表示にして操作不能にする
+                    item.setVisible(false).disableInteractive();
+                }
+            });
+        } else if (value === 'place_all') {
+            // 全てのアイテムを表示して、操作可能にする
+            allItems.forEach(item => {
+                item.setVisible(true).setInteractive();
+            });
+            console.log("全てのアイテムが操作可能です。");
         }
+        // 他のステップが追加されたら、ここに else if を追加
     }
+    
 
     
 } // ← クラスの閉じ括弧
