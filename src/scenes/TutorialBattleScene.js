@@ -254,6 +254,13 @@ export default class TutorialBattleScene extends Phaser.Scene {
         this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
        // create() の中の startBattleButton のリスナー部分
+     // ★★★ このブロックを追加 ★★★
+        // チュートリアル中は不要なボタンを隠す
+        if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
+        const resetButton = this.children.list.find(child => child.text === '[ リセット ]');
+        if(resetButton) resetButton.setVisible(false);
+        this.startBattleButton.setVisible(false); // 戦闘開始ボタンも最初は隠す
+        // ★★★ 追加ここまで ★★★
 
     this.startBattleButton.on('pointerdown', () => {
             try { this.soundManager.playSe('se_button_click'); } catch (e) {}
