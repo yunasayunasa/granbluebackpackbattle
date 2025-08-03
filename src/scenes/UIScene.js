@@ -110,7 +110,11 @@ export default class UIScene extends Phaser.Scene {
 
         // --- 1. シーンの種類を判定するフラグを作成 ---
         const isGameScene = (newSceneKey === 'GameScene');
-        const isBattleRelated = (newSceneKey === 'BattleScene' || newSceneKey === 'RankMatchBattleScene');
+        const isBattleRelated = (
+            newSceneKey === 'BattleScene' || 
+            newSceneKey === 'RankMatchBattleScene' ||
+            newSceneKey === 'TutorialBattleScene' // ★ TutorialBattleScene を追加
+        );
         const isRewardRelated = (newSceneKey === 'RewardScene' || newSceneKey === 'RankMatchRewardScene');
         
         // --- 2. 各HUDの表示/非表示を、フラグに基づいて決定 ---
