@@ -75,13 +75,13 @@ export default class TutorialBattleScene extends Phaser.Scene {
         console.log("TUTORIAL BATTLE SCENE START");
         
         // チュートリアル用のオーバーレイを起動
+  console.log("TutorialBattleScene
         this.time.delayedCall(100, () => {
             this.scene.get('SystemScene').events.emit('request-overlay', { 
                 from: this.scene.key,
-                scenario: 'tutorial.ks' // チュートリアルのメインシナリオ
+                scenario: 'tutorial_step1.ks' // ★最初のシナリオを指定
             });
         });
-        
         // ★ 4. BattleSceneのcreate処理を呼び出す
         //    (ただし、チュートリアルに不要な部分はコメントアウト)
         // ← これがもしエラーになるなら、BattleSceneのcreateの中身をここにコピペする
