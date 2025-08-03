@@ -80,7 +80,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
             this.scene.get('SystemScene').events.emit('request-overlay', { 
                     from: this.scene.key,
                     scenario: 'overlay_test.ks', // 表示したいシナリオ
-                    block_input: false // ★ falseを指定
+                    block_input: true // ★ falseを指定
                 });
             });
 
