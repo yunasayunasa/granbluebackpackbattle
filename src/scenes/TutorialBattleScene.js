@@ -98,7 +98,9 @@ export default class TutorialBattleScene extends Phaser.Scene {
             .setDepth(-1);
         
         this.stateManager = this.sys.registry.get('stateManager');
-           this.stateManager.on('f-variable-changed', this.onTutorialStepChange, this);
+           console.log("[TutorialBattleScene] StateManagerのイベントリスナーを登録しようとしています...", this.stateManager);
+        this.stateManager.on('f-variable-changed', this.onTutorialStepChange, this);
+        console.log("[TutorialBattleScene] イベントリスナーの登録が完了しました。");
         this.soundManager = this.sys.registry.get('soundManager');
         this.soundManager = this.sys.registry.get('soundManager');
         this.firebaseManager = this.sys.registry.get('firebaseManager');
