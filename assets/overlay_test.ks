@@ -14,6 +14,7 @@ lancelot:相手のキャラ詳細も見られるから、よく対策を練ろ�
 lancelot:次にナップサックバトルで最も重要なバフを紹介しよう。
 lancelot:それが「属性共鳴」と「ヤジルシナジー」だ。
 [walk name="lancelot" x=1000]
+[chara_show name="lancelot" x=1000 time=0]
 ;[image storage="tutorial_elements" layer="cg" time=500]
 lancelot:各キャラクターには属性が設定してある。俺なら水属性といった感じだな。
 lancelot:そして、同じ属性のキャラクターを3人以上揃えると発動するのが属性共鳴だ！
@@ -28,6 +29,7 @@ lancelit:ヤジルシナジーは必ず矢印に隣接させる必要がある�
 lancelot:どのキャラがどんなシナジーなのかは、キャラをタップすれば見られるから、あとで確認してみてくれ！
 [freeimage layer="cg" time=500]
 [walk name="lancelot" x=640]
+[chara_show name="lancelot" pos="center" time=0]
 lancelot:長くなったが最後にまとめよう。
 lancelot:1.属性で揃えよう
 lancelot:2.矢印の隣に置こう
