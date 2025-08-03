@@ -981,7 +981,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
             this.enemyItemImages.push(itemContainer);
         }
     }
-
+  }
     playResonanceAura(targetObject, color) {
         if (!targetObject || !targetObject.active) return;
         const centerX = targetObject.x;
