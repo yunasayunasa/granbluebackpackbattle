@@ -19,7 +19,7 @@ import RankMatchBattleScene from './scenes/RankMatchBattleScene.js';
 import MatchingScene from './scenes/MatchingScene.js';
 import RankMatchScoreScene from './scenes/RankMatchScoreScene.js';
 
-import TutorialTestScene from './scenes/TutorialTestScene.js';
+import TutorialBattleScene from './scenes/TutorialBattleScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -54,7 +54,7 @@ const config = {
         RankMatchBattleScene,
         RankMatchScoreScene, 
 
-TutorialTestScene
+TutorialBattleScene
         
     ]
 };
