@@ -79,8 +79,14 @@ export default class ScoreScene extends Phaser.Scene {
         this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', { fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setAlpha(0);
         
         const totalAnimationTime = startDelay + resultLines.length * stepDelay + 500;
-        this.time.delayedCall(totalAnimationTime, () => {
-            this._playExpBarAnimation(expGained, oldTotalExp, newRank !== oldRank);
+        this.time.delayedCall(totalAnimationTime, async () => {
+            console.log("リザルト表示完了。経験値バー演出へ。");
+            
+            // バーのアニメーションが完了するのを待つ
+            await this._playExpBarAnimation(expGained, oldTotalExp, newRank !== oldRank);
+            
+            // どの場合でも、最後に必ずボタンを表示する
+            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
         });
 
         this.titleButton.on('pointerdown', () => {
@@ -109,10 +115,7 @@ export default class ScoreScene extends Phaser.Scene {
         
         const oldRankKey = this.getRankForExp(oldTotalExp);
         const oldRankData = this.rankMap[oldRankKey];
-        if (!oldRankData) {
-            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
-            return;
-        }
+        if (!oldRankData) { return; } // 安全装置
         
         const rankKeys = Object.keys(this.rankMap);
         const oldRankIndex = rankKeys.indexOf(oldRankKey);
@@ -127,7 +130,6 @@ export default class ScoreScene extends Phaser.Scene {
 
         const currentRankImageKey = oldRankData.image || 'rank_c';
         this.add.image(barX - barWidth / 2 - 50, barY, currentRankImageKey).setScale(barHeight * 2 / 256);
-        
         const nextRankKey = oldRankData.next;
         if (nextRankKey) {
             const nextRankImageKey = this.rankMap[nextRankKey]?.image || 'rank_c';
@@ -137,40 +139,51 @@ export default class ScoreScene extends Phaser.Scene {
         const targetExp = oldTotalExp + expGained;
         const rankThreshold = oldRankData.threshold;
         const rankExpRange = rankThreshold - prevRankThreshold;
-        const startExpInRank = oldTotalExp - prevRankThreshold;
-        const startWidth = (startExpInRank / rankExpRange) * barWidth;
-
-        expBar.fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, startWidth, barHeight);
-        expText.setText(`EXP: ${Math.floor(oldTotalExp)} / ${rankThreshold}`);
-        
-        try { this.soundManager.playSe('se_exp_bar_fill'); } catch(e) {}
         
         const expCounter = { value: oldTotalExp };
-        const tween = this.tweens.add({
-            targets: expCounter, value: targetExp, duration: 1500, ease: 'Cubic.easeOut',
+        try { this.soundManager.playSe('se_exp_bar_fill'); } catch(e) {}
+        
+        // --- メインのアニメーション ---
+        const mainTween = this.tweens.add({
+            targets: expCounter,
+            value: targetExp,
+            duration: 1500,
+            ease: 'Cubic.easeOut',
             onUpdate: () => {
                 const animatedExp = expCounter.value;
                 const expInRank = animatedExp - prevRankThreshold;
-                let progress = expInRank / rankExpRange;
-                if (progress >= 1.0 && didRankUp) {
-                    progress = 1.0;
-                    if (tween.isPlaying()) tween.pause();
-                    this._playRankUpEffect().then(() => {
-                        // TODO: ランクアップ後のゲージ継続アニメーション
-                        this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
-                    });
-                }
+                const progress = Math.min(1.0, expInRank / rankExpRange); // 100%以上にならないように
                 expBar.clear().fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth * progress, barHeight);
                 expText.setText(`EXP: ${Math.floor(animatedExp)} / ${rankThreshold}`);
-            },
-            onComplete: () => {
-                if (!didRankUp) {
-                    this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
-                }
             }
         });
+
+        // --- ランクアップ演出の挟み込み ---
+        if (didRankUp) {
+            // ランクアップするまでの時間を計算
+            const expToRankUp = rankThreshold - oldTotalExp;
+            const durationToRankUp = (expToRankUp / expGained) * 1500;
+
+            // ランクアップのタイミングでメインのTweenを一時停止
+            this.time.delayedCall(durationToRankUp, () => {
+                if(mainTween.isPlaying()) mainTween.pause();
+                
+                this._playRankUpEffect().then(() => {
+                    // TODO: ランクアップ後のゲージ継続アニメーション
+                    // 今回は、演出後にメインTweenを即座に完了させる
+                    if (mainTween.isPaused()) {
+                        mainTween.seek(1); // Tweenを最後の状態へ
+                        mainTween.stop();  // 完全に停止
+                    }
+                });
+            });
+        }
+        
+        // --- Tweenの完了を待つためのPromise ---
+        return new Promise(resolve => {
+            mainTween.on('complete', resolve);
+        });
     }
-    
     _playRankUpEffect() {
         return new Promise(resolve => {
             const { width, height } = this.scale;
