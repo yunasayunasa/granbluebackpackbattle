@@ -72,96 +72,24 @@ export default class TutorialBattleScene extends Phaser.Scene {
     this.tutorialParams = data.transitionParams || {};
     }
 
+    // scenes/TutorialBattleScene.js
+
     create() {
         console.log("TUTORIAL BATTLE SCENE START");
-        
-        // チュートリアル用のオーバーレイを
-        this.time.delayedCall(100, () => {
-            this.scene.get('SystemScene').events.emit('request-overlay', { 
-                from: this.scene.key,
-                scenario: 'tutorial_step1.ks' // ★最初のシナリオを指定
-            });
-        });
-        // ★ 4. BattleSceneのcreate処理を呼び出す
-        //    (ただし、チュートリアルに不要な部分はコメントアウト)
-        // ← これがもしエラーになるなら、BattleSceneのcreateの中身をここにコピペする
 
-        // チュートリアルでは不要なUIを非表示にする
-       // if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
-      //  if (this.resetButton) this.resetButton.setVisible(false);
-    
-        this.cameras.main.fadeIn(300, 0, 0, 0); 
-        console.log("BattleScene: create - データ永続化対応版 (sf)");
-        const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
-        const selectedBgKey = Phaser.Utils.Array.GetRandom(backgroundKeys);
-        this.add.image(this.scale.width / 2, this.scale.height / 2, selectedBgKey)
-            .setDisplaySize(this.scale.width, this.scale.height)
-            .setDepth(-1);
-        
+        // --- 1. 最初に、必要なマネージャーを取得し、イベントリスナーを登録 ---
         this.stateManager = this.sys.registry.get('stateManager');
-           console.log("[TutorialBattleScene] StateManagerのイベントリスナーを登録しようとしています...", this.stateManager);
-        this.stateManager.on('f-variable-changed', this.onTutorialStepChange, this);
-        console.log("[TutorialBattleScene] イベントリスナーの登録が完了しました。");
         this.soundManager = this.sys.registry.get('soundManager');
-        this.soundManager = this.sys.registry.get('soundManager');
-        this.firebaseManager = this.sys.registry.get('firebaseManager');
         this.tooltip = new Tooltip(this);
-
-        if (this.stateManager.sf.player_backpack === undefined) {
-            this.stateManager.setSF('player_backpack', {});
-        }
-        if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
-        }
-        if (this.stateManager.sf.player_profile === undefined) {
-            console.log("新規プレイヤープロファイルを作成します。");
-            this.stateManager.setSF('player_profile', {
-                totalExp: 0, rank: "駆け出し", highScore: 0, totalWins: 0
-            });
-        }
         
-        const backpackData = this.stateManager.sf.player_backpack;
-        const inventoryData = this.stateManager.sf.player_inventory;
+        this.stateManager.on('f-variable-changed', this.onTutorialStepChange, this);
+        console.log("[TutorialBattleScene] イベントリスナー登録完了。");
 
-        if (this.stateManager.sf.player_base_max_hp === undefined) {
-            this.stateManager.setSF('player_base_max_hp', 100);
-        }
-        const basePlayerMaxHp = this.stateManager.sf.player_base_max_hp;
-        const inheritedPlayerHp = this.stateManager.f.player_hp > 0 ? this.stateManager.f.player_hp : basePlayerMaxHp;
-        const round = this.stateManager.sf.round || 1;
-        this.initialBattleParams = { 
-            playerMaxHp: basePlayerMaxHp, playerHp: inheritedPlayerHp, round: round 
-        };
+        // --- 2. 背景やグリッドなど、基本的な舞台を準備 ---
+        this.add.image(this.scale.width / 2, this.scale.height / 2, 'background1')
+            .setDisplaySize(this.scale.width, this.scale.height).setDepth(-1);
 
-        if (inheritedPlayerHp <= 0) {
-            console.log("ゲームオーバー: HPが0の状態でラウンドを開始しようとしました。");
-            this.stateManager.sf = {};
-            localStorage.removeItem('my_novel_engine_system');
-            this.stateManager.f = {};
-            this.scene.start(this.scene.key);
-            return;
-        }
-
-        this.inventoryItemImages = []; this.placedItemImages = []; this.enemyItemImages = [];
-        this.finalizedPlayerItems = []; this.playerBattleItems = []; this.enemyBattleItems = [];
-        this.playerStats = { block: [] };
-        this.enemyStats = { block: [] };
-        this.battleEnded = false; this.gameState = 'prepare';
-        this.cameras.main.setBackgroundColor('#8a2be2');
-
-        const battleBgmKey = 'bgm_prepare';
-        if (this.soundManager.currentBgmKey !== battleBgmKey) {
-            this.soundManager.playBgm(battleBgmKey);
-        }
-        this.stateManager.setF('player_max_hp', this.initialBattleParams.playerMaxHp);
-        this.stateManager.setF('player_hp', this.initialBattleParams.playerHp);
-        
-        const enemyBaseHp = 100;
-        const enemyRoundBonus = (this.initialBattleParams.round - 1) * 20;
-        const enemyFinalHp = enemyBaseHp + enemyRoundBonus;
-        this.stateManager.setF('enemy_max_hp', enemyFinalHp); 
-        this.stateManager.setF('enemy_hp', enemyFinalHp);
-        
+        this.prepareContainer = this.add.container(0, 0);
         const gameWidth = this.scale.width;
         const gameHeight = this.scale.height;
         const gridWidth = this.backpackGridSize * this.cellSize;
@@ -169,46 +97,27 @@ export default class TutorialBattleScene extends Phaser.Scene {
         this.gridX = 100;
         this.gridY = gameHeight / 2 - gridHeight / 2 - 50;
         this.backpack = Array(this.backpackGridSize).fill(null).map(() => Array(this.backpackGridSize).fill(0));
-        this.prepareContainer = this.add.container(0, 0);
-        this.ghostImage = this.add.graphics({ fillStyle: { color: 0x00ff00, alpha: 0.5 } }).setVisible(false).setDepth(5);
         this.add.rectangle(this.gridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x333333, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2); }
-        this.playerAvatar = this.add.sprite(this.gridX + gridWidth + 80, this.gridY + gridHeight / 2, 'player_avatar_placeholder').setOrigin(0.5).setDepth(5);
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        this.add.rectangle(enemyGridX + gridWidth / 2, this.gridY + gridHeight / 2, gridWidth, gridHeight, 0x500000, 0.9).setDepth(1);
-        for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); }
-        this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
-
-        const enemyData = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
-        this.currentEnemyLayout = enemyData.layout;
-        this.setupEnemy(this.gridY, this.currentEnemyLayout);
-        if (enemyData.avatar) {
-            this.enemyAvatar.setTexture(enemyData.avatar);
+        for (let i = 0; i <= this.backpackGridSize; i++) {
+            this.add.line(0, 0, this.gridX, this.gridY + i * this.cellSize, this.gridX + gridWidth, this.gridY + i * this.cellSize, 0x666666, 0.5).setOrigin(0).setDepth(2);
+            this.add.line(0, 0, this.gridX + i * this.cellSize, this.gridY, this.gridX + i * this.cellSize, this.gridY + gridHeight, 0x666666, 0.5).setOrigin(0).setDepth(2);
         }
+
+        // --- 3. チュートリアル用の初期インベントリを設定し、アイテムを生成 ---
+        this.stateManager.setSF('player_inventory', ['sword', 'shield', 'potion']);
+        const inventoryData = this.stateManager.sf.player_inventory;
+        this.inventoryItemImages = [];
+        this.placedItemImages = [];
         
-        const maxAvatarHeight = gridHeight * 0.8;
-        [this.playerAvatar, this.enemyAvatar].forEach(avatar => {
-            if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); }
-        });
-
-        for (const uid in backpackData) {
-            const itemInfo = backpackData[uid];
-            const itemContainer = this.createItem(itemInfo.itemId, 0, 0);
-            if (itemContainer) {
-                itemContainer.setData('rotation', itemInfo.rotation);
-                itemContainer.setAngle(itemInfo.rotation);
-                this.placeItemInBackpack(itemContainer, itemInfo.col, itemInfo.row);
-            }
-        }
-
         const inventoryAreaY = 450;
         const inventoryAreaHeight = gameHeight - inventoryAreaY;
         const invBg = this.add.rectangle(gameWidth / 2, inventoryAreaY + inventoryAreaHeight / 2, gameWidth, inventoryAreaHeight, 0x000000, 0.8).setDepth(10);
         const invText = this.add.text(gameWidth / 2, inventoryAreaY + 30, 'インベントリ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
         this.prepareContainer.add([invBg, invText]);
+
         const inventoryContentWidth = gameWidth - 200;
-        const inventoryCount = inventoryData.length;
-        const itemSpacing = inventoryCount > 0 ? inventoryContentWidth / inventoryCount : 0;
+        const itemCount = inventoryData.length;
+        const itemSpacing = inventoryContentWidth / itemCount;
         const itemStartX = 100 + (itemSpacing / 2);
         inventoryData.forEach((itemId, index) => {
             const x = itemStartX + (index * itemSpacing);
@@ -216,133 +125,22 @@ export default class TutorialBattleScene extends Phaser.Scene {
             const itemContainer = this.createItem(itemId, x, y);
             if (itemContainer) { this.inventoryItemImages.push(itemContainer); }
         });
-
-        this.setupShop();
-        this.refreshShop();
         
-        const sellZoneWidth = 100;
-        const sellZoneX = gameWidth - (sellZoneWidth / 2);
-        const sellZoneY = gameHeight / 2;
-        const sellZoneHeight = gameHeight;
-        this.sellZoneGraphics = this.add.rectangle(sellZoneX, sellZoneY, sellZoneWidth, sellZoneHeight, 0xff0000, 0.2).setDepth(9).setVisible(false);
-        this.sellZoneText = this.add.text(sellZoneX, sellZoneY, 'ド\nラ\nッ\nグ\nし\nて\n売\n却', { fontSize: '24px', fill: '#ffffff', align: 'center', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(9).setVisible(false);
-        this.sellZoneArea = new Phaser.Geom.Rectangle(gameWidth - sellZoneWidth, 0, sellZoneWidth, gameHeight);
+        // --- 4. チュートリアル用の敵をセットアップ ---
+        this.enemyItemImages = [];
+        this.setupEnemy(this.gridY);
         
-        const shopToggleButton = this.add.text(gameWidth - 640, inventoryAreaY - 400, 'ショップ表示', { fontSize: '20px', fill: '#ffdd00', backgroundColor: '#000000aa', padding: { x: 10, y: 5 } }).setOrigin(0.5).setInteractive().setDepth(11);
-        this.prepareContainer.add(shopToggleButton);
-        shopToggleButton.on('pointerdown', () => {
-            this.isShopVisible = !this.isShopVisible;
-            if (this.isShopVisible) {
-                this.inventoryItemImages.forEach(item => item.setVisible(false));
-                this.shopContainer.setVisible(true);
-                shopToggleButton.setText('インベントリ表示');
-            } else {
-                this.shopContainer.setVisible(false);
-                this.inventoryItemImages.forEach(item => item.setVisible(true));
-                shopToggleButton.setText('ショップ表示');
-            }
-        });
-
-        const resetButton = this.add.text(80, 40, '[ リセット ]', { fontSize: '20px', fill: '#ffdd00', backgroundColor: '#000000aa', padding: { x: 10, y: 5 } }).setOrigin(0.5).setDepth(100).setInteractive();
-        resetButton.on('pointerdown', () => {
-            if (window.confirm('本当にすべてのデータをリセットして最初から始めますか？')) {
-                this.stateManager.sf = {};
-                localStorage.removeItem('my_novel_engine_system');
-                console.log("Save data has been reset.");
-                window.location.reload();
-            }
-        });
-
-        this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
-        this.prepareContainer.add(this.startBattleButton);
-       // create() の中の startBattleButton のリスナー部分
-     // ★★★ このブロックを追加 ★★★
-        // チュートリアル中は不要なボタンを隠す
-        if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
-       // const resetButton = this.children.list.find(child => child.text === '[ リセット ]');
-        if(resetButton) resetButton.setVisible(false);
-        this.startBattleButton.setVisible(false); // 戦闘開始ボタンも最初は隠す
-        // ★★★ 追加ここまで ★★★
-
-    this.startBattleButton.on('pointerdown', () => {
-            try { this.soundManager.playSe('se_button_click'); } catch (e) {}
-          if (this.gameState !== 'prepare') return;
-        try { this.soundManager.playBgm('bgm_battle'); } catch(e) {}
-
-
-        // ★★★ このブロックを全面的に書き換え ★★★
-
-        // 1. まず、準備フェーズのUIを全て非表示にする
-        const allPlayerItems = [...this.inventoryItemImages, ...this.placedItemImages];
-        allPlayerItems.forEach(item => { if (item.input) item.input.enabled = false; });
-        this.startBattleButton.input.enabled = false;
-        this.tweens.add({
-        targets: [this.prepareContainer, ...this.inventoryItemImages],
-            alpha: 0,
-            duration: 300,
-            onComplete: () => {
-                // ★ onCompleteの中で、両方を setVisible(false) していますか？
-                this.prepareContainer.setVisible(false);
-                this.inventoryItemImages.forEach(item => item.setVisible(false));
-            }
-        });
-
-        // 2. カットイン演出を再生し、完了後に戦闘を開始する
-        this._playVsCutin(() => {
-            // --- ここから下は、元の戦闘開始ロジック ---
-            const initialBackpackData = {};
-            this.placedItemImages.forEach((item, index) => {
-                const gridPos = item.getData('gridPos');
-                if (gridPos) {
-                    initialBackpackData[`uid_${index}`] = { itemId: item.getData('itemId'), row: gridPos.row, col: gridPos.col, rotation: item.getData('rotation') };
-                }
+        // --- 5. 最初のオーバーレイを表示する ---
+        this.time.delayedCall(100, () => {
+            this.scene.get('SystemScene').events.emit('request-overlay', { 
+                from: this.scene.key,
+                scenario: 'tutorial_step1.ks'
             });
-            const initialInventoryData = this.inventoryItemImages.map(item => item.getData('itemId'));
-            this.roundStartState = {
-                backpack: initialBackpackData, inventory: initialInventoryData, coins: this.stateManager.sf.coins || 0, 
-                hp: this.stateManager.f.player_hp
-            };
-            console.log("Round start state checkpoint created.", this.roundStartState);
-            
-            this.gameState = 'battle';
-            this.prepareForBattle();
-            this.startBattle();
         });
-        
-        // ★★★ 書き換えここまで ★★★
-    });
 
-        this.input.on('pointerdown', (pointer) => { if (!pointer.gameObject && this.tooltip.visible) { this.tooltip.hide(); } }, this);
-        this.anims.create({ key: 'impact_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 7 }), frameRate: 24, repeat: 0 });
-        this.anims.create({ key: 'finish_anim', frames: this.anims.generateFrameNumbers('effect_impact', { start: 0, end: 15 }), frameRate: 30, repeat: 0 });
-        const { width, height } = this.scale;
-    this.transitionWipe = this.add.rectangle(width * 1.5, height / 2, width, height, 0x000000)
-        .setDepth(10000)
-        .setScrollFactor(0);
-        const currentCoins = this.stateManager.sf.coins || 0;
-        console.log("コイン表示を強制更新します。");
-            this.stateManager.setSF('coins', currentCoins + 1);
-            this.stateManager.setSF('coins', currentCoins);
-          if (this.pendingTutorialStep) {
-            console.log(`保留されていたステップ [${this.pendingTutorialStep}] を適用します。`);
-            const allItems = this.inventoryItemImages.filter(item => item.active);
-
-            if (this.pendingTutorialStep === 'place_sword') {
-                allItems.forEach(item => {
-                    if (item.getData('itemId') === 'sword') {
-                        item.setInteractive();
-                    } else {
-                        item.disableInteractive().setVisible(false);
-                    }
-                });
-            }
-            // ... (他のステップの処理) ...
-
-            this.pendingTutorialStep = null; // 適用したらクリア
-        }
-        
+        // --- 6. 最後にシーン完了を通知 ---
         this.events.emit('scene-ready');
-        console.log("BattleScene: create 完了");
+        console.log("TutorialBattleScene: create 完了");
     }
 
     prepareForBattle() {
