@@ -74,8 +74,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
     create() {
         console.log("TUTORIAL BATTLE SCENE START");
         
-        // チュートリアル用のオーバーレイを起動
-  console.log("TutorialBattleScene
+        // チュートリアル用のオーバーレイを
         this.time.delayedCall(100, () => {
             this.scene.get('SystemScene').events.emit('request-overlay', { 
                 from: this.scene.key,
