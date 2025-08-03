@@ -78,10 +78,11 @@ export default class TutorialBattleScene extends Phaser.Scene {
         // チュートリアル用のオーバーレイを
         this.time.delayedCall(100, () => {
             this.scene.get('SystemScene').events.emit('request-overlay', { 
-                from: this.scene.key,
-                scenario: 'tutorial_step1.ks' // ★最初のシナリオを指定
+                    from: this.scene.key,
+                    scenario: 'overlay_test.ks', // 表示したいシナリオ
+                    block_input: false // ★ falseを指定
+                });
             });
-        });// BattleScene.js (最終決定版・完全体)
 
         this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("BattleScene: create - データ永続化対応版 (sf)");
