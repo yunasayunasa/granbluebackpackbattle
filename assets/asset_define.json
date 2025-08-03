@@ -20,6 +20,8 @@
 
 
 "lancelot_normal": "assets/lancelot_normal.png",
+"tutorial_elements": "assets/tutorial_elements.png",
+"tutorial_arrow": "assets/tutorial_arrow.jpg",
      "yuna_normal": "assets/yuna_smile.png",
       "kaito_normal": "assets/kaito_normal.png" ,
      "title": "assets/bg_title.jpg" ,
