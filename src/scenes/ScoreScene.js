@@ -8,7 +8,7 @@ export default class ScoreScene extends Phaser.Scene {
         this.receivedData = null;
         this.titleButton = null;
 
-        // スコアアタック用のランク定義
+        // ★ スコアアタック用のランク定義
         this.rankMap = {
             '駆け出し': { threshold: 100,  image: 'rank_c', next: 'ブロンズ' },
             'ブロンズ': { threshold: 300,  image: 'rank_b', next: 'シルバー' },
@@ -57,24 +57,29 @@ export default class ScoreScene extends Phaser.Scene {
         const resultLines = [
             { label: '到達ラウンド', value: finalRound },
             { label: '獲得スコア', value: `${score} ${score > oldHighScore ? '(New!)' : ''}` },
-            { label: '獲得経験値', value: expGained },
+            { label: '獲得経験値', value: expGained, isDivider: true },
+            { label: 'ランク', value: `${oldRank} → ${newRank} ${newRank !== oldRank ? '(ランクアップ!)' : ''}` },
+            { label: '累計経験値', value: profile.totalExp },
         ];
         
-        const startY = 200; const stepY = 70; const startDelay = 500; const stepDelay = 300;
+        const startY = 200; const stepY = 70; const startDelay = 500; const stepDelay = 400;
         resultLines.forEach((line, index) => {
             const y = startY + index * stepY;
-            const labelText = this.add.text(this.scale.width / 2 - 100, y, line.label, { fontSize: '32px', fill: '#cccccc' }).setOrigin(1, 0.5).setAlpha(0).setScale(1.2);
-            const valueText = this.add.text(this.scale.width / 2 + 100, y, line.value, { fontSize: '40px', fill: '#ffffff', fontStyle: 'bold' }).setOrigin(0, 0.5).setAlpha(0).setScale(1.2);
             const delay = startDelay + index * stepDelay;
-            this.tweens.add({ targets: labelText, delay: delay, alpha: 1, scale: 1, duration: 250, ease: 'Cubic.easeOut', onStart: () => { try { this.soundManager.playSe('se_result_pop'); } catch(e) {} } });
-            this.tweens.add({ targets: valueText, delay: delay, alpha: 1, scale: 1, duration: 250, ease: 'Cubic.easeOut' });
+            if (line.isDivider) {
+                const lineObj = this.add.line(0, 0, this.scale.width/2 - 200, y, this.scale.width/2 + 200, y, 0xffffff).setLineWidth(2).setAlpha(0);
+                this.tweens.add({ targets: lineObj, delay: delay, alpha: 0.5, duration: 250 });
+                return;
+            }
+            const labelText = this.add.text(this.scale.width / 2 - 10, y, `${line.label}:`, { fontSize: '32px', fill: '#cccccc' }).setOrigin(1, 0.5).setAlpha(0).setScale(1.2);
+            const valueText = this.add.text(this.scale.width / 2 + 10, y, line.value, { fontSize: '36px', fill: '#ffffff', fontStyle: 'bold' }).setOrigin(0, 0.5).setAlpha(0).setScale(1.2);
+            this.tweens.add({ targets: [labelText, valueText], delay: delay, alpha: 1, scale: 1, duration: 250, ease: 'Cubic.easeOut', onStart: () => { try { this.soundManager.playSe('se_result_pop'); } catch(e) {} } });
         });
 
         this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', { fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setAlpha(0);
         
-        const totalAnimationTime = startDelay + resultLines.length * stepDelay + 250;
+        const totalAnimationTime = startDelay + resultLines.length * stepDelay + 500;
         this.time.delayedCall(totalAnimationTime, () => {
-            console.log("リザルト表示完了。経験値バー演出へ。");
             this._playExpBarAnimation(expGained, oldTotalExp, newRank !== oldRank);
         });
 
@@ -92,7 +97,7 @@ export default class ScoreScene extends Phaser.Scene {
     }
 
     getRankForExp(exp) {
-          if (exp >= 1500) return 'プラチナ';
+        if (exp >= 1500) return 'プラチナ';
         if (exp >= 700) return 'ゴールド';
         if (exp >= 300) return 'シルバー';
         if (exp >= 100) return 'ブロンズ';
@@ -101,16 +106,20 @@ export default class ScoreScene extends Phaser.Scene {
 
     async _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
         const { width, height } = this.scale;
+        
         const oldRankKey = this.getRankForExp(oldTotalExp);
         const oldRankData = this.rankMap[oldRankKey];
-        if (!oldRankData) return;
+        if (!oldRankData) {
+            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+            return;
+        }
         
         const rankKeys = Object.keys(this.rankMap);
         const oldRankIndex = rankKeys.indexOf(oldRankKey);
         const prevRankThreshold = oldRankIndex > 0 ? this.rankMap[rankKeys[oldRankIndex - 1]].threshold : 0;
         
         const barWidth = 600; const barHeight = 30;
-        const barX = width / 2; const barY = height / 2 + 100;
+        const barX = width / 2; const barY = height / 2 + 150;
         
         this.add.graphics().fillStyle(0x333333).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight);
         const expBar = this.add.graphics();
@@ -118,6 +127,7 @@ export default class ScoreScene extends Phaser.Scene {
 
         const currentRankImageKey = oldRankData.image || 'rank_c';
         this.add.image(barX - barWidth / 2 - 50, barY, currentRankImageKey).setScale(barHeight * 2 / 256);
+        
         const nextRankKey = oldRankData.next;
         if (nextRankKey) {
             const nextRankImageKey = this.rankMap[nextRankKey]?.image || 'rank_c';
@@ -132,6 +142,7 @@ export default class ScoreScene extends Phaser.Scene {
 
         expBar.fillStyle(0xffdd00).fillRect(barX - barWidth / 2, barY - barHeight / 2, startWidth, barHeight);
         expText.setText(`EXP: ${Math.floor(oldTotalExp)} / ${rankThreshold}`);
+        
         try { this.soundManager.playSe('se_exp_bar_fill'); } catch(e) {}
         
         const expCounter = { value: oldTotalExp };
@@ -143,8 +154,9 @@ export default class ScoreScene extends Phaser.Scene {
                 let progress = expInRank / rankExpRange;
                 if (progress >= 1.0 && didRankUp) {
                     progress = 1.0;
-                    tween.pause();
+                    if (tween.isPlaying()) tween.pause();
                     this._playRankUpEffect().then(() => {
+                        // TODO: ランクアップ後のゲージ継続アニメーション
                         this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
                     });
                 }
@@ -166,8 +178,10 @@ export default class ScoreScene extends Phaser.Scene {
             const rankImageKey = this.rankMap[newRankKey]?.image || 'rank_c';
             try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
             this.cameras.main.shake(300, 0.01);
+            
             const rankGlow = this.add.image(width / 2, height / 2, rankImageKey).setDepth(6999).setTint(0xffff00).setBlendMode('ADD').setAlpha(0);
             const rankImage = this.add.image(width / 2, height / 2, rankImageKey).setDepth(7000).setScale(3).setAlpha(0);
+            
             this.tweens.chain({
                 targets: rankImage,
                 tweens: [
