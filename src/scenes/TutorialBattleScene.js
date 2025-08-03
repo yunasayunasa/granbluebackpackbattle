@@ -176,13 +176,19 @@ init(data) {
         for (let i = 0; i <= this.backpackGridSize; i++) { this.add.line(0, 0, enemyGridX, this.gridY + i * this.cellSize, enemyGridX + gridWidth, this.gridY + i * this.cellSize, 0x888888, 0.5).setOrigin(0).setDepth(2); this.add.line(0, 0, enemyGridX + i * this.cellSize, this.gridY, enemyGridX + i * this.cellSize, this.gridY + gridHeight, 0x888888, 0.5).setOrigin(0).setDepth(2); }
         this.enemyAvatar = this.add.sprite(enemyGridX - 80, this.gridY + gridHeight / 2, 'enemy_avatar_placeholder').setOrigin(0.5).setDepth(5);
 
-        const enemyData = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
-        this.currentEnemyLayout = enemyData.layout;
-        this.setupEnemy(this.gridY, this.currentEnemyLayout);
-        if (enemyData.avatar) {
-            this.enemyAvatar.setTexture(enemyData.avatar);
+        if (this.isTutorial) {
+            // --- チュートリアルモードの場合 ---
+            const enemyData = EnemyGenerator.getLayoutByTheme('tutorial_enemy');
+            this.currentEnemyLayout = enemyData.layout;
+            this.setupEnemy(this.gridY, this.currentEnemyLayout);
+            if (enemyData.avatar) this.enemyAvatar.setTexture(enemyData.avatar);
+        } else {
+            // --- 通常モードの場合 (既存のロジック) ---
+            const enemyData = EnemyGenerator.getLayoutForRound(this.initialBattleParams.round);
+            this.currentEnemyLayout = enemyData.layout;
+            this.setupEnemy(this.gridY, this.currentEnemyLayout);
+            if (enemyData.avatar) this.enemyAvatar.setTexture(enemyData.avatar);
         }
-        
         const maxAvatarHeight = gridHeight * 0.8;
         [this.playerAvatar, this.enemyAvatar].forEach(avatar => {
             if (avatar.height > maxAvatarHeight) { avatar.setScale(maxAvatarHeight / avatar.height); }
@@ -1764,6 +1770,18 @@ init(data) {
                 }
             });
         });
+  // ★★★ この if 文を追加 ★★★
+        if (this.isTutorial) {
+            console.log("チュートリアル完了。タイトルに戻ります。");
+            try { this.soundManager.stopBgm(); } catch(e) {}
+            // タイトルに戻るためのフェードアウト遷移
+            this._transitionToScene({
+                to: 'GameScene',
+                from: this.scene.key,
+                params: { storage: 'title.ks' }
+            });
+            return; // ここで処理を終了
+        }
 
         // --- STEP 4: データ保存処理（演出と並行して実行）---
         console.log("Saving data in background...");
