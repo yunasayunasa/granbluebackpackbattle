@@ -26,6 +26,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
     constructor() {
        super('TutorialBattleScene');
         this.battleTimer = null;
+        this.pendingTutorialStep = null;
         this.battleTimerText = null;
         this.maxBattleDuration = 30;
         this.receivedParams = null;
@@ -1997,34 +1998,11 @@ export default class TutorialBattleScene extends Phaser.Scene {
     // f.tutorial_step の変化に応じて、操作可能なアイテムを制限する
     // scenes/TutorialBattleScene.js
 
-    // f.tutorial_step の変化に応じて、操作可能なアイテムを制限する
-    onTutorialStepChange(key, value) {
+      onTutorialStepChange(key, value) {
         if (key !== 'f.tutorial_step') return;
-        
-        console.log(`チュートリアルのステップが [${value}] に変わりました。`);
-        
-        // 全てのインベントリアイテムを取得 (配置済みのものは含まない)
-        const allItems = this.inventoryItemImages.filter(item => item.active);
-
-        if (value === 'place_sword') {
-            allItems.forEach(item => {
-                if (item.getData('itemId') === 'sword') {
-                    // ★剣は、表示して操作可能にする
-                    item.setVisible(true).setInteractive();
-                    console.log("剣だけが操作可能です。");
-                } else {
-                    // ★剣以外は、非表示にして操作不能にする
-                    item.setVisible(false).disableInteractive();
-                }
-            });
-        } else if (value === 'place_all') {
-            // 全てのアイテムを表示して、操作可能にする
-            allItems.forEach(item => {
-                item.setVisible(true).setInteractive();
-            });
-            console.log("全てのアイテムが操作可能です。");
-        }
-        // 他のステップが追加されたら、ここに else if を追加
+        console.log(`チュートリアルステップの変更を検知: [${value}]。後で適用します。`);
+        // ★ すぐに処理せず、どのステップかを記録しておくだけ
+        this.pendingTutorialStep = value;
     }
     
 
