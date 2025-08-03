@@ -323,6 +323,23 @@ export default class TutorialBattleScene extends Phaser.Scene {
         console.log("コイン表示を強制更新します。");
             this.stateManager.setSF('coins', currentCoins + 1);
             this.stateManager.setSF('coins', currentCoins);
+          if (this.pendingTutorialStep) {
+            console.log(`保留されていたステップ [${this.pendingTutorialStep}] を適用します。`);
+            const allItems = this.inventoryItemImages.filter(item => item.active);
+
+            if (this.pendingTutorialStep === 'place_sword') {
+                allItems.forEach(item => {
+                    if (item.getData('itemId') === 'sword') {
+                        item.setInteractive();
+                    } else {
+                        item.disableInteractive().setVisible(false);
+                    }
+                });
+            }
+            // ... (他のステップの処理) ...
+
+            this.pendingTutorialStep = null; // 適用したらクリア
+        }
         
         this.events.emit('scene-ready');
         console.log("BattleScene: create 完了");
