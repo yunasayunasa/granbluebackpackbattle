@@ -1,4 +1,5 @@
 // BattleScene.js (最終決定版・完全体)
+import BattleScene from './BattleScene.js'; // 継承する場合
 import { ITEM_DATA } from '../core/ItemData.js';
 import Tooltip from '../ui/Tooltip.js';
 import { EnemyGenerator } from '../core/EnemyGenerator.js';
