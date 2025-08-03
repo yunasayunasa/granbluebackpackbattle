@@ -92,16 +92,11 @@ export default class ScoreScene extends Phaser.Scene {
     }
 
     getRankForExp(exp) {
-        let currentRank = '駆け出し';
-        const rankKeys = Object.keys(this.rankMap);
-        for(const key of rankKeys) {
-            if (exp >= this.rankMap[key].threshold) {
-                currentRank = key;
-            } else {
-                break;
-            }
-        }
-        return currentRank;
+          if (exp >= 1500) return 'プラチナ';
+        if (exp >= 700) return 'ゴールド';
+        if (exp >= 300) return 'シルバー';
+        if (exp >= 100) return 'ブロンズ';
+        return '駆け出し';
     }
 
     async _playExpBarAnimation(expGained, oldTotalExp, didRankUp) {
