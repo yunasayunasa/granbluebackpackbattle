@@ -65,7 +65,82 @@ const ROUND_RULES = {
 };
 
 export const EnemyGenerator = {
+  /**
+     * 指定されたテーマキーに基づいて、敵のレイアウトを生成する
+     * (チュートリアルやストーリーモードでの固定敵生成用)
+     * @param {string} themeKey - THEMESオブジェクトのキー
+     * @returns {object|null} - { layout: object, avatar: string } または null
+     */
+    getLayoutByTheme(themeKey) {
+        const theme = THEMES[themeKey];
+        if (!theme) {
+            console.error(`[EnemyGenerator] 指定されたテーマ'${themeKey}'が見つかりません。`);
+            return null;
+        }
+        
+        console.log(`%c[EnemyGenerator] Generating layout for specific theme: "${themeKey}"`, "color: green;");
+        
+        // --- チーム編成 ---
+        // プールから全てのキャラクターをチーム候補とする
+        let candidatePool = [];
+        theme.pools.forEach(poolKey => {
+            if (POOLS[poolKey]) {
+                candidatePool.push(...POOLS[poolKey]);
+            }
+        });
 
+        const team = [];
+        let uniqueCounter = 1;
+        candidatePool.forEach(id => {
+            team.push(`${id}_${uniqueCounter++}`);
+        });
+
+        // --- 自動配置 (getLayoutForRoundからロジックを流用) ---
+        const layout = {};
+        const gridSize = 6;
+        const backpack = Array(gridSize).fill(0).map(() => Array(gridSize).fill(false));
+        const sortedTeam = team.sort((a, b) => {
+            const sizeA = ITEM_DATA[a.split('_')[0]].shape.length * ITEM_DATA[a.split('_')[0]].shape[0].length;
+            const sizeB = ITEM_DATA[b.split('_')[0]].shape.length * ITEM_DATA[b.split('_')[0]].shape[0].length;
+            return sizeB - sizeA;
+        });
+        const canPlace = (itemShape, r, c) => {
+            if (r < 0 || c < 0 || r + itemShape.length > gridSize || c + itemShape[0].length > gridSize) return false;
+            for (let sr = 0; sr < itemShape.length; sr++) { for (let sc = 0; sc < itemShape[0].length; sc++) { if (itemShape[sr][sc] === 1 && backpack[r + sr][c + sc]) return false; } }
+            return true;
+        };
+        const placeItem = (uniqueId, r, c) => {
+            const shape = ITEM_DATA[uniqueId.split('_')[0]].shape;
+            layout[uniqueId] = { row: r, col: c, rotation: 0 };
+            for (let sr = 0; sr < shape.length; sr++) { for (let sc = 0; sc < shape[0].length; sc++) { if (shape[sr][sc] === 1) backpack[r + sr][c + sc] = true; } }
+        };
+        sortedTeam.forEach(uniqueId => {
+            const baseId = uniqueId.split('_')[0];
+            const itemData = ITEM_DATA[baseId];
+            const shape = itemData.shape;
+            let bestPosition = null;
+            let maxScore = -1;
+            for (let r = 0; r <= gridSize - shape.length; r++) {
+                for (let c = 0; c <= gridSize - shape[0].length; c++) {
+                    if (canPlace(shape, r, c)) {
+                        let currentScore = 0.5 + Math.random(); 
+                        if(itemData.synergy){ const distanceFromCenter = Math.abs(r - 2.5) + Math.abs(c - 2.5); currentScore += 5 - distanceFromCenter; }
+                        if (currentScore > maxScore) { maxScore = currentScore; bestPosition = { r, c }; }
+                    }
+                }
+            }
+            if (bestPosition) { placeItem(uniqueId, bestPosition.r, bestPosition.c); } 
+            else { console.warn(`[EnemyGenerator] アイテム'${uniqueId}'を配置するスペースがありませんでした。`); }
+        });
+        // (長いので省略しますが、getLayoutForRoundの自動配置アルゴリズムをここにコピー)
+        // ...
+        
+        return {
+            layout: layout,
+            avatar: theme.avatar
+        };
+    }
+};
     getLayoutForRound(round) {
         // ... (STEP 1〜3のチーム編成アルゴリズムは変更なし) ...
         const rule = ROUND_RULES[round] || ROUND_RULES[Object.keys(ROUND_RULES).pop()];
