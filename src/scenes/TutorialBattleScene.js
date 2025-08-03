@@ -83,7 +83,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
         
         // ★ 4. BattleSceneのcreate処理を呼び出す
         //    (ただし、チュートリアルに不要な部分はコメントアウト)
-        super.create(); // ← これがもしエラーになるなら、BattleSceneのcreateの中身をここにコピペする
+        // ← これがもしエラーになるなら、BattleSceneのcreateの中身をここにコピペする
 
         // チュートリアルでは不要なUIを非表示にする
         if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
