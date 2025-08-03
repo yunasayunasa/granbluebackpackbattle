@@ -64,7 +64,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
     }
 
     init(data) {
-          super.init(data);
+          
         this.enemyItemImages = [];
         this.isTimeUp = false;
         console.log("BattleScene: init (空)");
