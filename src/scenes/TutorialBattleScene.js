@@ -108,7 +108,7 @@ init(data) {
             this.stateManager.setSF('player_backpack', {});
         }
         if (this.stateManager.sf.player_inventory === undefined) {
-            this.stateManager.setSF('player_inventory', ['sword', 'luria', 'potion']);
+            this.stateManager.setSF('player_inventory', ['percival', 'fenny', 'yuel']);
         }
         if (this.stateManager.sf.player_profile === undefined) {
             console.log("新規プレイヤープロファイルを作成します。");
