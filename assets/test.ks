@@ -7,14 +7,26 @@
 [playbgm storage="bgm_prepare"]
 
 [image storage="titlelogo" time=500]
+[link target="*start_tutorial_test" text="チュートリアルテスト"]
+
 [link target="*start_score_attack" size=28 text="スコアアタック"]
-[link target="*start_rank_match" size=28 text="ランクマッチ"]
+;[link target="*start_rank_match" size=28 text="ランクマッチ"]
 [p]
 [s]
 ; assets/scenario/title.ks
 
 ; ...
+; title.ks
 
+
+*start_tutorial_test
+; まずTutorialTestSceneを起動
+[jump storage="TutorialTestScene"] 
+; その上で、オーバーレイを起動
+[eval exp="sf.test_flag = ''"]
+[call_overlay storage="tutorial_test.ks"]
+; 終わったらタイトルに戻る
+[jump storage="title.ks"]
 ; ...
 
 
