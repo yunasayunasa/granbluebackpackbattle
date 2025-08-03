@@ -1,8 +1,12 @@
+// src/handlers/end_overlay.js
+
 export function handleEndOverlay(manager, params) {
-    const fromSceneKey = manager.scene.scene.key; 
+    const fromSceneKey = manager.scene.scene.key; // "NovelOverlayScene"
+    
     manager.scene.scene.get('SystemScene').events.emit('end-overlay', {
         from: fromSceneKey,
-        returnTo: 'GameScene' // NovelOverlaySceneは常にGameSceneに戻る
+        // ★★★ 'GameScene' 固定ではなく、保存しておいた戻り先キーを使う ★★★
+        returnTo: manager.returnToSceneKey
     });
     return Promise.resolve();
 }
