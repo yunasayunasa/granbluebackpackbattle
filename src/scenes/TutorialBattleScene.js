@@ -178,7 +178,7 @@ init(data) {
 
         if (this.isTutorial) {
             // --- チュートリアルモードの場合 ---
-            const enemyData = EnemyGenerator.getLayoutByTheme('tutorial_enemy');
+            const enemyData = EnemyGenerator.getLayoutByTheme('tutorial_sandbag');
             this.currentEnemyLayout = enemyData.layout;
             this.setupEnemy(this.gridY, this.currentEnemyLayout);
             if (enemyData.avatar) this.enemyAvatar.setTexture(enemyData.avatar);
