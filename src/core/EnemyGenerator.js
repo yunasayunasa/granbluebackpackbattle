@@ -1,7 +1,9 @@
-import { ITEM_DATA } from './ItemData.js';
+ import { ITEM_DATA } from './ItemData.js';
 
 // STEP 1: キャラクタープールの自動生成
-const POOLS = { fire: [], water: [], earth: [], wind: [], light: [], dark: [], neutral: [] };
+const POOLS = { fire: [], water: [], earth: [], wind: [], light: [], dark: [], neutral: [],tutorial_dummy: ['yachima'], 
+    // 例: sword_enemyは攻撃してくるので、ブロックの練習相手に適している
+    tutorial_dummy_strong: ['sword'] };
 for (const itemId in ITEM_DATA) {
     const item = ITEM_DATA[itemId];
     if (!item.cost || !item.rarity) continue;
