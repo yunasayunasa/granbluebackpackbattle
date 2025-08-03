@@ -296,6 +296,7 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
     this.transitionWipe = this.add.rectangle(width * 1.5, height / 2, width, height, 0x000000)
         .setDepth(10000)
         .setScrollFactor(0);
+        this.stateManager.setSF('coins', this.stateManager.sf.coins || 0);
         this.events.emit('scene-ready');
         console.log("BattleScene: create 完了");
     }
