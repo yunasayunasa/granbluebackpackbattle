@@ -902,22 +902,33 @@ export default class TutorialBattleScene extends Phaser.Scene {
         });
     }
 
-    setupEnemy(gridY, currentLayout) {
+  setupEnemy(gridY) {
+        // チュートリアルでは、initで渡されたテーマキーを使う
         const enemyTheme = this.tutorialParams.enemyTheme || 'tutorial_sandbag';
-        const enemyData = EnemyGenerator.getLayoutByTheme(enemyTheme); // ← EnemyGeneratorに新メソッドが必要
+        console.log(`チュートリアル用の敵テーマ: ${enemyTheme}`);
+        
+        // 新しいメソッドを呼び出す
+        const enemyData = EnemyGenerator.getLayoutByTheme(enemyTheme);
+        
         if (enemyData) {
             this.currentEnemyLayout = enemyData.layout;
-        const gameWidth = this.scale.width;
-        const gridWidth = this.backpackGridSize * this.cellSize;
-        const enemyGridX = gameWidth - 100 - gridWidth;
-        const enemyGridY = gridY;
-        this.enemyItemImages.forEach(item => item.destroy());
-        this.enemyItemImages = [];
-        console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
-        for (const uniqueId in currentLayout) {
-            const layoutInfo = currentLayout[uniqueId];
-            const baseItemId = uniqueId.split('_')[0];
-            const itemData = ITEM_DATA[baseItemId];
+            
+            // ★★★ BattleSceneのsetupEnemyの中身をここに展開 ★★★
+            const gameWidth = this.scale.width;
+            const gridWidth = this.backpackGridSize * this.cellSize;
+            const enemyGridX = gameWidth - 100 - gridWidth;
+            const enemyGridY = gridY;
+
+            this.enemyItemImages.forEach(item => item.destroy());
+            this.enemyItemImages = [];
+
+            console.log(`Tutorial enemy layout:`, this.currentEnemyLayout);
+
+            for (const uniqueId in this.currentEnemyLayout) {
+                const layoutInfo = this.currentEnemyLayout[uniqueId];
+                const baseItemId = uniqueId.split('_')[0];
+                const itemData = ITEM_DATA[baseItemId];
+                if (!itemData) { continue; }
             if (!itemData) {
                 console.warn(`ITEM_DATAに'${baseItemId}'が見つかりません。`);
                 continue;
