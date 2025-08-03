@@ -42,8 +42,11 @@ const THEMES = {
     'earth_specialized': { pools: ['earth', 'neutral'], boss: REPRESENTATIVES.earth, avatar: 'avatar_siegfried' },
     'wind_specialized':  { pools: ['wind', 'neutral'],  boss: REPRESENTATIVES.wind, avatar: 'avatar_veirne' },
     'tutorial':          { pools: ['neutral'], avatar: 'enemy_avatar_placeholder' },
-    'final_battle':      { pools: ['fire', 'water', 'earth', 'wind'], boss: REPRESENTATIVES.dark, avatar: 'avatar_six' }
+    'final_battle':      { pools: ['fire', 'water', 'earth', 'wind'], boss: REPRESENTATIVES.dark, avatar: 'avatar_six' },
+    'tutorial_sandbag': { pools: ['tutorial_dummy'], avatar: 'enemy_avatar_placeholder' },
+    'tutorial_attacker': { pools: ['tutorial_dummy_strong'], avatar: 'enemy_avatar_placeholder' },
 };
+
 
 // STEP 4: ラウンドごとのルール定義
 const ROUND_RULES = {
