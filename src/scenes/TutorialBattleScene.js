@@ -26,6 +26,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
     constructor() {
        super('TutorialBattleScene');
         this.battleTimer = null;
+        this.isTutorial = true;
         this.pendingTutorialStep = null;
         this.battleTimerText = null;
         this.maxBattleDuration = 30;
@@ -64,7 +65,13 @@ export default class TutorialBattleScene extends Phaser.Scene {
         this.transitionWipe = null;
     }
 
-    init(data) {
+init(data) {
+        // ★★★ このブロックを追加 ★★★
+        this.isTutorial = true; // シーンが再利用される場合に備えてリセット
+        if (data && data.transitionParams && data.transitionParams.isTutorial) {
+            this.isTutorial = true;
+            console.log("チュートリアルモードで起動します。");
+        }
           
         this.enemyItemImages = [];
         this.isTimeUp = false;
