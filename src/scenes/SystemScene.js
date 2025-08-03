@@ -102,49 +102,59 @@ export default class SystemScene extends Phaser.Scene {
         });
     }
 
+   // src/scenes/SystemScene.js
+
     /**
-     * オーバーレイ表示のリクエストを処理
-     * @param {object} data - { from: string, scenario: string }
+     * オーバーレイ表示のリクエストを処理 (入力制御オプション付き)
+     * @param {object} data - { from: string, scenario: string, block_input: boolean }
      */
     _handleRequestOverlay(data) {
         console.log(`[SystemScene] オーバーレイ表示リクエストを受信 (from: ${data.from})`);
 
-        // オーバーレイ表示中は、背後のシーンの入力を無効化する
-        const fromScene = this.scene.get(data.from);
-        if (fromScene && fromScene.scene.isActive()) {
-            fromScene.input.enabled = false;
+        // block_inputパラメータをチェック。指定がないか、falseでない場合はtrue（入力をブロックする）
+        const shouldBlockInput = (data.block_input !== false);
+
+        if (shouldBlockInput) {
+            const fromScene = this.scene.get(data.from);
+            if (fromScene && fromScene.scene.isActive()) {
+                fromScene.input.enabled = false;
+                console.log(`[SystemScene] 背後のシーン[${data.from}]の入力を無効化しました。`);
+            }
+        } else {
+            console.log(`[SystemScene] 背後のシーン[${data.from}]の入力は有効のままです。`);
         }
 
-        // UISceneはオーバーレイの下に表示され続けるので、入力は有効のまま
-        
-        // NovelOverlaySceneを現在のシーンの上にlaunchする
+        // NovelOverlaySceneを起動し、入力ブロックの有無を伝える
         this.scene.launch('NovelOverlayScene', { 
             scenario: data.scenario,
             charaDefs: this.globalCharaDefs,
-            returnTo: data.from // どのシーンに戻るべきかを渡す
+            returnTo: data.from,
+            inputWasBlocked: shouldBlockInput 
         });
     }
 
     /**
-     * オーバーレイ終了のリクエストを処理
-     * @param {object} data - { from: 'NovelOverlayScene', returnTo: string }
+     * オーバーレイ終了のリクエストを処理 (入力制御オプション付き)
+     * @param {object} data - { from: 'NovelOverlayScene', returnTo: string, inputWasBlocked: boolean }
      */
     _handleEndOverlay(data) {
         console.log(`[SystemScene] オーバーレイ終了リクエストを受信 (return to: ${data.returnTo})`);
 
-        // NovelOverlaySceneを停止する
+        // NovelOverlaySceneを停止
         if (this.scene.isActive(data.from)) {
             this.scene.stop(data.from); 
         }
 
-        // 元のシーンの入力を再度有効化する
-        const returnScene = this.scene.get(data.returnTo);
-        if (returnScene && returnScene.scene.isActive()) { 
-            returnScene.input.enabled = true; 
-
-            console.log(`[SystemScene] シーン[${data.returnTo}]の入力を再有効化しました。`);
+        // 入力をブロック「していた」場合のみ、再度有効化する
+        if (data.inputWasBlocked) {
+            const returnScene = this.scene.get(data.returnTo);
+            if (returnScene && returnScene.scene.isActive()) { 
+                returnScene.input.enabled = true; 
+                console.log(`[SystemScene] シーン[${data.returnTo}]の入力を再有効化しました。`);
+            }
+        } else {
+             console.log(`[SystemScene] シーン[${data.returnTo}]の入力はもともと有効だったので、何もしません。`);
         }
-        this.events.emit('end-overlay-complete');
     }
 
 // ... SystemScene.js の他のメソッド ...
