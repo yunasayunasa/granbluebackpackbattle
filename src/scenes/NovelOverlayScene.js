@@ -69,6 +69,7 @@ export default class NovelOverlayScene extends Phaser.Scene {
         }
     }
    create() {
+     this.scene.bringToTop();
         this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
         
         // --- レイヤー生成 ---
