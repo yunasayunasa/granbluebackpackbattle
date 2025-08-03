@@ -101,7 +101,7 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         this.titleButton = this.add.text(this.scale.width / 2, this.scale.height - 100, 'タイトルへ戻る', { fontSize: '32px', fill: '#fff', backgroundColor: '#0055aa', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setAlpha(0);
         const totalAnimationTime = startDelay + resultLines.length * stepDelay + 500;
         this.time.delayedCall(totalAnimationTime, () => {
-            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+            this._playExpBarAnimation(rpChange, finalRp - rpChange, newRank !== oldRank);
         });
         
         this.titleButton.on('pointerdown', () => {
@@ -123,5 +123,108 @@ export default class RankMatchScoreScene extends Phaser.Scene {
         if (rp >= 300) return 'A';
         if (rp >= 100) return 'B';
         return 'C';
+    }
+        async _playExpBarAnimation(rpGained, oldTotalRp, didRankUp) {
+        const { width, height } = this.scale;
+        
+        const oldRankKey = this.getRankKeyForRp(oldTotalRp);
+        const oldRankData = this.rankMap[oldRankKey];
+        if (!oldRankData) {
+            this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+            return;
+        }
+        
+        const rankKeys = Object.keys(this.rankMap);
+        const oldRankIndex = rankKeys.indexOf(oldRankKey);
+        const prevRankThreshold = oldRankIndex > 0 ? this.rankMap[rankKeys[oldRankIndex - 1]].threshold : 0;
+        
+        const barWidth = 600; const barHeight = 30;
+        const barX = width / 2; const barY = height / 2 + 150; // Y座標を調整
+        
+        this.add.graphics().fillStyle(0x333333).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight);
+        const rpBar = this.add.graphics();
+        const rpText = this.add.text(barX, barY + 40, `RP:`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+
+        const currentRankImageKey = oldRankData.image || 'rank_c';
+        this.add.image(barX - barWidth / 2 - 50, barY, currentRankImageKey).setScale(barHeight * 2 / 256);
+        
+        const nextRankKey = Object.keys(this.rankMap)[oldRankIndex + 1];
+        if (nextRankKey) {
+            const nextRankImageKey = this.rankMap[nextRankKey]?.image || 'rank_c';
+            this.add.image(barX + barWidth / 2 + 50, barY, nextRankImageKey).setScale(barHeight * 2 / 256).setTint(0x333333);
+        }
+
+        const targetRp = oldTotalRp + rpGained;
+        const rankThreshold = oldRankData.threshold;
+        const rankRpRange = rankThreshold - prevRankThreshold;
+        const startRpInRank = oldTotalRp - prevRankThreshold;
+        const startWidth = (startRpInRank / rankRpRange) * barWidth;
+
+        rpBar.fillStyle(0x4a90e2).fillRect(barX - barWidth / 2, barY - barHeight / 2, startWidth, barHeight);
+        rpText.setText(`RP: ${Math.floor(oldTotalRp)} / ${rankThreshold}`);
+        
+        try { this.soundManager.playSe('se_exp_bar_fill'); } catch(e) {}
+        
+        const rpCounter = { value: oldTotalRp };
+        const tween = this.tweens.add({
+            targets: rpCounter, value: targetRp, duration: 1500, ease: 'Cubic.easeOut',
+            onUpdate: () => {
+                const animatedRp = rpCounter.value;
+                const rpInRank = animatedRp - prevRankThreshold;
+                let progress = rpInRank / rankRpRange;
+                if (progress >= 1.0 && didRankUp) {
+                    progress = 1.0;
+                    if (tween.isPlaying()) tween.pause();
+                    this._playRankUpEffect().then(() => {
+                        // TODO: ランクアップ後のゲージ継続アニメーション
+                        this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+                    });
+                }
+                rpBar.clear().fillStyle(0x4a90e2).fillRect(barX - barWidth / 2, barY - barHeight / 2, barWidth * progress, barHeight);
+                rpText.setText(`RP: ${Math.floor(animatedRp)} / ${rankThreshold}`);
+            },
+            onComplete: () => {
+                if (!didRankUp) {
+                    this.tweens.add({ targets: this.titleButton, alpha: 1, duration: 500 });
+                }
+            }
+        });
+    }
+    
+    _playRankUpEffect() {
+        return new Promise(resolve => {
+            const { width, height } = this.scale;
+            const newRankKey = this.stateManager.sf.rank_match_profile.rank;
+            const rankImageKey = this.rankMap[newRankKey]?.image || 'rank_c';
+            try { this.soundManager.playSe('se_rank_up'); } catch(e) {}
+            this.cameras.main.shake(300, 0.01);
+            
+            const rankGlow = this.add.image(width / 2, height / 2, rankImageKey).setDepth(6999).setTint(0xffff00).setBlendMode('ADD').setAlpha(0);
+            const rankImage = this.add.image(width / 2, height / 2, rankImageKey).setDepth(7000).setScale(3).setAlpha(0);
+            
+            this.tweens.chain({
+                targets: rankImage,
+                tweens: [
+                    { scale: 1, alpha: 1, duration: 300, ease: 'Elastic.Out(1, 0.5)' },
+                    { scale: 1, duration: 800, onStart: () => {
+                        this.tweens.add({ targets: rankGlow, alpha: 0.7, scale: 1.1, duration: 400, ease: 'Cubic.easeOut', yoyo: true });
+                    }}
+                ],
+                onComplete: () => {
+                    const continueText = this.add.text(width / 2, height - 150, 'TAP TO CONTINUE', { fontSize: '28px', fill: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(8000);
+                    this.input.once('pointerdown', () => {
+                        continueText.destroy();
+                        this.tweens.add({
+                            targets: [rankImage, rankGlow], alpha: 0, duration: 300,
+                            onComplete: () => {
+                                rankImage.destroy();
+                                rankGlow.destroy();
+                                resolve();
+                            }
+                        });
+                    });
+                }
+            });
+        });
     }
 }
