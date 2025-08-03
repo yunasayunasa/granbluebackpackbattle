@@ -903,18 +903,18 @@ export default class TutorialBattleScene extends Phaser.Scene {
         });
     }
 
-  setupEnemy(gridY) {
-        // チュートリアルでは、initで渡されたテーマキーを使う
-        const enemyTheme = this.tutorialParams.enemyTheme || 'tutorial_sandbag';
-        console.log(`チュートリアル用の敵テーマ: ${enemyTheme}`);
+  // setupEnemy() メソッドを、これで丸ごと置き換える
+
+    setupEnemy(gridY) {
+        console.log(`チュートリアル用の敵を生成します。`);
         
-        // 新しいメソッドを呼び出す
-        const enemyData = EnemyGenerator.getLayoutByTheme(enemyTheme);
+        // チュートリアル1戦目は、サンドバッグ役の敵を固定で生成
+        const enemyData = EnemyGenerator.getLayoutByTheme('tutorial_step1_enemy');
         
         if (enemyData) {
             this.currentEnemyLayout = enemyData.layout;
             
-            // ★★★ BattleSceneのsetupEnemyの中身をここに展開 ★★★
+            // BattleSceneのsetupEnemyの中身をここに展開
             const gameWidth = this.scale.width;
             const gridWidth = this.backpackGridSize * this.cellSize;
             const enemyGridX = gameWidth - 100 - gridWidth;
@@ -930,59 +930,19 @@ export default class TutorialBattleScene extends Phaser.Scene {
                 const baseItemId = uniqueId.split('_')[0];
                 const itemData = ITEM_DATA[baseItemId];
                 if (!itemData) { continue; }
-            if (!itemData) {
-                console.warn(`ITEM_DATAに'${baseItemId}'が見つかりません。`);
-                continue;
+                const containerWidth = itemData.shape[0].length * this.cellSize;
+                const containerHeight = itemData.shape.length * this.cellSize;
+                const itemContainer = this.add.container(enemyGridX + (layoutInfo.col * this.cellSize) + (containerWidth / 2), enemyGridY + (layoutInfo.row * this.cellSize) + (containerHeight / 2)).setSize(containerWidth, containerHeight);
+                const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+                itemContainer.add([itemImage]);
+                itemContainer.setData({ itemId: baseItemId, uniqueId: uniqueId });
+                itemContainer.setDepth(3);
+                this.enemyItemImages.push(itemContainer);
             }
-            const containerWidth = itemData.shape[0].length * this.cellSize;
-            const containerHeight = itemData.shape.length * this.cellSize;
-            const itemContainer = this.add.container(
-                enemyGridX + (layoutInfo.col * this.cellSize) + (containerWidth / 2),
-                enemyGridY + (layoutInfo.row * this.cellSize) + (containerHeight / 2)
-            ).setSize(containerWidth, containerHeight);
-            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false);
-            const maskGraphics = this.add.graphics().setVisible(false);
-            recastOverlay.setMask(maskGraphics.createGeometryMask());
-            itemContainer.add([itemImage, recastOverlay, maskGraphics]);
-            itemContainer.setData({ itemId: baseItemId, uniqueId: uniqueId, recastOverlay, recastMask: maskGraphics });
-            const hasRecast = itemData.recast && itemData.recast > 0;
-            recastOverlay.setVisible(hasRecast);
-            itemContainer.setDepth(3).setInteractive({ draggable: false });
-            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-                event.stopPropagation();
-                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                let tooltipText = `【${baseItemId}】\n`;
-                const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                if (itemElements.length > 0) {
-                    tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-                }
-                const sizeH = itemData.shape.length;
-                const sizeW = itemData.shape[0].length;
-                tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-                if (itemData.action) {
-                    const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
-                    actions.forEach(action => {
-                        tooltipText += `効果: ${action.type} ${action.value}\n`;
-                    });
-                }
-                if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-                if (itemData.synergy) {
-                    tooltipText += `\nシナジー:\n`;
-                    const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
-                    const dir = t(itemData.synergy.direction);
-                    effects.forEach(effect => {
-                        const effectType = t(effect.type);
-                        tooltipText += `  - ${dir}の味方に\n`;
-                        tooltipText += `    効果: ${effectType} +${effect.value}\n`;
-                    });
-                }
-                this.tooltip.show(itemContainer, tooltipText);
-            });
-            this.enemyItemImages.push(itemContainer);
+        } else {
+            console.error(`チュートリアル用の敵の生成に失敗しました。`);
         }
     }
-  }
     playResonanceAura(targetObject, color) {
         if (!targetObject || !targetObject.active) return;
         const centerX = targetObject.x;
@@ -1257,6 +1217,22 @@ export default class TutorialBattleScene extends Phaser.Scene {
         }
         this.updateArrowVisibility(itemContainer);
         this.updateInventoryLayout();
+
+        // ★★★ このブロックをメソッドの末尾に追加 ★★★
+        // チュートリアル中の操作完了を検知
+        const tutorialStep = this.stateManager.f.tutorial_step;
+        if (tutorialStep === 'place_sword' && itemContainer.getData('itemId') === 'sword') {
+            console.log("チュートリアル: 剣が置かれました。次のステップへ。");
+            // 剣以外のアイテムも操作可能に戻す
+            this.inventoryItemImages.forEach(item => item.setInteractive());
+            
+            // 次の説明オーバーレイをリクエスト
+            this.scene.get('SystemScene').events.emit('request-overlay', { 
+                from: this.scene.key,
+                scenario: 'tutorial_step2.ks' // ★次のシナリオファイル
+            });
+        }
+        // ★★★ 追加ここまで ★★★
     }
 
     removeItemFromBackpack(itemContainer) {
