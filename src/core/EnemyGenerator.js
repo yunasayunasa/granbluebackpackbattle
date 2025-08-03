@@ -1,9 +1,12 @@
- import { ITEM_DATA } from './ItemData.js';
+// src/core/EnemyGenerator.js
 
-// STEP 1: キャラクタープールの自動生成
-const POOLS = { fire: [], water: [], earth: [], wind: [], light: [], dark: [], neutral: [],tutorial_dummy: ['yachima'], 
-    // 例: sword_enemyは攻撃してくるので、ブロックの練習相手に適している
-    tutorial_dummy_strong: ['sword'] };
+import { ITEM_DATA } from './ItemData.js';
+
+const POOLS = { 
+    fire: [], water: [], earth: [], wind: [], light: [], dark: [], neutral: [],
+    tutorial_dummy: ['yachima'], 
+    tutorial_dummy_strong: ['sword'] 
+};
 for (const itemId in ITEM_DATA) {
     const item = ITEM_DATA[itemId];
     if (!item.cost || !item.rarity) continue;
@@ -18,25 +21,15 @@ for (const itemId in ITEM_DATA) {
 }
 console.log("自動生成されたキャラクタープール:", POOLS);
 
-// STEP 2: 代表キャラクター（ボス）の定義
 const REPRESENTATIVES = {
     fire: 'perceval', water: 'lancelot', earth: 'siegfried',
     wind: 'veirne', light: 'funf', dark: 'six'
 };
 
-// ★★★ ランダムアバターの候補リストを定義 ★★★
-const RANDOM_AVATAR_POOL = [
-    'avatar_angel', 
-    'avatar_demon', 
-    'avatar_adventurer',
-];
+const RANDOM_AVATAR_POOL = ['avatar_angel', 'avatar_demon', 'avatar_adventurer'];
 
-// STEP 3: テーマの定義
 const THEMES = {
-    // ★★★【案Aの仕様】混合テーマのみアバター指定なし ★★★
     'mixed_elements':    { pools: ['fire', 'wind', 'earth', 'neutral'] }, 
-    
-    // 他のテーマは全て固定アバターを指定
     'light_specialized': { pools: ['light', 'neutral'], avatar: 'avatar_funf' }, 
     'dark_specialized':  { pools: ['dark', 'neutral'],  avatar: 'avatar_demon_lord' },
     'fire_specialized':  { pools: ['fire', 'neutral'],  boss: REPRESENTATIVES.fire, avatar: 'avatar_perceval' },
@@ -49,8 +42,6 @@ const THEMES = {
     'tutorial_attacker': { pools: ['tutorial_dummy_strong'], avatar: 'enemy_avatar_placeholder' },
 };
 
-
-// STEP 4: ラウンドごとのルール定義
 const ROUND_RULES = {
     1: { themePool: ['tutorial'], budget: 30, count: Phaser.Math.Between(1, 2) },
     2: { themePool: ['light_specialized', 'dark_specialized', 'mixed_elements'], budget: 50, count: 3 },
@@ -65,12 +56,7 @@ const ROUND_RULES = {
 };
 
 export const EnemyGenerator = {
-  /**
-     * 指定されたテーマキーに基づいて、敵のレイアウトを生成する
-     * (チュートリアルやストーリーモードでの固定敵生成用)
-     * @param {string} themeKey - THEMESオブジェクトのキー
-     * @returns {object|null} - { layout: object, avatar: string } または null
-     */
+  
     getLayoutByTheme(themeKey) {
         const theme = THEMES[themeKey];
         if (!theme) {
@@ -80,8 +66,6 @@ export const EnemyGenerator = {
         
         console.log(`%c[EnemyGenerator] Generating layout for specific theme: "${themeKey}"`, "color: green;");
         
-        // --- チーム編成 ---
-        // プールから全てのキャラクターをチーム候補とする
         let candidatePool = [];
         theme.pools.forEach(poolKey => {
             if (POOLS[poolKey]) {
@@ -95,7 +79,6 @@ export const EnemyGenerator = {
             team.push(`${id}_${uniqueCounter++}`);
         });
 
-        // --- 自動配置 (getLayoutForRoundからロジックを流用) ---
         const layout = {};
         const gridSize = 6;
         const backpack = Array(gridSize).fill(0).map(() => Array(gridSize).fill(false));
@@ -132,17 +115,14 @@ export const EnemyGenerator = {
             if (bestPosition) { placeItem(uniqueId, bestPosition.r, bestPosition.c); } 
             else { console.warn(`[EnemyGenerator] アイテム'${uniqueId}'を配置するスペースがありませんでした。`); }
         });
-        // (長いので省略しますが、getLayoutForRoundの自動配置アルゴリズムをここにコピー)
-        // ...
         
         return {
             layout: layout,
             avatar: theme.avatar
         };
-    }
-};
+    }, // ★★★ メソッドの終わりにはカンマが必要 ★★★
+
     getLayoutForRound(round) {
-        // ... (STEP 1〜3のチーム編成アルゴリズムは変更なし) ...
         const rule = ROUND_RULES[round] || ROUND_RULES[Object.keys(ROUND_RULES).pop()];
         if (!rule) { console.error(`ラウンド${round}のルールが定義されていません。`); return {}; }
         const themeKey = Phaser.Utils.Array.GetRandom(rule.themePool);
@@ -175,7 +155,6 @@ export const EnemyGenerator = {
         }
         console.log("[EnemyGenerator] Generated Team:", team);
 
-        // ... (STEP 4の自動配置アルゴリズムは変更なし) ...
         const layout = {};
         const gridSize = 6;
         const backpack = Array(gridSize).fill(0).map(() => Array(gridSize).fill(false));
@@ -215,7 +194,6 @@ export const EnemyGenerator = {
 
         console.log("[EnemyGenerator] Final Intelligent Layout:", layout);
         
-        // ★★★ アバター決定ロジック（変更なしで案Aに対応） ★★★
         let selectedAvatar = theme.avatar;
         if (!selectedAvatar && RANDOM_AVATAR_POOL.length > 0) {
             selectedAvatar = Phaser.Utils.Array.GetRandom(RANDOM_AVATAR_POOL);
@@ -226,5 +204,5 @@ export const EnemyGenerator = {
             layout: layout,
             avatar: selectedAvatar
         };
-    }
+    } // ★★★ 最後のメソッドの後にはカンマは不要 ★★★
 };
