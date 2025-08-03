@@ -1,5 +1,6 @@
 export default class ScenarioManager {
-    constructor(scene, layers, charaDefs, messageWindow, soundManager, stateManager, configManager) {
+    constructor(scene, layers, charaDefs, messageWindow, soundManager, stateManager, configManager,returnToSceneKey
+    ) {
         this.scene = scene;
         this.layers = layers;
         this.characterDefs = charaDefs || {};
@@ -7,6 +8,7 @@ export default class ScenarioManager {
         this.soundManager = soundManager;
         this.stateManager = stateManager;
         this.configManager = configManager;
+        this.returnToSceneKey = returnToSceneKey; 
 
         this.scenario = [];
         this.currentFile = null;
