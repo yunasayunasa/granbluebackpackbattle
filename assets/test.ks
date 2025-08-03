@@ -21,7 +21,7 @@
 
 *start_tutorial_test
 ; まずTutorialTestSceneを起動
-[jump storage="TutorialTestScene"] 
+[jump storage="TutoriaBattleScene"] 
 ; その上で、オーバーレイを起動
 [eval exp="sf.test_flag = ''"]
 [call_overlay storage="tutorial_test.ks"]
