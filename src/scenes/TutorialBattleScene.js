@@ -63,7 +63,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
     }
 
     init(data) {
-          super.init(data);
+          
         this.enemyItemImages = [];
         this.isTimeUp = false;
         console.log("BattleScene: init (空)");
@@ -86,8 +86,8 @@ export default class TutorialBattleScene extends Phaser.Scene {
         // ← これがもしエラーになるなら、BattleSceneのcreateの中身をここにコピペする
 
         // チュートリアルでは不要なUIを非表示にする
-        if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
-        if (this.resetButton) this.resetButton.setVisible(false);
+       // if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
+      //  if (this.resetButton) this.resetButton.setVisible(false);
     
         this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("BattleScene: create - データ永続化対応版 (sf)");
