@@ -256,7 +256,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
      // ★★★ このブロックを追加 ★★★
         // チュートリアル中は不要なボタンを隠す
         if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
-        const resetButton = this.children.list.find(child => child.text === '[ リセット ]');
+       // const resetButton = this.children.list.find(child => child.text === '[ リセット ]');
         if(resetButton) resetButton.setVisible(false);
         this.startBattleButton.setVisible(false); // 戦闘開始ボタンも最初は隠す
         // ★★★ 追加ここまで ★★★
