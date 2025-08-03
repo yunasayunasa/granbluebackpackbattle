@@ -126,7 +126,7 @@ export default class SystemScene extends Phaser.Scene {
 
         // NovelOverlaySceneを起動し、入力ブロックの有無を伝える
         this.scene.launch('NovelOverlayScene', { 
-            this.scene.bringToTop('NovelOverlayScene')
+            
             scenario: data.scenario,
             charaDefs: this.globalCharaDefs,
             returnTo: data.from,
