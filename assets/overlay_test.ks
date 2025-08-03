@@ -1,5 +1,6 @@
 ; === オーバーレイ表示テスト用シナリオ ===
-
+@image key="tutorial_elements" storage="images/tutorial_elements.png"
+@image key="tutorial_arrow" storage="images/tutorial_arrow.jpg"
 [chara_show name="lancelot" pos="center" time=500]
 [wait time=500]
 
@@ -15,13 +16,13 @@ lancelot:次にナップサックバトルで最も重要なバフを紹介し�
 lancelot:それが「属性共鳴」と「ヤジルシナジー」だ。
 [walk name="lancelot" x=1000]
 [chara_show name="lancelot" x=1000 time=0]
-;[image storage="tutorial_elements" layer="cg" time=500]
+[image storage="tutorial_elements" layer="cg" time=500]
 lancelot:各キャラクターには属性が設定してある。俺なら水属性といった感じだな。
 lancelot:そして、同じ属性のキャラクターを3人以上揃えると発動するのが属性共鳴だ！
 lancelot:同じ属性のキャラクターは全てこの属性共鳴のバフを受けられるんだ。
 lancelot:違う属性、例えばヴェインやパーシヴァルは水の属性共鳴は受けられないんだ。
 lancelot:属性共鳴の効果は属性ごとに違うから、説明書を読んでくれ。
-;[image storage="tutorial_arrow" layer="cg" time=500]
+[image storage="tutorial_arrow" layer="cg" time=500]
 lancelot:次にヤジルシナジーについて説明しよう。
 lancelot:一部のキャラには黄色い矢印が付いていることがある。
 lancelot:この矢印の隣にキャラを配置することで、バフを受けられるのが、ヤジルシナジーだ！
