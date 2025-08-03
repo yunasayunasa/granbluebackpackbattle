@@ -99,6 +99,8 @@ export default class TutorialBattleScene extends Phaser.Scene {
             .setDepth(-1);
         
         this.stateManager = this.sys.registry.get('stateManager');
+           this.stateManager.on('f-variable-changed', this.onTutorialStepChange, this);
+        this.soundManager = this.sys.registry.get('soundManager');
         this.soundManager = this.sys.registry.get('soundManager');
         this.firebaseManager = this.sys.registry.get('firebaseManager');
         this.tooltip = new Tooltip(this);
@@ -1940,4 +1942,30 @@ export default class TutorialBattleScene extends Phaser.Scene {
         // ★★★ console.log の代わりに、uploadGhostData を呼び出す ★★★
         await this.firebaseManager.uploadGhostData(rankMatchData);
     }
-}
+    // ファイルの末尾、shutdown() の後などに追加
+
+    // f.tutorial_step の変化に応じて、操作可能なアイテムを制限する
+    onTutorialStepChange(key, value) {
+        if (key !== 'f.tutorial_step') return;
+        
+        console.log(`チュートリアルのステップが [${value}] に変わりました。`);
+        
+        // 全てのインベントリアイテムを取得
+        const allItems = this.inventoryItemImages.filter(item => item.active);
+
+        // 一旦、全てのアイテムの操作をできなくする
+        allItems.forEach(item => item.disableInteractive());
+        
+        if (value === 'place_sword') {
+            // "sword" だけを探して、操作可能にする
+            const sword = allItems.find(item => item.getData('itemId') === 'sword');
+            if (sword) {
+                sword.setInteractive();
+                console.log("剣だけが操作可能です。");
+            }
+        }
+    }
+
+    
+} // ← クラスの閉じ括弧
+
