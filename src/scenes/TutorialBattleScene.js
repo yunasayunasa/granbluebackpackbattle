@@ -81,15 +81,8 @@ export default class TutorialBattleScene extends Phaser.Scene {
                 from: this.scene.key,
                 scenario: 'tutorial_step1.ks' // ★最初のシナリオを指定
             });
-        });
-        // ★ 4. BattleSceneのcreate処理を呼び出す
-        //    (ただし、チュートリアルに不要な部分はコメントアウト)
-        // ← これがもしエラーになるなら、BattleSceneのcreateの中身をここにコピペする
+        });// BattleScene.js (最終決定版・完全体)
 
-        // チュートリアルでは不要なUIを非表示にする
-       // if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
-      //  if (this.resetButton) this.resetButton.setVisible(false);
-    
         this.cameras.main.fadeIn(300, 0, 0, 0); 
         console.log("BattleScene: create - データ永続化対応版 (sf)");
         const backgroundKeys = ['background1', 'background2', 'background3', 'background4'];
@@ -99,10 +92,6 @@ export default class TutorialBattleScene extends Phaser.Scene {
             .setDepth(-1);
         
         this.stateManager = this.sys.registry.get('stateManager');
-           console.log("[TutorialBattleScene] StateManagerのイベントリスナーを登録しようとしています...", this.stateManager);
-        this.stateManager.on('f-variable-changed', this.onTutorialStepChange, this);
-        console.log("[TutorialBattleScene] イベントリスナーの登録が完了しました。");
-        this.soundManager = this.sys.registry.get('soundManager');
         this.soundManager = this.sys.registry.get('soundManager');
         this.firebaseManager = this.sys.registry.get('firebaseManager');
         this.tooltip = new Tooltip(this);
@@ -256,13 +245,6 @@ export default class TutorialBattleScene extends Phaser.Scene {
         this.startBattleButton = this.add.text(gameWidth / 2, inventoryAreaY - 40, '戦闘開始', { fontSize: '28px', backgroundColor: '#080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(this.startBattleButton);
        // create() の中の startBattleButton のリスナー部分
-     // ★★★ このブロックを追加 ★★★
-        // チュートリアル中は不要なボタンを隠す
-        if (this.shopToggleButton) this.shopToggleButton.setVisible(false);
-       // const resetButton = this.children.list.find(child => child.text === '[ リセット ]');
-        if(resetButton) resetButton.setVisible(false);
-        this.startBattleButton.setVisible(false); // 戦闘開始ボタンも最初は隠す
-        // ★★★ 追加ここまで ★★★
 
     this.startBattleButton.on('pointerdown', () => {
             try { this.soundManager.playSe('se_button_click'); } catch (e) {}
@@ -323,23 +305,6 @@ export default class TutorialBattleScene extends Phaser.Scene {
         console.log("コイン表示を強制更新します。");
             this.stateManager.setSF('coins', currentCoins + 1);
             this.stateManager.setSF('coins', currentCoins);
-          if (this.pendingTutorialStep) {
-            console.log(`保留されていたステップ [${this.pendingTutorialStep}] を適用します。`);
-            const allItems = this.inventoryItemImages.filter(item => item.active);
-
-            if (this.pendingTutorialStep === 'place_sword') {
-                allItems.forEach(item => {
-                    if (item.getData('itemId') === 'sword') {
-                        item.setInteractive();
-                    } else {
-                        item.disableInteractive().setVisible(false);
-                    }
-                });
-            }
-            // ... (他のステップの処理) ...
-
-            this.pendingTutorialStep = null; // 適用したらクリア
-        }
         
         this.events.emit('scene-ready');
         console.log("BattleScene: create 完了");
@@ -931,35 +896,18 @@ export default class TutorialBattleScene extends Phaser.Scene {
         });
     }
 
-  // setupEnemy() メソッドを、これで丸ごと置き換える
-
-      setupEnemy(gridY) {
-        // チュートリアルでは、initで渡されたテーマキーを使う
-        const enemyTheme = this.tutorialParams.enemyTheme || 'tutorial_sandbag';
-        console.log(`チュートリアル用の敵テーマ: ${enemyTheme}`);
-        
-        // 新しいメソッドを呼び出す
-        const enemyData = EnemyGenerator.getLayoutByTheme(enemyTheme);
-        
-        if (enemyData) {
-            this.currentEnemyLayout = enemyData.layout;
-            
-            // ★★★ BattleSceneのsetupEnemyの中身をここに展開 ★★★
-            const gameWidth = this.scale.width;
-            const gridWidth = this.backpackGridSize * this.cellSize;
-            const enemyGridX = gameWidth - 100 - gridWidth;
-            const enemyGridY = gridY;
-
-            this.enemyItemImages.forEach(item => item.destroy());
-            this.enemyItemImages = [];
-
-            console.log(`Tutorial enemy layout:`, this.currentEnemyLayout);
-
-            for (const uniqueId in this.currentEnemyLayout) {
-                const layoutInfo = this.currentEnemyLayout[uniqueId];
-                const baseItemId = uniqueId.split('_')[0];
-                const itemData = ITEM_DATA[baseItemId];
-                if (!itemData) { continue; }
+    setupEnemy(gridY, currentLayout) {
+        const gameWidth = this.scale.width;
+        const gridWidth = this.backpackGridSize * this.cellSize;
+        const enemyGridX = gameWidth - 100 - gridWidth;
+        const enemyGridY = gridY;
+        this.enemyItemImages.forEach(item => item.destroy());
+        this.enemyItemImages = [];
+        console.log(`Round ${this.initialBattleParams.round} enemy layout:`, currentLayout);
+        for (const uniqueId in currentLayout) {
+            const layoutInfo = currentLayout[uniqueId];
+            const baseItemId = uniqueId.split('_')[0];
+            const itemData = ITEM_DATA[baseItemId];
             if (!itemData) {
                 console.warn(`ITEM_DATAに'${baseItemId}'が見つかりません。`);
                 continue;
@@ -1012,7 +960,7 @@ export default class TutorialBattleScene extends Phaser.Scene {
             this.enemyItemImages.push(itemContainer);
         }
     }
-  }
+
     playResonanceAura(targetObject, color) {
         if (!targetObject || !targetObject.active) return;
         const centerX = targetObject.x;
@@ -1287,22 +1235,6 @@ export default class TutorialBattleScene extends Phaser.Scene {
         }
         this.updateArrowVisibility(itemContainer);
         this.updateInventoryLayout();
-
-        // ★★★ このブロックをメソッドの末尾に追加 ★★★
-        // チュートリアル中の操作完了を検知
-        const tutorialStep = this.stateManager.f.tutorial_step;
-        if (tutorialStep === 'place_sword' && itemContainer.getData('itemId') === 'sword') {
-            console.log("チュートリアル: 剣が置かれました。次のステップへ。");
-            // 剣以外のアイテムも操作可能に戻す
-            this.inventoryItemImages.forEach(item => item.setInteractive());
-            
-            // 次の説明オーバーレイをリクエスト
-            this.scene.get('SystemScene').events.emit('request-overlay', { 
-                from: this.scene.key,
-                scenario: 'tutorial_step2.ks' // ★次のシナリオファイル
-            });
-        }
-        // ★★★ 追加ここまで ★★★
     }
 
     removeItemFromBackpack(itemContainer) {
@@ -2010,18 +1942,4 @@ export default class TutorialBattleScene extends Phaser.Scene {
         // ★★★ console.log の代わりに、uploadGhostData を呼び出す ★★★
         await this.firebaseManager.uploadGhostData(rankMatchData);
     }
-    // ファイルの末尾、shutdown() の後などに追加
-
-    // f.tutorial_step の変化に応じて、操作可能なアイテムを制限する
-    // scenes/TutorialBattleScene.js
-
-      onTutorialStepChange(key, value) {
-        if (key !== 'f.tutorial_step') return;
-        console.log(`チュートリアルステップの変更を検知: [${value}]。後で適用します。`);
-        // ★ すぐに処理せず、どのステップかを記録しておくだけ
-        this.pendingTutorialStep = value;
-    }
-    
-
-    
-} // ← クラスの閉じ括弧
+}
