@@ -21,6 +21,13 @@
 
 *start_tutorial_test
 ; まずTutorialTestSceneを起動
+[eval exp="f = {}"]
+[eval exp="sf.retry_count = 0"]
+[eval exp="sf.player_backpack = {}"]
+[eval exp="sf.player_inventory = ['sword', 'luria', 'potion']"]
+[eval exp="sf.round = 1"]
+[eval exp="sf.coins = 20"]
+[eval exp="sf.player_base_max_hp = 100"]
 [jump storage="TutorialBattleScene"] 
 ; その上で、オーバーレイを起動
 [eval exp="sf.test_flag = ''"]
