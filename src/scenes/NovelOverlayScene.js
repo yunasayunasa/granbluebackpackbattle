@@ -85,8 +85,8 @@ export default class NovelOverlayScene extends Phaser.Scene {
             .setDepth(100); // UIより手前に来るように高いDepthを設定
 
         this.configManager = this.sys.registry.get('configManager');
-        this.stateManager = new StateManager();
-        this.soundManager = new SoundManager(this, this.configManager);
+        this.stateManager = this.sys.registry.get('stateManager');
+        this.soundManager = this.sys.registry.get('soundManager');
         this.messageWindow = new MessageWindow(this, this.soundManager, this.configManager);
         
         // ★★★ messageWindowはSceneのadd.existingで追加する ★★★
