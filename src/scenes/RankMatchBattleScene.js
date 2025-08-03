@@ -296,7 +296,12 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
     this.transitionWipe = this.add.rectangle(width * 1.5, height / 2, width, height, 0x000000)
         .setDepth(10000)
         .setScrollFactor(0);
-        this.stateManager.setSF('coins', this.stateManager.sf.coins || 0);
+       const currentCoins = this.stateManager.sf.coins || 0;
+        if (this.isFirstRound) { // 初回ラウンドでのみ実行
+            console.log("コイン表示を強制更新します。");
+            this.stateManager.setSF('coins', currentCoins + 1);
+            this.stateManager.setSF('coins', currentCoins);
+        }
         this.events.emit('scene-ready');
         console.log("BattleScene: create 完了");
     }
