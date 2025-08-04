@@ -1143,29 +1143,39 @@ export default class BattleScene extends Phaser.Scene {
         return itemContainer;
     }
 
+    // rotateItem メソッドを、このシンプル版に置き換えてください
+
     rotateItem(itemContainer) {
-        try{this.soundManager.playSe('se_item_rotate'); } catch (e) {}
-        const originalRotation = itemContainer.getData('rotation');
+        const originalRotation = itemContainer.getData('rotation') || 0;
         const newRotation = (originalRotation + 90) % 360;
+        
+        // --- 1. まず、回転後の状態をデータとして仮設定 ---
         itemContainer.setData('rotation', newRotation);
+
         const gridPos = itemContainer.getData('gridPos');
         if (gridPos) {
+            // --- 2. グリッド内での回転の場合 ---
+            // 回転後に配置不能になるかチェック
             if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
+                // ★ 配置不能なら、回転をキャンセルして元の角度に戻すだけ
+                console.log("回転できません：スペースがありません。");
+                try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
                 itemContainer.setData('rotation', originalRotation);
-                this.removeItemFromBackpack(itemContainer);
-                this.tweens.add({
-                    targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'),
-                    angle: 0, duration: 200, ease: 'Power2',
-                    onComplete: () => {
-                        itemContainer.setData('rotation', 0);
-                        this.updateArrowVisibility(itemContainer);
-                    }
-                });
-                return;
+                return; // ★ インベントリに戻さず、ここで処理を終了
             }
         }
+
+        // --- 3. 回転が可能な場合 ---
+        try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+        
+        // 見た目の角度を更新
         itemContainer.setAngle(newRotation);
+        
+        // 矢印の表示を更新
         this.updateArrowVisibility(itemContainer);
+
+        // 状態をセーブ
+        this.time.delayedCall(100, () => { this.saveBackakState(); });
     }
     
     _rotateMatrix(matrix) {
