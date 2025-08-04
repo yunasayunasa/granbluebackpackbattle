@@ -211,7 +211,7 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
         this.sellZoneText = this.add.text(sellZoneX, sellZoneY, 'ド\nラ\nッ\nグ\nし\nて\n売\n却', { fontSize: '24px', fill: '#ffffff', align: 'center', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(9).setVisible(false);
         this.sellZoneArea = new Phaser.Geom.Rectangle(gameWidth - sellZoneWidth, 0, sellZoneWidth, gameHeight);
         
-        const shopToggleButton = this.add.text(gameWidth - 640, inventoryAreaY - 400, 'ショップ表示', { fontSize: '20px', fill: '#ffdd00', backgroundColor: '#000000aa', padding: { x: 10, y: 5 } }).setOrigin(0.5).setInteractive().setDepth(11);
+        const shopToggleButton = this.add.text(gameWidth - 640, inventoryAreaY - 400, 'ショップ表示', { fontSize: '30px', fill: '#ffdd00', backgroundColor: '#000000aa', padding: { x: 15, y: 10 } }).setOrigin(0.5).setInteractive().setDepth(11);
         this.prepareContainer.add(shopToggleButton);
         shopToggleButton.on('pointerdown', () => {
             this.isShopVisible = !this.isShopVisible;
