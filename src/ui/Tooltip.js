@@ -75,7 +75,7 @@ export default class Tooltip extends Phaser.GameObjects.Container {
     hide() {
         this.setVisible(false);
     }
-}
+
     // ★★★ 2. showAt メソッドを正しく実装 ★★★
     /**
      * 特定の座標を基準にツールチップを（主に上方向に）表示する
