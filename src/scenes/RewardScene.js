@@ -46,7 +46,7 @@ export default class RewardScene extends Phaser.Scene {
         this.cameras.main.fadeIn(300, 0, 0, 0); 
         this.stateManager = this.sys.registry.get('stateManager');
         this.soundManager = this.sys.registry.get('soundManager');
-
+this.tooltip = new Tooltip(this);
         try { this.soundManager.playBgm('bgm_prepare'); } catch(e) {}
         
         this.add.image(this.scale.width / 2, this.scale.height / 2, 'reward_background')
