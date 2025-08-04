@@ -76,8 +76,9 @@ export default class RewardScene extends Phaser.Scene {
                 const scale = Math.min(120 / itemImage.width, 120 / itemImage.height);
                 itemImage.setScale(scale);
 
-                itemImage.on('pointerdown', (pointer) => {
-                    pointer.stopPropagation();
+                itemImage.on('pointerdown', (pointer, localX, localY, event) => {
+                    // ★★★ pointer ではなく event を使う ★★★
+                    event.stopPropagation();
 
                     const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
                     let tooltipText = `【${itemId}】\n`;
