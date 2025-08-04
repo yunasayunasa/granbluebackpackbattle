@@ -1011,19 +1011,38 @@ export default class BattleScene extends Phaser.Scene {
                 }
             });
         });
-        itemContainer.on('dragstart', () => {
-               try { this.soundManager.playSe('se_item_grab'); } catch (e) {}
-            isDragging = true;
-            if (pressTimer) pressTimer.remove();
-            this.tooltip.hide();
-            itemContainer.setDepth(99);
-            this.removeItemFromBackpack(itemContainer);
-            this.sellZoneGraphics.setVisible(true);
-            this.sellZoneText.setVisible(true);
-        });
+        
+               
+            itemContainer.on('dragstart', (pointer) => { // ★引数に pointer を追加
+        try { this.soundManager.playSe('se_item_grab'); } catch (e) {}
+        isDragging = true;
+        if (pressTimer) pressTimer.remove();
+        this.tooltip.hide();
+        itemContainer.setDepth(99);
+        
+        // ★ removeItemFromBackpack はここから削除
+        
+        // ★ ドラッグ開始位置を記録
+        itemContainer.setData('dragStartX', pointer.x);
+        itemContainer.setData('dragStartY', pointer.y);
+        itemContainer.setData('wasRemoved', false); // 取り除かれたかどうかのフラグ
+    });
         itemContainer.on('drag', (pointer, dragX, dragY) => {
             if (pressTimer) pressTimer.remove();
             itemContainer.setPosition(dragX, dragY);
+            const dragThreshold = 10; // 10ピクセル以上動いたらドラッグとみなす
+        const dx = Math.abs(pointer.x - itemContainer.getData('dragStartX'));
+        const dy = Math.abs(pointer.y - itemContainer.getData('dragStartY'));
+
+        // 一定距離を動いて、かつまだグリッドから取り除かれていない場合
+        if ((dx > dragThreshold || dy > dragThreshold) && !itemContainer.getData('wasRemoved')) {
+            this.removeItemFromBackpack(itemContainer);
+            itemContainer.setData('wasRemoved', true); // フラグを立てて、二度呼ばれないようにする
+            
+            // 売却ゾーンを表示
+            this.sellZoneGraphics.setVisible(true);
+            this.sellZoneText.setVisible(true);
+        }
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
