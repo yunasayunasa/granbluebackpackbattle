@@ -1145,55 +1145,50 @@ export default class BattleScene extends Phaser.Scene {
 
     // rotateItem メソッドを、このシンプル版に置き換えてください
 
+    // rotateItem メソッドを、これで丸ごと置き換えてください
+
     rotateItem(itemContainer) {
         const originalRotation = itemContainer.getData('rotation') || 0;
         const newRotation = (originalRotation + 90) % 360;
         
-        // --- 1. まず、回転後の状態をデータとして仮設定 ---
-        itemContainer.setData('rotation', newRotation);
-
         const gridPos = itemContainer.getData('gridPos');
+
         if (gridPos) {
+            // --- グリッド内に配置されているアイテムの場合 ---
+            
+            // 1. チェックのために、グリッドから一時的に情報を削除
+            //    (オブジェクトは消さず、盤面データだけを更新)
             this.removeItemFromBackpack(itemContainer);
 
             // 2. 回転後の状態で、元の場所に置けるかチェック
             itemContainer.setData('rotation', newRotation);
             if (this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                // 3a. 置ける場合：回転を確定し、再度グリッドに配置する
+                // 3a. 【成功】置ける場合：回転を確定し、再度グリッドに配置
                 console.log("回転成功");
                 try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+                
                 this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
-                itemContainer.setAngle(newRotation); // 見た目も回転
+                itemContainer.setAngle(newRotation); // 見た目を回転
             } else {
-                // 3b. 置けない場合：回転をキャンセルし、元の状態でグリッドに戻す
+                // 3b. 【失敗】置けない場合：回転をキャンセルし、元の状態でグリッドに戻す
                 console.log("回転失敗：スペースがありません。");
                 try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
-                itemContainer.setData('rotation', originalRotation);
+
+                itemContainer.setData('rotation', originalRotation); // 角度を元に戻す
                 this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
             }
-           
-            // --- 2. グリッド内での回転の場合 ---
-            // 回転後に配置不能になるかチェック
-            if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                // ★ 配置不能なら、回転をキャンセルして元の角度に戻すだけ
-                console.log("回転できません：スペースがありません。");
-                try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
-                itemContainer.setData('rotation', originalRotation);
-                return; // ★ インベントリに戻さず、ここで処理を終了
-            }
+        } else {
+            // --- インベントリ内にあるアイテムの場合 ---
+            try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+            itemContainer.setData('rotation', newRotation);
+            itemContainer.setAngle(newRotation);
         }
 
-        // --- 3. 回転が可能な場合 ---
-        try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
-        
-        // 見た目の角度を更新
-        itemContainer.setAngle(newRotation);
-        
         // 矢印の表示を更新
         this.updateArrowVisibility(itemContainer);
 
         // 状態をセーブ
-        this.time.delayedCall(100, () => { this.saveBackakState(); });
+        this.time.delayedCall(100, () => { this.saveBackpackState(); });
     }
     
     _rotateMatrix(matrix) {
