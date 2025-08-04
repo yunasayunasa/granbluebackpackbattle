@@ -40,19 +40,73 @@ export default class RewardScene extends Phaser.Scene {
             const randomIndex = Phaser.Math.Between(0, rewardPool.length - 1);
             selectedRewards.push(rewardPool.splice(randomIndex, 1)[0]);
         }
+        // in RewardScene.js / RankMatchRewardScene.js -> create()
+
         selectedRewards.forEach((itemId, index) => {
             const x = (this.scale.width / 4) * (index + 1);
             const y = this.scale.height / 2;
-            const card = this.add.rectangle(x, y, 150, 200, 0xbdc3c7).setInteractive();
-            card.setStrokeStyle(4, 0x7f8c8d);
             const itemData = ITEM_DATA[itemId];
+
+            // --- カードの背景 (クリック不可にする) ---
+            const card = this.add.rectangle(x, y, 150, 220, 0xbdc3c7); // 少し縦長に
+            card.setStrokeStyle(4, 0x7f8c8d);
+
+            // --- アイテム画像 (クリックでツールチップ表示) ---
             if (itemData && itemData.storage) {
-                const itemImage = this.add.image(x, y - 20, itemData.storage);
+                const itemImage = this.add.image(x, y - 30, itemData.storage).setInteractive();
                 const scale = Math.min(120 / itemImage.width, 120 / itemImage.height);
                 itemImage.setScale(scale);
+
+                itemImage.on('pointerdown', (pointer) => {
+                    pointer.stopPropagation(); // イベントの伝播を止める
+
+                    // ★ BattleSceneからツールチップ表示ロジックを拝借 ★
+                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                    let tooltipText = `【${itemId}】\n`;
+                    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+                    if (itemElements.length > 0) tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
+                    const sizeH = itemData.shape.length;
+                    const sizeW = itemData.shape[0].length;
+                    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+                    if (itemData.recast) tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`;
+                    if (itemData.action) { /* ... アクション表示 ... */ }
+                    if (itemData.passive) { /* ... パッシブ表示 ... */ }
+                    if (itemData.synergy) { /* ... シナジー表示 ... */ }
+                    
+                    // this.tooltip.show(...) があればそれを使う
+                    // なければ、ここで new Tooltip(this) するか、グローバルに持つ必要がある
+                    if (!this.tooltip) this.tooltip = new Tooltip(this);
+                    this.tooltip.show(itemImage, tooltipText);
+                });
             }
-            this.add.text(x, y + 80, itemId, { fontSize: '20px', fill: '#2c3e50' }).setOrigin(0.5);
-            card.on('pointerdown', () => { this.selectReward(itemId); });
+
+            // --- アイテム名 ---
+            this.add.text(x, y + 50, itemId, {
+                fontSize: '20px', fill: '#2c3e50'
+            }).setOrigin(0.5);
+
+            // --- 「獲得」ボタン ---
+            const buttonBg = this.add.rectangle(x, y + 95, 120, 40, 0x27ae60).setInteractive();
+            buttonBg.setStrokeStyle(2, 0xffffff);
+            const buttonText = this.add.text(x, y + 95, '獲得', {
+                fontSize: '24px', fill: '#fff', stroke: '#000', strokeThickness: 2
+            }).setOrigin(0.5);
+
+            buttonBg.on('pointerdown', () => {
+                // カード全体を非活性化
+                card.setAlpha(0.5);
+                itemImage.disableInteractive();
+                buttonBg.disableInteractive();
+                
+                this.selectReward(itemId);
+            });
+        });
+        
+        // 画面のどこかをクリックしたらツールチップを消す
+        this.input.on('pointerdown', () => {
+            if (this.tooltip && this.tooltip.visible) {
+                this.tooltip.hide();
+            }
         });
 
         this.events.emit('scene-ready');
