@@ -1417,9 +1417,23 @@ export default class BattleScene extends Phaser.Scene {
         const itemStartX = 100 + (itemSpacing / 2);
         this.inventoryItemImages.forEach((itemContainer, index) => {
             const targetX = itemStartX + (index * itemSpacing);
-            const targetY = inventoryAreaY + 140;
-            itemContainer.setData({ originX: targetX, originY: targetY });
-            this.tweens.add({ targets: itemContainer, x: targetX, y: targetY, duration: 200, ease: 'Power2' });
+            const targetY = 660; // createから値を参照できないため、ここで仮定義
+
+            // ★★★ この if 文を追加 ★★★
+            // グリッドに配置されていないアイテム（純粋なインベントリアイテム）だけを動かす
+            if (!itemContainer.getData('gridPos')) {
+                // 新しい「帰るべき場所」として origin データを更新
+                itemContainer.setData({ originX: targetX, originY: targetY });
+
+                // Tweenでスムーズに移動させる
+                this.tweens.add({
+                    targets: itemContainer,
+                    x: targetX,
+                    y: targetY,
+                    duration: 200,
+                    ease: 'Power2'
+                });
+            }
         });
     }
 
