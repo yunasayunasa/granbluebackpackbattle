@@ -82,39 +82,43 @@ this.tooltip = new Tooltip(this);
                     pointer.stopPropagation(); // イベントの伝播を止める
 
                     // ★ BattleSceneからツールチップ表示ロジックを拝借 ★
-                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                let tooltipText = `【${itemId}】\n`;
-                const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                if (itemElements.length > 0) { tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`; }
-                if (baseItemData.shapeType) { tooltipText += `サイズ: ${baseItemData.shapeType}\n\n`; }
-                else { const sizeH = baseItemData.shape.length; const sizeW = baseItemData.shape[0].length; tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`; }
-                if (baseItemData.recast && baseItemData.recast > 0) {
-                    const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
-                    tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
-                }
-                if (baseItemData.action) {
-                    const actions = Array.isArray(baseItemData.action) ? baseItemData.action : [baseItemData.action];
-                    const finalActions = (finalItemData && finalItemData.action) ? (Array.isArray(finalItemData.action) ? finalItemData.action : [finalItemData.action]) : actions;
-                    actions.forEach((baseAction, index) => {
-                        const finalAction = finalActions[index] || baseAction;
-                        tooltipText += `効果: ${baseAction.type} ${finalAction.value}\n`;
-                        if (finalAction.value !== baseAction.value) { tooltipText += `  (基本値: ${baseAction.value})\n`; }
-                    });
-                }
-                if (baseItemData.passive && baseItemData.passive.effects) { baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-                if (baseItemData.synergy) {
-                    tooltipText += `\nシナジー:\n`;
-                    const dir = t(baseItemData.synergy.direction);
-                    const effects = Array.isArray(baseItemData.synergy.effect) ? baseItemData.synergy.effect : [baseItemData.synergy.effect];
-                    tooltipText += `  - ${dir}の味方に\n`;
-                    effects.forEach(effect => {
-                        const effectType = t(effect.type);
-                        const sign = effect.value > 0 ? '+' : '';
-                        tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
-                    });
-                }
-                this.tooltip.show(itemContainer, tooltipText);
-            }
+              const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                    let tooltipText = `【${itemId}】\n`;
+
+                    // 'baseItemData' を 'itemData' に変更
+                    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+                    if (itemElements.length > 0) { tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`; }
+                    
+                    const sizeH = itemData.shape.length;
+                    const sizeW = itemData.shape[0].length;
+                    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
+                    
+                    if (itemData.recast) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
+                    
+                    if (itemData.action) {
+                        const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
+                        actions.forEach(action => {
+                            tooltipText += `効果: ${t(action.type)} ${action.value}\n`;
+                        });
+                    }
+                    if (itemData.passive && itemData.passive.effects) {
+                        itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${t(e.type)} +${e.value}\n`; });
+                    }
+                    if (itemData.synergy) {
+                        tooltipText += `\nシナジー:\n`;
+                        const dir = t(itemData.synergy.direction);
+                        const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
+                        tooltipText += `  - ${dir}の味方に\n`;
+                        effects.forEach(effect => {
+                            const effectType = t(effect.type);
+                            const sign = effect.value >= 0 ? '+' : '';
+                            tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
+                        });
+                    }
+                    
+                    // 強化後のステータスは考慮しないので、finalItemData関連は不要
+                    this.tooltip.show(itemImage, tooltipText);
+                });
 
             // --- アイテム名 ---
             this.add.text(x, y + 50, itemId, {
