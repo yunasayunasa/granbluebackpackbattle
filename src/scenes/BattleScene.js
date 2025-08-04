@@ -1102,14 +1102,25 @@ export default class BattleScene extends Phaser.Scene {
                     this.saveBackpackState();
                 });
             } else {
-                this.tweens.add({ 
-                    targets: itemContainer, 
-                    x: itemContainer.getData('originX'), 
-                    y: itemContainer.getData('originY'), 
-                    duration: 200, 
-                    ease: 'Power2' 
-                });
+                console.log("配置/売却失敗。インベントリに戻します。");
+                
+                // 1. インベントリ配列に追加
+                if (!this.inventoryItemImages.includes(itemContainer)) {
+                    this.inventoryItemImages.push(itemContainer);
+                }
+                
+                // 2. インベントリのレイアウトを更新
+                //    (これにより、アイテムの originX/Y がインベントリ位置に更新される)
+                this.updateInventoryLayout();
+
+                // 3. 更新されたインベントリの位置に移動する
+                //    (updateInventoryLayoutがTweenを持っているので、これだけで良い)
             }
+            
+            // ★★★ 最後に必ず状態をセーブ ★★★
+            this.time.delayedCall(250, () => {
+                this.saveBackpackState();
+            });
         });
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             if (pressTimer) pressTimer.remove();
@@ -1226,21 +1237,11 @@ export default class BattleScene extends Phaser.Scene {
         const containerHeight = shape.length * this.cellSize;
         itemContainer.x = this.gridX + startCol * this.cellSize + containerWidth / 2;
         itemContainer.y = this.gridY + startRow * this.cellSize + containerHeight / 2;
-        itemContainer.setData('gridPos', { row: startRow, col: startCol });
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    this.backpack[startRow + r][startCol + c] = itemId;
-                }
-            }
-        }
-        const index = this.inventoryItemImages.indexOf(itemContainer);
-        if (index > -1) this.inventoryItemImages.splice(index, 1);
-        if (!this.placedItemImages.includes(itemContainer)) {
-            this.placedItemImages.push(itemContainer);
-        }
-        this.updateArrowVisibility(itemContainer);
-        this.updateInventoryLayout();
+        itemContainer.setData('gridPos', null);
+        const index = this.placedItemImages.indexOf(itemContainer);
+        if (index > -1) this.placedItemImages.splice(index, 1);
+        
+        // ★インベントリ配列への追加やレイアウト更新は、ここでは行わない
     }
 
     removeItemFromBackpack(itemContainer) {
