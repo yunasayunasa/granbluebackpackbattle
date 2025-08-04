@@ -47,31 +47,37 @@ export default class Tooltip extends Phaser.GameObjects.Container {
      * @param {Phaser.GameObjects.GameObject} target - 表示の基準となるオブジェクト
      * @param {string} text - 表示するテキスト
      */
+    // ui/Tooltip.js
+
     show(target, text) {
-        if (this.visible && this.currentTarget === target) {
-            this.hide();
-            return;
-        }
-
-        this.setText(text); // 新しく作ったsetTextを呼び出す
-
-        // 表示位置をターゲットの右下か左下に自動調整
-        const matrix = target.getWorldTransformMatrix();
-        const worldX = matrix.tx;
-        const worldY = matrix.ty;
-
-        if (worldX > this.scene.scale.width / 2) {
-            // 右側のアイテムなら、左に表示
-            this.setPosition(worldX - this.width - 20, worldY);
-        } else {
-            // 左側のアイテムなら、右に表示
-            this.setPosition(worldX + target.width/2 + 20, worldY);
-        }
-
+        this.setText(text);
         this.setVisible(true);
-        this.currentTarget = target;
-    }
 
+        // ★★★ このブロックを全面的に書き換え ★★★
+        
+        const targetBounds = target.getBounds();
+        const tooltipBounds = this.getBounds();
+        const sceneHeight = this.scene.scale.height;
+
+        // ターゲットオブジェクトのY座標で判定
+        if (targetBounds.centerY < sceneHeight / 2) {
+            // 画面の上半分にある場合: ターゲットの下に表示
+            Phaser.Display.Align.In.TopCenter(this, targetBounds, 0, -10);
+        } else {
+            // 画面の下半分にある場合: ターゲットの上に表示
+            Phaser.Display.Align.In.BottomCenter(this, targetBounds, 0, 10);
+        }
+
+        // 左右が画面外にはみ出ないように調整
+        if (this.x - tooltipBounds.width / 2 < 0) {
+            this.x = tooltipBounds.width / 2;
+        }
+        if (this.x + tooltipBounds.width / 2 > this.scene.scale.width) {
+            this.x = this.scene.scale.width - tooltipBounds.width / 2;
+        }
+        
+        // ★★★ 書き換えここまで ★★★
+    }
     // ★★★ 2. showAt メソッドを正しく実装 ★★★
     /**
      * 特定の座標を基準にツールチップを（主に上方向に）表示する
