@@ -993,9 +993,11 @@ export default class BattleScene extends Phaser.Scene {
         const hasRecast = itemData.recast && itemData.recast > 0;
         recastOverlay.setVisible(hasRecast);
         this.input.setDraggable(itemContainer);
+                // --- イベントリスナー ---
         let pressTimer = null;
         let isDragging = false;
         let isDown = false;
+
         itemContainer.on('pointerdown', (pointer) => {
             isDown = true;
             isDragging = false;
@@ -1012,37 +1014,32 @@ export default class BattleScene extends Phaser.Scene {
             });
         });
         
-               
-            itemContainer.on('dragstart', (pointer) => { // ★引数に pointer を追加
-        try { this.soundManager.playSe('se_item_grab'); } catch (e) {}
-        isDragging = true;
-        if (pressTimer) pressTimer.remove();
-        this.tooltip.hide();
-        itemContainer.setDepth(99);
-        
-        // ★ removeItemFromBackpack はここから削除
-        
-        // ★ ドラッグ開始位置を記録
-        itemContainer.setData('dragStartX', pointer.x);
-        itemContainer.setData('dragStartY', pointer.y);
-        itemContainer.setData('wasRemoved', false); // 取り除かれたかどうかのフラグ
-    });
+        itemContainer.on('dragstart', (pointer) => {
+            isDragging = true;
+            if (pressTimer) pressTimer.remove();
+            this.tooltip.hide();
+            itemContainer.setDepth(99);
+            
+            itemContainer.setData('dragStartX', pointer.x);
+            itemContainer.setData('dragStartY', pointer.y);
+            itemContainer.setData('wasRemoved', false);
+        });
+
         itemContainer.on('drag', (pointer, dragX, dragY) => {
             if (pressTimer) pressTimer.remove();
             itemContainer.setPosition(dragX, dragY);
-            const dragThreshold = 10; // 10ピクセル以上動いたらドラッグとみなす
-        const dx = Math.abs(pointer.x - itemContainer.getData('dragStartX'));
-        const dy = Math.abs(pointer.y - itemContainer.getData('dragStartY'));
-
-        // 一定距離を動いて、かつまだグリッドから取り除かれていない場合
-        if ((dx > dragThreshold || dy > dragThreshold) && !itemContainer.getData('wasRemoved')) {
-            this.removeItemFromBackpack(itemContainer);
-            itemContainer.setData('wasRemoved', true); // フラグを立てて、二度呼ばれないようにする
             
-            // 売却ゾーンを表示
-            this.sellZoneGraphics.setVisible(true);
-            this.sellZoneText.setVisible(true);
-        }
+            const dragThreshold = 10;
+            const dx = Math.abs(pointer.x - itemContainer.getData('dragStartX'));
+            const dy = Math.abs(pointer.y - itemContainer.getData('dragStartY'));
+
+            if ((dx > dragThreshold || dy > dragThreshold) && !itemContainer.getData('wasRemoved')) {
+                this.removeItemFromBackpack(itemContainer);
+                itemContainer.setData('wasRemoved', true);
+                if(this.sellZoneGraphics) this.sellZoneGraphics.setVisible(true);
+                if(this.sellZoneText) this.sellZoneText.setVisible(true);
+            }
+
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
@@ -1064,16 +1061,20 @@ export default class BattleScene extends Phaser.Scene {
                 this.ghostImage.setVisible(false);
             }
         });
+
         itemContainer.on('dragend', (pointer) => {
             itemContainer.setDepth(12);
             this.ghostImage.clear();
             this.ghostImage.setVisible(false);
-            this.sellZoneGraphics.setVisible(false);
-            this.sellZoneText.setVisible(false);
-            const droppedInSellZone = Phaser.Geom.Rectangle.Contains(this.sellZoneArea, pointer.x, pointer.y);
+            if(this.sellZoneGraphics) this.sellZoneGraphics.setVisible(false);
+            if(this.sellZoneText) this.sellZoneText.setVisible(false);
+
+            const droppedInSellZone = this.sellZoneArea && Phaser.Geom.Rectangle.Contains(this.sellZoneArea, pointer.x, pointer.y);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
-            if (droppedInSellZone) {
+            
+            if (itemContainer.getData('wasRemoved') && droppedInSellZone) {
+                // --- 売却処理 ---
                 try{this.soundManager.playSe('se_item_sell'); } catch (e) {} 
                 const itemId = itemContainer.getData('itemId');
                 const itemData = ITEM_DATA[itemId];
@@ -1086,10 +1087,9 @@ export default class BattleScene extends Phaser.Scene {
                     this.inventoryItemImages.splice(indexToRemove, 1);
                 }
                 itemContainer.destroy();
-                this.updateInventoryLayout();
-                this.saveBackpackState();
                 console.log(`アイテム'${itemId}'を ${sellPrice}コインで売却しました。`);
-            } else if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+            } else if (itemContainer.getData('wasRemoved') && this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+                // --- 配置処理 ---
                 try { this.soundManager.playSe('se_item_place'); } catch (e) {}
                 const dropX = itemContainer.x;
                 const dropY = itemContainer.y;
@@ -1098,21 +1098,41 @@ export default class BattleScene extends Phaser.Scene {
                 const targetY = itemContainer.y;
                 itemContainer.setPosition(dropX, dropY);
                 this.tweens.add({ targets: itemContainer, x: targetX, y: targetY, duration: 150, ease: 'Power1' });
-                this.time.delayedCall(250, () => {
-                    this.saveBackpackState();
-                });
             } else {
-                this.tweens.add({ 
-                    targets: itemContainer, 
-                    x: itemContainer.getData('originX'), 
-                    y: itemContainer.getData('originY'), 
-                    duration: 200, 
-                    ease: 'Power2' 
-                });
+                // --- どこにも置けなかった、またはクリックだった場合 ---
+                if (itemContainer.getData('wasRemoved')) {
+                    // ドラッグはされたが配置されなかった -> インベントリに戻す
+                    // removeItemですでに追加されているので、レイアウト更新だけすれば良い
+                    this.updateInventoryLayout();
+                } else {
+                    // ドラッグされず、ただのクリックだった場合 -> 何もせず、元の位置に戻す
+                    // （gridPosがあればグリッドに、なければインベントリのoriginX/Yに）
+                    const gridPos = itemContainer.getData('gridPos');
+                    if (gridPos) {
+                        // 何もする必要はない
+                    } else {
+                         this.tweens.add({ 
+                            targets: itemContainer, 
+                            x: itemContainer.getData('originX'), 
+                            y: itemContainer.getData('originY'), 
+                            duration: 200, 
+                            ease: 'Power2' 
+                        });
+                    }
+                }
             }
+
+            // 最後に必ずインベントリレイアウト更新と状態セーブを行う
+            this.updateInventoryLayout();
+            this.time.delayedCall(250, () => {
+                this.saveBackpackState();
+            });
         });
+        
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
             if (pressTimer) pressTimer.remove();
+            
+            // isDraggingフラグで、ドラッグ終了後のクリック(ツールチップ表示)を防ぐ
             if (!isDragging && !itemContainer.getData('isLongPress')) {
                 event.stopPropagation();
                 const baseItemData = ITEM_DATA[itemId];
@@ -1141,7 +1161,7 @@ export default class BattleScene extends Phaser.Scene {
                         if (finalAction.value !== baseAction.value) { tooltipText += `  (基本値: ${baseAction.value})\n`; }
                     });
                 }
-                if (baseItemData.passive && baseItemData.passive.effects) { baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+                if (baseItemData.passive && baseItemData.passive.effects) { baseItemData.passive.effects.forEach(e => { tooltipText += `パッシบ: ${e.type} +${e.value}\n`; }); }
                 if (baseItemData.synergy) {
                     tooltipText += `\nシナジー:\n`;
                     const dir = t(baseItemData.synergy.direction);
@@ -1155,6 +1175,7 @@ export default class BattleScene extends Phaser.Scene {
                 }
                 this.tooltip.show(itemContainer, tooltipText);
             }
+            
             isDown = false;
             isDragging = false;
             itemContainer.setData('isLongPress', false);
