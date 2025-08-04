@@ -1154,6 +1154,24 @@ export default class BattleScene extends Phaser.Scene {
 
         const gridPos = itemContainer.getData('gridPos');
         if (gridPos) {
+            this.removeItemFromBackpack(itemContainer);
+
+            // 2. 回転後の状態で、元の場所に置けるかチェック
+            itemContainer.setData('rotation', newRotation);
+            if (this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
+                // 3a. 置ける場合：回転を確定し、再度グリッドに配置する
+                console.log("回転成功");
+                try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+                this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
+                itemContainer.setAngle(newRotation); // 見た目も回転
+            } else {
+                // 3b. 置けない場合：回転をキャンセルし、元の状態でグリッドに戻す
+                console.log("回転失敗：スペースがありません。");
+                try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
+                itemContainer.setData('rotation', originalRotation);
+                this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
+            }
+           
             // --- 2. グリッド内での回転の場合 ---
             // 回転後に配置不能になるかチェック
             if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
