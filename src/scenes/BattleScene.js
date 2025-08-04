@@ -26,7 +26,7 @@ export default class BattleScene extends Phaser.Scene {
        super('BattleScene');
         this.battleTimer = null;
         this.battleTimerText = null;
-        this.maxBattleDuration = 30;
+        this.maxBattleDuration = 20;
         this.receivedParams = null;
         this.stateManager = null;
         this.soundManager = null;
