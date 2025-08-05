@@ -1278,27 +1278,22 @@ export default class BattleScene extends Phaser.Scene {
         this.updateInventoryLayout();
     }
 
-    removeItemFromBackpack(itemContainer) {
+        removeItemFromBackpack(itemContainer) {
         const gridPos = itemContainer.getData('gridPos');
         if (!gridPos) return;
+
         const itemId = itemContainer.getData('itemId');
         const rotation = itemContainer.getData('rotation') || 0;
         let shape = this.getRotatedShape(itemId, rotation);
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    this.backpack[gridPos.row + r][gridPos.col + c] = 0;
-                }
+                if (shape[r][c] === 1) { this.backpack[gridPos.row + r][gridPos.col + c] = 0; }
             }
         }
+        
         itemContainer.setData('gridPos', null);
         const index = this.placedItemImages.indexOf(itemContainer);
         if (index > -1) this.placedItemImages.splice(index, 1);
-        if (!this.inventoryItemImages.includes(itemContainer)) {
-            this.inventoryItemImages.push(itemContainer);
-        }
-        this.updateArrowVisibility(itemContainer);
-        this.updateInventoryLayout();
     }
 
     getRotatedShape(itemId, rotation) {
