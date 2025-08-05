@@ -1023,7 +1023,7 @@ export default class BattleScene extends Phaser.Scene {
         });
         itemContainer.on('drag', (pointer, dragX, dragY) => {
             if (pressTimer) pressTimer.remove();
-            itemContainer.setPosition(dragX, dragY);
+            itemContainer.setPosition(dragX, dragY - 50);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
