@@ -150,39 +150,36 @@ export default class ScenarioManager {
                 console.warn(`未定義のタグです: [${tagName}]`);
             }
         
-        } else if (trimedLine.length > 0) {
-            // --- セリフまたは地の文 ---
-            let speakerName = null;
-            let dialogue = trimedLine;
-            const speakerMatch = trimedLine.match(/^([a-zA-Z0-9_]+):/);
-            
-            if (speakerMatch) {
-                speakerName = speakerMatch[1];
-                dialogue = trimedLine.substring(speakerName.length + 1).trim();
-            }
-            
-            this.stateManager.addHistory(speakerName, dialogue);
-            this.highlightSpeaker(speakerName);
-            const wrappedLine = this.manualWrap(dialogue);
-            
-            this.messageWindow.setText(wrappedLine, true, () => {
-        // ★★★ 修正箇所 ★★★
-        // オートモードはテキスト表示完了時にトリガーするが、クリック待ちは設定しない
-        if (this.mode === 'auto') this.startAutoMode();
-    }, speakerName);
+      // ScenarioManager.js の parse メソッド内のテキスト処理部分を、以下のように書き換えてください
 
-    // ★★★ isWaitingClick = true; を削除する！ ★★★
-    // これにより、テキストを表示しただけではループは止まらなくなる
-
-} // ...
-        
-        } else {
-            // --- 空行は何もしない ---
-        }
-
-        // parseメソッドは状態を変更するだけで、何もreturnしない
+// ...
+} else if (trimedLine.length > 0) {
+    // --- セリフまたは地の文 ---
+    let speakerName = null;
+    let dialogue = trimedLine;
+    const speakerMatch = trimedLine.match(/^([a-zA-Z0-9_]+):/);
+    
+    if (speakerMatch) {
+        speakerName = speakerMatch[1];
+        dialogue = trimedLine.substring(speakerName.length + 1).trim();
     }
- 
+    
+    this.stateManager.addHistory(speakerName, dialogue);
+    this.highlightSpeaker(speakerName);
+    const wrappedLine = this.manualWrap(dialogue);
+    
+    // ★★★ ここを await に変更し、onCompleteコールバックを削除 ★★★
+    // これにより、タイピングが終わるまで次の行に進まなくなる
+    await this.messageWindow.setText(wrappedLine, true, speakerName);
+
+    // オートモードの処理などは、setTextの完了後に実行される
+    if (this.mode === 'auto') {
+        this.startAutoMode();
+    }
+    
+} // ...
+    } else{
+}
 
      // ScenarioManager.js の parse メソッド
 
