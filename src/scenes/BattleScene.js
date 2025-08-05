@@ -1023,20 +1023,29 @@ export default class BattleScene extends Phaser.Scene {
         });
         itemContainer.on('drag', (pointer, dragX, dragY) => {
             if (pressTimer) pressTimer.remove();
-            itemContainer.setPosition(dragX, dragY - 50);
+            itemContainer.setPosition(dragX, dragY );
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
             if (gridRow >= 0 && gridRow < this.backpackGridSize && gridCol >= 0 && gridCol < this.backpackGridSize) {
                 this.ghostImage.clear();
                 const canPlace = this.canPlaceItem(itemContainer, gridCol, gridRow);
-                this.ghostImage.fillStyle(canPlace ? 0x00ff00 : 0xff0000, 0.5);
+                const lineColor = canPlace ? 0x00ff00 : 0xff0000;
+                this.ghostImage.lineStyle(4, lineColor, 1.0); // 4pxの太い枠線
+
+                // --- 2. 塗りつぶしの設定 (少しだけ透明に) ---
+                const fillColor = canPlace ? 0x00ff00 : 0xff0000;
+                this.ghostImage.fillStyle(fillColor, 0.7); // 透明度を 0.5 -> 0.7 に
+
                 for (let r = 0; r < shape.length; r++) {
                     for (let c = 0; c < shape[0].length; c++) {
                         if (shape[r][c] === 1) {
                             const x = this.gridX + (gridCol + c) * this.cellSize;
                             const y = this.gridY + (gridRow + r) * this.cellSize;
+                            
+                            // 塗りつぶしと枠線を同時に描画
                             this.ghostImage.fillRect(x, y, this.cellSize, this.cellSize);
+                            this.ghostImage.strokeRect(x, y, this.cellSize, this.cellSize);
                         }
                     }
                 }
