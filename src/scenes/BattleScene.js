@@ -966,7 +966,7 @@ export default class BattleScene extends Phaser.Scene {
         this.time.delayedCall(effectDuration * 2, () => { particles.destroy(); });
     }
 
-    createItem(itemId, x, y) {
+        createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return null;
         const containerWidth = itemData.shape[0].length * this.cellSize;
@@ -1055,13 +1055,13 @@ export default class BattleScene extends Phaser.Scene {
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (droppedInSellZone) {
-                try{this.soundManager.playSe('se_item_sell'); } catch (e) {} 
+                try{this.soundManager.playSe('se_item_sell'); } catch (e) {}
                 const itemId = itemContainer.getData('itemId');
                 const itemData = ITEM_DATA[itemId];
                 const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
                 const currentCoins = this.stateManager.sf.coins || 0;
                 this.stateManager.setSF('coins', currentCoins + sellPrice);
-                this.updateShopButtons(); 
+                this.updateShopButtons();
                 const indexToRemove = this.inventoryItemImages.indexOf(itemContainer);
                 if (indexToRemove > -1) {
                     this.inventoryItemImages.splice(indexToRemove, 1);
@@ -1083,13 +1083,21 @@ export default class BattleScene extends Phaser.Scene {
                     this.saveBackpackState();
                 });
             } else {
-                this.tweens.add({ 
-                    targets: itemContainer, 
-                    x: itemContainer.getData('originX'), 
-                    y: itemContainer.getData('originY'), 
-                    duration: 200, 
-                    ease: 'Power2' 
-                });
+                // ★★★ 修正箇所 ここから ★★★
+                // グリッドにも売却ゾーンにもドロップされなかった場合、インベントリに戻す
+                try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
+
+                // 1. アイテムをインベントリの管理リストに追加する（まだリストになければ）
+                if (!this.inventoryItemImages.includes(itemContainer)) {
+                    this.inventoryItemImages.push(itemContainer);
+                }
+
+                // 2. インベントリ全体のレイアウトを更新して、全アイテムを正しい位置に再配置する
+                this.updateInventoryLayout();
+
+                // 3. 変更後の状態を保存する
+                this.saveBackpackState();
+                // ★★★ 修正箇所 ここまで ★★★
             }
         });
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
@@ -1142,7 +1150,6 @@ export default class BattleScene extends Phaser.Scene {
         });
         return itemContainer;
     }
-
     // rotateItem メソッドを、このシンプル版に置き換えてください
 
     // rotateItem メソッドを、これで丸ごと置き換えてください
