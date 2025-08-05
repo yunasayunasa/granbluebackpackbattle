@@ -1,84 +1,170 @@
-Odyssey Engine v2.0 README (最終改訂案)
-Odyssey Engine v2.0
-Odyssey Engineは、Phaser 3の強力なグラフィック表現と柔軟性を備えつつ、ティラノスクリプトのような直感的なスクリプト記述で、ノベルゲームと他のジャンルを融合したハイブリッドゲームを制作できるエンジンです。
-幾多の困難なデバッグを経て、SystemSceneによる中央集権的なシーン管理、StateManagerによるイベント駆動の状態管理、そしてUISceneによるUIの完全な分離を実現。これにより、開発者はコアエンジンを意識することなく、ゲーム固有のロジックとアセットの制作に100%集中できます。
-🚀 主な特徴と機能
-Phaser 3の表現力: キャラクターアニメーション、パーティクル、シェーダーなど、Phaserのパワフルな機能をタグで制御。
-ティラノスクリプト風のシンプル記述: [chara_show], [p], [eval]など、直感的なタグでシナリオを記述。
-完全な状態セーブ＆ロード:
-ゲーム内変数 (f.*)、システム変数 (sf.*) の永続化と復元。
-シナリオの進行状況、背景、キャラクター、BGMの視覚・聴覚状態の完璧な復元。
-堅牢なシーン間連携 (SystemSceneによる中央集権管理):
-[jump storage="SceneKey"]による、Phaserの別シーン（バトルパート、パズルパートなど）へのシームレスな遷移。
-シーン遷移時の自動オートセーブ・ロード機能により、プレイヤー体験を損なわないスムーズな復帰。
-グローバルUIシステム (UIScene司令塔方式):
-HPバーや所持金表示などのHUDは、永続的なUISceneが一元管理。
-ゲームシーンはHUDの存在を意識する必要がなく、StateManagerの変数を更新するだけでUIが自動的に追従。
-安定したゲームループ: タグの実行順序と非同期処理を厳密に管理することで、いかなるシナリオでもフリーズすることなく安定動作。
-🛠️ セットアップ
-(このセクションは変更なしでOK)
-Phaserプロジェクトの準備: Phaser 3 (v3.60.0以降推奨) のプロジェクトをセットアップします。
-エンジンファイルの配置: src/core/, src/handlers/, src/ui/, src/scenes/ ディレクトリ配下のエンジンコアファイルを、あなたのPhaserプロジェクトの対応するパスに配置します。
-アセットの準備: assets/ フォルダに、asset_define.jsonで定義された画像、音声、動画、そして.ksシナリオファイルを配置します。
-main.jsの設定 (重要):
-Phaser.Gameのconfig.sceneリストに、Odyssey Engineの全てのシーンを直接クラス名で登録します。
-**PreloadSceneのconstructorのみactive: true**とし、他のシーンはactive: falseに設定します。
-Generated javascript
-// main.js の例
-import PreloadScene from './scenes/PreloadScene.js';
-import SystemScene from './scenes/SystemScene.js';
-import UIScene from './scenes/UIScene.js';
-import GameScene from './scenes/GameScene.js';
-// ... 他のコアシーン ...
-import BattleScene from './scenes/BattleScene.js'; // あなたが作るゲームシーン
+Odyssey Engine v2.1 - ユーザーマニュアル (決定版)
+1. Odyssey Engineへようこそ
+Odyssey Engineは、Phaser 3の強力なグラフィック表現と、ティラノスクリプトのような直感的なスクリプト記述を融合させた、次世代のハイブリッドゲームエンジンです。
+このエンジンの思想は**「関心の分離」**。シナリオライターは物語の創造に、プログラマーはシステムの拡張に、それぞれが100%集中できる環境を提供します。
+このマニュアルを読めば、あなたはこのエンジンが持つ全ての力を引き出し、思い描くゲームを形にすることができるでしょう。
+2. セットアップ
+(このセクションは変更なし)
+3. シナリオの書き方 (.ksファイル)
+ゲームの物語は、.ksという拡張子のテキストファイルに記述します。難解なプログラミングは不要です。
+3.1. 基本要素
+要素	書き方	役割
+地の文	テキストをそのまま記述	メッセージウィンドウに文章を表示
+セリフ	キャラクター名: テキスト	話者付きでセリフを表示
+タグ	[タグ名 パラメータ=値]	演出、分岐、シーン遷移などの特殊な命令
+ラベル	*ラベル名	[jump]や[link]のジャンプ先となる目印
+コメント	; で始まる行	実行時に無視されるメモ
+アセット宣言	@asset type=image key=... path=...	このシナリオで使う画像を動的に読み込む
+シナリオの例:
+Generated text
+; これはゲームに影響しないコメントです
 
-const config = {
-    // ...
-    scene: [
-        PreloadScene, SystemScene, UIScene, GameScene, 
-        /* 他コアシーン */, BattleScene // 開発するシーンを追加
-    ]
-};
-const game = new Phaser.Game(config);
+; ▼ このシナリオで使うアセットを宣言します
+@asset type=image key=bg_school path=backgrounds/school_day.png
+@asset type=image key=yuko_smile path=characters/yuko_smile.png
+
+*start
+[bg storage=bg_school]
+[chara_show name=yuko storage=yuko_smile pos=center]
+
+yuko:「こんにちは、世界！ これがOdyssey Engineよ！」[p]
+地の文は、このようにキャラクター名なしで書きます。[p]
+改行したい時は、[br]タグを使います。[br]とっても簡単でしょ？
+[s]
 Use code with caution.
-JavaScript
-✍️ エンジンのカスタマイズと拡張
-Odyssey Engineは、**「コアエンジン」と「ゲーム固有コンテンツ」**が明確に分離されています。安定性を保ち、開発を効率化するため、以下のガイドラインに従ってください。
-✅ 安全にカスタマイズできる部分 (推奨される拡張ポイント)
-あなたが主に触るのはここだけです。
-シナリオファイル (.ks): ゲームの物語を自由に記述・変更してください。
-アセット (assets/): 画像、音声、動画、フォントなど、ゲームに必要なアセットを追加・変更してください。
-asset_define.json: 使用するアセットのパスとキーを定義してください。
-新規タグの追加:
-src/handlers/にnew_tag.jsのようなハンドラファイルを作成します。
-src/handlers/index.jsを開き、作成したファイルをimportし、tagHandlersオブジェクトに'new_tag': handleNewTagのように1行追加します。
-これだけで、エンジンは新しいタグを自動的に認識します。 GameScene.jsを触る必要はありません。
-HUDの追加・変更:
-HPバーやスコア表示など、新しいHUDコンポーネントを作成します。HpBar.jsを参考に、StateManagerを購読する形で実装するのがベストです。
-UIScene.jsのcreateメソッドで新しいHUDをインスタンス化し、onSceneTransitionメソッドで、どのシーンの時に表示するかを制御します。
-新規ゲームシーンの追加 (例: PuzzleScene.js):
-これがこのエンジンの醍醐味です。以下の**【新規ゲームシーン開発の5ヶ条】**を守るだけで、安全に新しいゲームパートを追加できます。BattleScene.jsが完璧なテンプレートになります。
-⭐【重要】新規ゲームシーン開発の5ヶ条⭐
-新しいゲームシーン（BattleSceneやPuzzleSceneなど）を作る際は、以下のルールを必ず守ってください。
-createの最後にscene-readyを発行する
-シーンの準備が全て完了した最後に、必ずthis.events.emit('scene-ready');を記述します。これが遷移完了の合図です。
-BGMはcreateで再生する
-シーンが始まったら、this.soundManager.playBgm('曲名');でBGMの再生を「命令」するだけです。SoundManagerが前の曲を賢く止めてくれます。
-ノベルシーンへの復帰はSystemSceneに依頼する
-シーンを終了する際は、必ずthis.scene.get('SystemScene').events.emit('return-to-novel', ...)を発行します。自身のstop()は絶対に呼ばないでください。
-shutdownで後片付けをする
-shutdown()メソッドを実装し、そのシーンでthis.time.addEventやthis.events.onなど、シーンに紐づくタイマーやイベントリスナーを生成した場合は、必ずここで破棄・解除してください。
-HUDは操作しない
-シーンの中からHPバーやコイン表示を直接操作しようとしないでください。代わりにthis.stateManager.setF('player_hp', 50);のように状態変数を変更します。UIの更新はUISceneとHUD自身が自動的に行います。
-⚠️ 変更には注意が必要な部分 (コアエンジン)
-原則として、以下のファイルは触らないでください。 ここのロジックは、数々のデバッグを経て現在の安定した形になっています。
-src/core/ディレクトリ以下のファイル:
-特にStateManager.jsはゲーム状態管理の心臓部です。
-src/scenes/SystemScene.js:
-シーン遷移、入力制御、グローバルイベント通知の司令塔です。ここのロジックを変更すると、ゲーム全体が容易に破綻します。
-src/scenes/PreloadScene.js:
-ゲームの起動シーケンスを担っています。マネージャーの初期化順序は非常に重要です。
-src/scenes/GameScene.js:
-ノベルパートの実行とセーブ＆ロード機能の心臓部です。タグ登録はhandlers/index.jsで行うため、このファイルを編集する必要はほとんどありません。
-src/scenes/UIScene.js:
-HUDの追加や表示ルールの変更は安全ですが、SystemSceneとのイベント連携部分を不用意に変更すると、UI全体の動作がおかしくなる可能性があります。
+Text
+3.2. テキストの特殊な記法
+記法	書き方	機能
+改ページ	[p]	クリック待ち。選択肢の表示トリガーにもなる
+強制改行	[br]	メッセージウィンドウ内で改行する
+変数埋め込み	&f.変数名 or &sf.変数名	変数の値をテキスト中に表示する
+4. 変数について
+Odyssey Engineには2種類の変数があり、ゲームの状態を記憶します。
+ゲーム変数 (f.): 好感度、フラグ、所持金など、セーブデータに含まれる変数。
+例: f.love_meter, f.item_get_flag
+システム変数 (sf.): 既読管理、各種設定など、セーブデータとは別にゲーム全体で共有される変数。
+例: sf.config_text_speed
+変数の操作は、主に[eval]タグと[if]タグで行います。
+5. 主要タグリファレンス
+タグを使いこなすことが、豊かなゲーム表現への鍵です。
+カテゴリ: フロー制御
+物語の流れを自在にコントロールします。
+<details>
+<summary><strong><code>[p]</code>, <code>[link]</code>, <code>[s]</code> - 選択肢の基本セット</strong></summary>
+この3つのタグはセットで使います。プレイヤーに選択を促す最も基本的なフローです。
+[link text="ボタンの文字" target="*ジャンプ先"]: 選択肢を定義します。この時点では画面に表示されません。
+[p]: [link]で定義された選択肢を画面に表示します。
+[s]: シナリオの進行を停止し、プレイヤーが選択肢をクリックするのを待ちます。
+使用例:
+Generated text
+yuko:「今日はどこへ行く？」
+
+[link text="公園" target="*park"]
+[link text="図書館" target="*library"]
+
+[p]  ; ここで「公園」「図書館」ボタンが表示される
+[s]  ; ここでプレイヤーの選択を待つ。必須！
+
+*park
+; 公園のシナリオ...
+[jump storage="main.ks" target="*common_route"]
+
+*library
+; 図書館のシナリオ...
+[jump storage="main.ks" target="*common_route"]
+Use code with caution.
+Text
+</details>
+<details>
+<summary><strong><code>[jump]</code>, <code>[call]</code>, <code>[return]</code> - シナリオ/シーン遷移</strong></summary>
+[jump]: 戻ってこないジャンプ。現在のシナリオを終了し、別の場所へ移動します。
+target="*ラベル名": 同じファイル内のラベルへ移動。
+storage="SceneKey": 別のPhaserシーン（バトル、パズルなど）へ遷移。
+params="{...}": storage指定時、遷移先のシーンに変数を渡せます。
+[call]: サブルーチン呼び出し。一時的に別の場所へ移動し、[return]で戻ってきます。
+target="*ラベル名": ファイル内の共通処理を呼び出す。
+storage="ファイル名.ks": 別のシナリオファイルをサブルーチンとして呼び出す。
+[return]: [call]で呼び出されたサブルーチンの最後に置き、呼び出し元へ戻ります。
+</details>
+<details>
+<summary><strong><code>[if]</code>, <code>[elsif]</code>, <code>[else]</code>, <code>[endif]</code> - 条件分岐</strong></summary>
+変数の値に応じて、シナリオの実行内容を分岐させます。
+[if exp="条件式"]: 条件式が真(true)の場合、[elsif], [else], [endif]までの処理を実行します。
+条件式はJavaScriptの構文で書きます。例: f.love >= 10, f.flag === true
+[elsif exp="条件式"]: 前の[if]や[elsif]が偽で、この条件式が真の場合に実行。
+[else]: すべての[if], [elsif]が偽の場合に実行。
+[endif]: 分岐の終わりを示します。必ず必要です。
+使用例:
+Generated text
+[if exp="f.love >= 50"]
+    yuko:「大好き！」
+[elsif exp="f.love >= 20"]
+    yuko:「ありがとう。」
+[else]
+    yuko:「ふーん……」
+[endif]
+Use code with caution.
+Text
+</details>
+<details>
+<summary><strong><code>[eval]</code> - 変数操作</strong></summary>
+ゲーム変数(f.)やシステム変数(sf.)の値を直接操作する、非常に強力なタグです。
+[eval exp="JavaScript式"]
+使用例:
+Generated text
+; 好感度を10上げる
+[eval exp="f.love = f.love + 10"]
+
+; フラグを立てる
+[eval exp="f.item_get = true"]
+
+; 複雑な計算も可能
+[eval exp="f.total_score = (f.score_A + f.score_B) * 1.2"]
+Use code with caution.
+Text
+</details>
+カテゴリ: キャラクター・画像
+画面を華やかに彩ります。
+<details>
+<summary><strong><code>[chara_show]</code>, <code>[chara_mod]</code>, <code>[chara_hide]</code> - キャラクター操作</strong></summary>
+[chara_show name="キャラ名" storage="画像キー" pos="位置"]: キャラクターを表示。
+name: キャラクターの管理名。セリフの話者名と一致させます。
+storage: asset_define.jsonで定義した画像キー。
+pos: left, center, rightから選択。x, yでの座標指定も可能。
+time: フェードイン時間（ミリ秒）。
+[chara_mod name="キャラ名" storage="画像キー"]: 表情差分などに。表示中のキャラクターの画像を差し替えます。
+[chara_hide name="キャラ名"]: キャラクターを消去します。
+</details>
+<details>
+<summary><strong><code>[bg]</code>, <code>[image]</code>, <code>[freeimage]</code> - 背景・CG操作</strong></summary>
+[bg storage="画像キー" time="時間"]: 背景を表示します。
+[image storage="画像キー" ...]: CGなどの前景画像を表示。[chara_show]とほぼ同じパラメータが使えます。
+[freeimage layer="番号"]: [image]で表示した画像を消去します。
+</details>
+カテゴリ: 演出・音声
+ゲーム体験を豊かにします。
+<details>
+<summary><strong><code>[shake]</code>, <code>[flash]</code>, <code>[fadein]</code>, <code>[fadeout]</code> - 画面効果</strong></summary>
+[shake time="時間" power="強さ"]: 画面を揺らす。
+[flash color="色コード" time="時間"]: 画面を一瞬光らせる。
+[fadein] / [fadeout]: 画面全体を黒や白にフェードさせます。timeで時間を指定。
+</details>
+<details>
+<summary><strong><code>[playbgm]</code>, <code>[stopbgm]</code>, <code>[playse]</code> - 音声</strong></summary>
+[playbgm storage="音声キー" loop="true/false"]: BGMを再生。
+[stopbgm time="時間"]: BGMをフェードアウトさせて停止。
+[playse storage="音声キー"]: 効果音を再生。
+</details>
+6. 高度なトピック
+6.1. 動的アセットロード (@asset)
+大規模なゲームでは、最初にすべてのアセットを読み込むと起動が遅くなります。@assetを使うと、そのシナリオが必要とするアセットだけを、シナリオ開始直前に自動で読み込ませることができます。
+書式: @asset type="種類" key="管理キー" path="ファイルパス"
+type: image, audio, videoなど。
+key: タグのstorageで指定する名前。
+path: assets/からのファイルパス。
+配置場所: シナリオファイルの先頭（ラベルや地の文より前）に記述してください。
+6.2. ゲームの拡張（プログラマー向け）
+新規タグの追加: src/handlers/にjsファイルを作成し、src/handlers/index.jsに登録するだけで、新しいタグを簡単に追加できます。
+新規ゲームシーンの追加: READMEの「新規ゲームシーン開発の5ヶ条」に従うことで、ノベルパートと連携する新しいゲームパート（バトル、マップなど）を安全に追加できます。
+このマニュアルが、あなたの創造の旅の信頼できる羅針盤となることを願っています。
+さあ、あなただけの物語を始めましょう！
