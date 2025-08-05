@@ -1183,43 +1183,29 @@ export default class BattleScene extends Phaser.Scene {
         return itemContainer;
     }
 
-    // rotateItem メソッドを、この全文で置き換えてください
-
     rotateItem(itemContainer) {
-        const originalRotation = itemContainer.getData('rotation') || 0;
+        try{this.soundManager.playSe('se_item_rotate'); } catch (e) {}
+        const originalRotation = itemContainer.getData('rotation');
         const newRotation = (originalRotation + 90) % 360;
-        
+        itemContainer.setData('rotation', newRotation);
         const gridPos = itemContainer.getData('gridPos');
-
         if (gridPos) {
-            // --- グリッド内に配置されているアイテムの場合 ---
-            
-            // 1. チェックのために、グリッドから一時的に情報を削除
-            this.removeItemFromBackpack(itemContainer);
-
-            // 2. 回転後の状態で、元の場所に置けるかチェック
-            itemContainer.setData('rotation', newRotation);
-            if (this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                // 3a. 【成功】置ける場合：回転を確定し、再度グリッドに配置
-                try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
-                this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
-                itemContainer.setAngle(newRotation); // 見た目を回転
-            } else {
-                // 3b. 【失敗】置けない場合：回転をキャンセルし、元の状態でグリッドに戻す
-                try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
-                itemContainer.setData('rotation', originalRotation); // 角度を元に戻す
-                this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
+            if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
+                itemContainer.setData('rotation', originalRotation);
+                this.removeItemFromBackpack(itemContainer);
+                this.tweens.add({
+                    targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'),
+                    angle: 0, duration: 200, ease: 'Power2',
+                    onComplete: () => {
+                        itemContainer.setData('rotation', 0);
+                        this.updateArrowVisibility(itemContainer);
+                    }
+                });
+                return;
             }
-        } else {
-            // --- インベントリ内にあるアイテムの場合 ---
-            try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
-            itemContainer.setData('rotation', newRotation);
-            itemContainer.setAngle(newRotation);
         }
-
+        itemContainer.setAngle(newRotation);
         this.updateArrowVisibility(itemContainer);
-        // 状態をセーブ
-        this.time.delayedCall(100, () => { this.saveBackpackState(); });
     }
     
     _rotateMatrix(matrix) {
@@ -1278,22 +1264,27 @@ export default class BattleScene extends Phaser.Scene {
         this.updateInventoryLayout();
     }
 
-        removeItemFromBackpack(itemContainer) {
+    removeItemFromBackpack(itemContainer) {
         const gridPos = itemContainer.getData('gridPos');
         if (!gridPos) return;
-
         const itemId = itemContainer.getData('itemId');
         const rotation = itemContainer.getData('rotation') || 0;
         let shape = this.getRotatedShape(itemId, rotation);
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) { this.backpack[gridPos.row + r][gridPos.col + c] = 0; }
+                if (shape[r][c] === 1) {
+                    this.backpack[gridPos.row + r][gridPos.col + c] = 0;
+                }
             }
         }
-        
         itemContainer.setData('gridPos', null);
         const index = this.placedItemImages.indexOf(itemContainer);
         if (index > -1) this.placedItemImages.splice(index, 1);
+        if (!this.inventoryItemImages.includes(itemContainer)) {
+            this.inventoryItemImages.push(itemContainer);
+        }
+        this.updateArrowVisibility(itemContainer);
+        this.updateInventoryLayout();
     }
 
     getRotatedShape(itemId, rotation) {
