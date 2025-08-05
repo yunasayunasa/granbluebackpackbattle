@@ -74,55 +74,62 @@ export default class MessageWindow extends Container {
         this.textDelay = newSpeed;
     }
 
+  // MessageWindow.js にこのコードを貼り付けてください
+
     /**
-     * テキストを設定するメソッド
+     * テキストを設定し、表示完了をPromiseで通知するメソッド (新バージョン)
      * @param {string} text - 表示する全文
      * @param {boolean} useTyping - テロップ表示を使うかどうか
-     * @param {Function} onComplete - 表示完了時に呼ばれるコールバック関数
      * @param {string|null} speaker - 話者名（任意）
+     * @returns {Promise<void>} 表示完了時に解決されるPromise
      */
-    setText(text, useTyping = true, onComplete = () => {}, speaker = null) {
-        // ★★★ 現在の状態をプロパティとして保存 ★★★
-        this.currentText = text;
-        this.currentSpeaker = speaker;
-
-        this.textObject.setText('');
-        if (this.charByCharTimer) {
-            this.charByCharTimer.remove();
-        }
-
-        const typeSoundMode = this.configManager.getValue('typeSound');
-
-        if (!useTyping || text.length === 0 || this.textDelay <= 0) {
-            this.textObject.setText(text);
-            this.isTyping = false;
-            if(onComplete) onComplete();
-            return;
-        }
-        
-        this.isTyping = true;
-        let index = 0;
-        // ★ timerConfigをletに変更
-        let timerConfig = {
-            delay: this.textDelay,
-            callback: () => {
-                if (typeSoundMode === 'se') {
-                    this.soundManager.playSe('popopo');
-                }
-                this.textObject.text += timerConfig.fullText[index];
-                index++;
-                if (index === timerConfig.fullText.length) {
-                    this.charByCharTimer.remove();
-                    this.isTyping = false;
-                    onComplete();
-                }
-            },
-            callbackScope: this,
-            loop: true,
-            fullText: text
-        };
-        
-        this.charByCharTimer = this.scene.time.addEvent(timerConfig);
+    setText(text, useTyping = true, speaker = null) {
+        return new Promise(resolve => {
+            // ★ 現在の状態をプロパティとして保存
+            this.currentText = text;
+            this.currentSpeaker = speaker;
+    
+            // ★ 既存のタイマーがあれば完全に停止・破棄
+            if (this.charByCharTimer) {
+                this.charByCharTimer.remove();
+                this.charByCharTimer = null;
+            }
+            // ★ テキストをクリア
+            this.textObject.setText('');
+    
+            const typeSoundMode = this.configManager.getValue('typeSound');
+    
+            // タイピングなし、または即時表示の場合
+            if (!useTyping || text.length === 0 || this.textDelay <= 0) {
+                this.textObject.setText(text);
+                this.isTyping = false;
+                resolve(); // 即座にPromiseを解決して完了を通知
+                return;
+            }
+            
+            // タイピングありの場合
+            this.isTyping = true;
+            let index = 0;
+            
+            this.charByCharCharTimer = this.scene.time.addEvent({
+                delay: this.textDelay,
+                callback: () => {
+                    if (typeSoundMode === 'se') {
+                        this.soundManager.playSe('popopo');
+                    }
+                    // ここで直接 text を参照するように変更
+                    this.textObject.text += text[index];
+                    index++;
+                    if (index === text.length) {
+                        if(this.charByCharCharTimer) this.charByCharCharTimer.remove();
+                        this.isTyping = false;
+                        resolve(); // ★ すべて表示し終わったらPromiseを解決！
+                    }
+                },
+                callbackScope: this,
+                loop: true
+            });
+        });
     }
     
     skipTyping() {
