@@ -166,12 +166,15 @@ export default class ScenarioManager {
             const wrappedLine = this.manualWrap(dialogue);
             
             this.messageWindow.setText(wrappedLine, true, () => {
-                this.messageWindow.showNextArrow();
-                if (this.mode === 'auto') this.startAutoMode();
-            }, speakerName);
+        // ★★★ 修正箇所 ★★★
+        // オートモードはテキスト表示完了時にトリガーするが、クリック待ちは設定しない
+        if (this.mode === 'auto') this.startAutoMode();
+    }, speakerName);
 
-            // 状態を「クリック待ち」に設定
-            this.isWaitingClick = true; 
+    // ★★★ isWaitingClick = true; を削除する！ ★★★
+    // これにより、テキストを表示しただけではループは止まらなくなる
+
+} // ...
         
         } else {
             // --- 空行は何もしない ---
