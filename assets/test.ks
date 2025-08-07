@@ -13,6 +13,7 @@
 
 [link target="*start_rank_match"  text="ランクマッチ"]
 [p]
+[r]
 [s]
 ; assets/scenario/title.ks
 
