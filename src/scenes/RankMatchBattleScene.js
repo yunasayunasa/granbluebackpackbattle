@@ -1115,287 +1115,318 @@ recastOverlay.setVisible(hasRecast);
         this.time.delayedCall(effectDuration * 2, () => { particles.destroy(); });
     }
 
-    createItem(itemId, x, y) {
-        const itemData = ITEM_DATA[itemId];
-        if (!itemData) return null;
-        const containerWidth = itemData.shape[0].length * this.cellSize;
-        const containerHeight = itemData.shape.length * this.cellSize;
-        const itemContainer = this.add.container(x, y).setSize(containerWidth, containerHeight);
-        const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
-        itemImage.setFlipX(true);
-        const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false).setFlipX(true);
-        const maskGraphics = this.add.graphics().setVisible(false);
-        recastOverlay.setMask(maskGraphics.createGeometryMask());
-        const arrowContainer = this.add.container(0, 0).setVisible(false);
-        const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
-        arrowContainer.add([
-            this.add.text(0, 0, '▲', arrowStyle).setOrigin(0.5).setName('up'),
-            this.add.text(0, 0, '▼', arrowStyle).setOrigin(0.5).setName('down'),
-            this.add.text(0, 0, '◀', arrowStyle).setOrigin(0.5).setName('left'),
-            this.add.text(0, 0, '▶', arrowStyle).setOrigin(0.5).setName('right')
-        ]);
-        itemContainer.add([itemImage, recastOverlay, arrowContainer, maskGraphics]).setDepth(12).setInteractive();
-        itemContainer.setData({
-            itemId, baseItemId: itemId, originX: x, originY: y, gridPos: null,
-            itemImage, arrowContainer, rotation: 0, recastOverlay, recastMask: maskGraphics
-        });
-        const hasRecast = itemData.recast && itemData.recast > 0;
-        recastOverlay.setVisible(hasRecast);
-        this.input.setDraggable(itemContainer);
-        let pressTimer = null;
-        let isDragging = false;
-        let isDown = false;
-        itemContainer.on('pointerdown', (pointer) => {
-            isDown = true;
-            isDragging = false;
-            itemContainer.setData('isLongPress', false);
-            if (pointer.rightButtonDown()) {
-                this.rotateItem(itemContainer);
-                return;
-            }
-            pressTimer = this.time.delayedCall(500, () => {
-                if (isDown && !isDragging) {
+     createItem(itemId, x, y) {
+            const itemData = ITEM_DATA[itemId];
+            if (!itemData) return null;
+            const containerWidth = itemData.shape[0].length * this.cellSize;
+            const containerHeight = itemData.shape.length * this.cellSize;
+            const itemContainer = this.add.container(x, y).setSize(containerWidth, containerHeight);
+            const itemImage = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight);
+            itemImage.setFlipX(true);
+            const recastOverlay = this.add.image(0, 0, itemData.storage).setDisplaySize(containerWidth, containerHeight).setTint(0x00aaff, 0.7).setVisible(false).setFlipX(true);
+            const maskGraphics = this.add.graphics().setVisible(false);
+            recastOverlay.setMask(maskGraphics.createGeometryMask());
+            const arrowContainer = this.add.container(0, 0).setVisible(false);
+            const arrowStyle = { fontSize: '32px', color: '#ffdd00', stroke: '#000', strokeThickness: 4 };
+            arrowContainer.add([
+                this.add.text(0, 0, '▲', arrowStyle).setOrigin(0.5).setName('up'),
+                this.add.text(0, 0, '▼', arrowStyle).setOrigin(0.5).setName('down'),
+                this.add.text(0, 0, '◀', arrowStyle).setOrigin(0.5).setName('left'),
+                this.add.text(0, 0, '▶', arrowStyle).setOrigin(0.5).setName('right')
+            ]);
+            itemContainer.add([itemImage, recastOverlay, arrowContainer, maskGraphics]).setDepth(12).setInteractive();
+            itemContainer.setData({
+                itemId, baseItemId: itemId, originX: x, originY: y, gridPos: null,
+                itemImage, arrowContainer, rotation: 0, recastOverlay, recastMask: maskGraphics
+            });
+            const hasRecast = itemData.recast && itemData.recast > 0;
+            recastOverlay.setVisible(hasRecast);
+            this.input.setDraggable(itemContainer);
+            let pressTimer = null;
+            let isDragging = false;
+            let isDown = false;
+            itemContainer.on('pointerdown', (pointer) => {
+                isDown = true;
+                isDragging = false;
+                itemContainer.setData('isLongPress', false);
+                if (pointer.rightButtonDown()) {
                     this.rotateItem(itemContainer);
-                    itemContainer.setData('isLongPress', true);
+                    return;
+                }
+                pressTimer = this.time.delayedCall(500, () => {
+                    if (isDown && !isDragging) {
+                        this.rotateItem(itemContainer);
+                        itemContainer.setData('isLongPress', true);
+                    }
+                });
+            });
+            itemContainer.on('dragstart', () => {
+                   try { this.soundManager.playSe('se_item_grab'); } catch (e) {}
+                isDragging = true;
+                if (pressTimer) pressTimer.remove();
+                this.tooltip.hide();
+                itemContainer.setDepth(99);
+                this.removeItemFromBackpack(itemContainer);
+                this.sellZoneGraphics.setVisible(true);
+                this.sellZoneText.setVisible(true);
+            });
+            itemContainer.on('drag', (pointer, dragX, dragY) => {
+                if (pressTimer) pressTimer.remove();
+                itemContainer.setPosition(dragX, dragY );
+                const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
+                const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
+                const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
+                if (gridRow >= 0 && gridRow < this.backpackGridSize && gridCol >= 0 && gridCol < this.backpackGridSize) {
+                    this.ghostImage.clear();
+                    const canPlace = this.canPlaceItem(itemContainer, gridCol, gridRow);
+                    const lineColor = canPlace ? 0x00ff00 : 0xff0000;
+                    this.ghostImage.lineStyle(4, lineColor, 1.0); // 4pxの太い枠線
+    
+                    // --- 2. 塗りつぶしの設定 (少しだけ透明に) ---
+                    const fillColor = canPlace ? 0x00ff00 : 0xff0000;
+                    this.ghostImage.fillStyle(fillColor, 0.7); // 透明度を 0.5 -> 0.7 に
+    
+                    for (let r = 0; r < shape.length; r++) {
+                        for (let c = 0; c < shape[0].length; c++) {
+                            if (shape[r][c] === 1) {
+                                const x = this.gridX + (gridCol + c) * this.cellSize;
+                                const y = this.gridY + (gridRow + r) * this.cellSize;
+                                
+                                // 塗りつぶしと枠線を同時に描画
+                                this.ghostImage.fillRect(x, y, this.cellSize, this.cellSize);
+                                this.ghostImage.strokeRect(x, y, this.cellSize, this.cellSize);
+                            }
+                        }
+                    }
+                    this.ghostImage.setVisible(true);
+                } else {
+                    this.ghostImage.setVisible(false);
                 }
             });
-        });
-        itemContainer.on('dragstart', () => {
-               try { this.soundManager.playSe('se_item_grab'); } catch (e) {}
-            isDragging = true;
-            if (pressTimer) pressTimer.remove();
-            this.tooltip.hide();
-            itemContainer.setDepth(99);
-            this.removeItemFromBackpack(itemContainer);
-            this.sellZoneGraphics.setVisible(true);
-            this.sellZoneText.setVisible(true);
-        });
-        itemContainer.on('drag', (pointer, dragX, dragY) => {
-            if (pressTimer) pressTimer.remove();
-            itemContainer.setPosition(dragX, dragY);
-            const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
-            const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
-            const shape = this.getRotatedShape(itemId, itemContainer.getData('rotation'));
-            if (gridRow >= 0 && gridRow < this.backpackGridSize && gridCol >= 0 && gridCol < this.backpackGridSize) {
+            itemContainer.on('dragend', (pointer) => {
+                itemContainer.setDepth(12);
                 this.ghostImage.clear();
-                const canPlace = this.canPlaceItem(itemContainer, gridCol, gridRow);
-                this.ghostImage.fillStyle(canPlace ? 0x00ff00 : 0xff0000, 0.5);
-                for (let r = 0; r < shape.length; r++) {
-                    for (let c = 0; c < shape[0].length; c++) {
-                        if (shape[r][c] === 1) {
-                            const x = this.gridX + (gridCol + c) * this.cellSize;
-                            const y = this.gridY + (gridRow + r) * this.cellSize;
-                            this.ghostImage.fillRect(x, y, this.cellSize, this.cellSize);
+                this.ghostImage.setVisible(false);
+                this.sellZoneGraphics.setVisible(false);
+                this.sellZoneText.setVisible(false);
+                const droppedInSellZone = Phaser.Geom.Rectangle.Contains(this.sellZoneArea, pointer.x, pointer.y);
+                const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
+                const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
+                if (droppedInSellZone) {
+                    try{this.soundManager.playSe('se_item_sell'); } catch (e) {} 
+                    const itemId = itemContainer.getData('itemId');
+                    const itemData = ITEM_DATA[itemId];
+                    const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
+                    const currentCoins = this.stateManager.sf.coins || 0;
+                    this.stateManager.setSF('coins', currentCoins + sellPrice);
+                    this.updateShopButtons(); 
+                    const indexToRemove = this.inventoryItemImages.indexOf(itemContainer);
+                    if (indexToRemove > -1) {
+                        this.inventoryItemImages.splice(indexToRemove, 1);
+                    }
+                    itemContainer.destroy();
+                    this.updateInventoryLayout();
+                    this.saveBackpackState();
+                    console.log(`アイテム'${itemId}'を ${sellPrice}コインで売却しました。`);
+                } else if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
+                    try { this.soundManager.playSe('se_item_place'); } catch (e) {}
+                    const dropX = itemContainer.x;
+                    const dropY = itemContainer.y;
+                    this.placeItemInBackpack(itemContainer, gridCol, gridRow);
+                    const targetX = itemContainer.x;
+                    const targetY = itemContainer.y;
+                    itemContainer.setPosition(dropX, dropY);
+                    this.tweens.add({ targets: itemContainer, x: targetX, y: targetY, duration: 150, ease: 'Power1' });
+                    this.time.delayedCall(250, () => {
+                        this.saveBackpackState();
+                    });
+                } else {
+                    this.tweens.add({ 
+                        targets: itemContainer, 
+                        x: itemContainer.getData('originX'), 
+                        y: itemContainer.getData('originY'), 
+                        duration: 200, 
+                        ease: 'Power2' 
+                    });
+                }
+            });
+            itemContainer.on('pointerup', (pointer, localX, localY, event) => {
+                if (pressTimer) pressTimer.remove();
+                if (!isDragging && !itemContainer.getData('isLongPress')) {
+                    event.stopPropagation();
+                    const baseItemData = ITEM_DATA[itemId];
+                    if (!baseItemData) return;
+                    const placedIndex = this.placedItemImages.indexOf(itemContainer);
+                    let finalItemData = null;
+                    if (placedIndex > -1 && this.finalizedPlayerItems && this.finalizedPlayerItems.length > placedIndex) {
+                        finalItemData = this.finalizedPlayerItems[placedIndex];
+                    }
+                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
+                    let tooltipText = `【${itemId}】\n`;
+                    const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
+                    if (itemElements.length > 0) { tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`; }
+                    if (baseItemData.shapeType) { tooltipText += `サイズ: ${baseItemData.shapeType}\n\n`; }
+                    else { const sizeH = baseItemData.shape.length; const sizeW = baseItemData.shape[0].length; tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`; }
+                    if (baseItemData.recast && baseItemData.recast > 0) {
+                        const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
+                        tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
+                    }
+                    if (baseItemData.action) {
+                        const actions = Array.isArray(baseItemData.action) ? baseItemData.action : [baseItemData.action];
+                        const finalActions = (finalItemData && finalItemData.action) ? (Array.isArray(finalItemData.action) ? finalItemData.action : [finalItemData.action]) : actions;
+                        actions.forEach((baseAction, index) => {
+                            const finalAction = finalActions[index] || baseAction;
+                            tooltipText += `効果: ${baseAction.type} ${finalAction.value}\n`;
+                            if (finalAction.value !== baseAction.value) { tooltipText += `  (基本値: ${baseAction.value})\n`; }
+                        });
+                    }
+                    if (baseItemData.passive && baseItemData.passive.effects) { baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
+                    if (baseItemData.synergy) {
+                        tooltipText += `\nシナジー:\n`;
+                        const dir = t(baseItemData.synergy.direction);
+                        const effects = Array.isArray(baseItemData.synergy.effect) ? baseItemData.synergy.effect : [baseItemData.synergy.effect];
+                        tooltipText += `  - ${dir}の味方に\n`;
+                        effects.forEach(effect => {
+                            const effectType = t(effect.type);
+                            const sign = effect.value > 0 ? '+' : '';
+                            tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
+                        });
+                    }
+                    this.tooltip.show(itemContainer, tooltipText);
+                }
+                isDown = false;
+                isDragging = false;
+                itemContainer.setData('isLongPress', false);
+            });
+            return itemContainer;
+        }
+    
+        // rotateItem メソッドを、このシンプル版に置き換えてください
+    
+        // rotateItem メソッドを、これで丸ごと置き換えてください
+    
+            rotateItem(itemContainer) {
+            const originalRotation = itemContainer.getData('rotation') || 0;
+            const newRotation = (originalRotation + 90) % 360;
+            
+            const gridPos = itemContainer.getData('gridPos');
+    
+            if (gridPos) {
+                // --- グリッド内での回転 ---
+                
+                // 1. チェックのために、一時的にグリッドから自分を消す
+                this.removeItemFromBackpack(itemContainer);
+    
+                // 2. 回転後の状態で、元の場所に置けるかチェック
+                itemContainer.setData('rotation', newRotation);
+                if (this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
+                    // 3a. 【成功】置ける場合：回転を確定し、再度グリッドに配置
+                    try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+                    this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
+                    itemContainer.setAngle(newRotation);
+                } else {
+                    // 3b. 【失敗】置けない場合：回転をキャンセルし、元の状態でグリッドに戻す
+                    try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
+                    itemContainer.setData('rotation', originalRotation); // 角度を元に戻す
+                    this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
+                }
+            } else {
+                // --- インベントリ内での回転 ---
+                try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+                itemContainer.setData('rotation', newRotation);
+                itemContainer.setAngle(newRotation);
+            }
+    
+            this.updateArrowVisibility(itemContainer);
+            this.time.delayedCall(100, () => { this.saveBackpackState(); });
+        }
+        
+        _rotateMatrix(matrix) {
+            if (!matrix || matrix.length === 0 || !matrix[0]) return [[]];
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            const newMatrix = Array.from({ length: cols }, () => Array(rows).fill(0));
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    newMatrix[c][rows - 1 - r] = matrix[r][c];
+                }
+            }
+            return newMatrix;
+        }
+    
+        canPlaceItem(itemContainer, startCol, startRow) {
+            const itemId = itemContainer.getData('itemId');
+            const rotation = itemContainer.getData('rotation') || 0;
+            let shape = this.getRotatedShape(itemId, rotation);
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c] === 1) {
+                        const checkRow = startRow + r;
+                        const checkCol = startCol + c;
+                        if (checkRow < 0 || checkRow >= this.backpackGridSize || checkCol < 0 || checkCol >= this.backpackGridSize || this.backpack[checkRow][checkCol] !== 0) {
+                            return false;
                         }
                     }
                 }
-                this.ghostImage.setVisible(true);
-            } else {
-                this.ghostImage.setVisible(false);
             }
-        });
-        itemContainer.on('dragend', (pointer) => {
-            itemContainer.setDepth(12);
-            this.ghostImage.clear();
-            this.ghostImage.setVisible(false);
-            this.sellZoneGraphics.setVisible(false);
-            this.sellZoneText.setVisible(false);
-            const droppedInSellZone = Phaser.Geom.Rectangle.Contains(this.sellZoneArea, pointer.x, pointer.y);
-            const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
-            const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
-            if (droppedInSellZone) {
-                try{this.soundManager.playSe('se_item_sell'); } catch (e) {} 
-                const itemId = itemContainer.getData('itemId');
-                const itemData = ITEM_DATA[itemId];
-                const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
-                const currentCoins = this.stateManager.sf.coins || 0;
-                this.stateManager.setSF('coins', currentCoins + sellPrice);
-                this.updateShopButtons(); 
-                const indexToRemove = this.inventoryItemImages.indexOf(itemContainer);
-                if (indexToRemove > -1) {
-                    this.inventoryItemImages.splice(indexToRemove, 1);
-                }
-                itemContainer.destroy();
-                this.updateInventoryLayout();
-                this.saveBackpackState();
-                console.log(`アイテム'${itemId}'を ${sellPrice}コインで売却しました。`);
-            } else if (this.canPlaceItem(itemContainer, gridCol, gridRow)) {
-                try { this.soundManager.playSe('se_item_place'); } catch (e) {}
-                const dropX = itemContainer.x;
-                const dropY = itemContainer.y;
-                this.placeItemInBackpack(itemContainer, gridCol, gridRow);
-                const targetX = itemContainer.x;
-                const targetY = itemContainer.y;
-                itemContainer.setPosition(dropX, dropY);
-                this.tweens.add({ targets: itemContainer, x: targetX, y: targetY, duration: 150, ease: 'Power1' });
-                this.time.delayedCall(250, () => {
-                    this.saveBackpackState();
-                });
-            } else {
-                this.tweens.add({ 
-                    targets: itemContainer, 
-                    x: itemContainer.getData('originX'), 
-                    y: itemContainer.getData('originY'), 
-                    duration: 200, 
-                    ease: 'Power2' 
-                });
-            }
-        });
-        itemContainer.on('pointerup', (pointer, localX, localY, event) => {
-            if (pressTimer) pressTimer.remove();
-            if (!isDragging && !itemContainer.getData('isLongPress')) {
-                event.stopPropagation();
-                const baseItemData = ITEM_DATA[itemId];
-                if (!baseItemData) return;
-                const placedIndex = this.placedItemImages.indexOf(itemContainer);
-                let finalItemData = null;
-                if (placedIndex > -1 && this.finalizedPlayerItems && this.finalizedPlayerItems.length > placedIndex) {
-                    finalItemData = this.finalizedPlayerItems[placedIndex];
-                }
-                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                let tooltipText = `【${itemId}】\n`;
-                const itemElements = baseItemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                if (itemElements.length > 0) { tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`; }
-                if (baseItemData.shapeType) { tooltipText += `サイズ: ${baseItemData.shapeType}\n\n`; }
-                else { const sizeH = baseItemData.shape.length; const sizeW = baseItemData.shape[0].length; tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`; }
-                if (baseItemData.recast && baseItemData.recast > 0) {
-                    const recastValue = finalItemData ? finalItemData.recast : baseItemData.recast;
-                    tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
-                }
-                if (baseItemData.action) {
-                    const actions = Array.isArray(baseItemData.action) ? baseItemData.action : [baseItemData.action];
-                    const finalActions = (finalItemData && finalItemData.action) ? (Array.isArray(finalItemData.action) ? finalItemData.action : [finalItemData.action]) : actions;
-                    actions.forEach((baseAction, index) => {
-                        const finalAction = finalActions[index] || baseAction;
-                        tooltipText += `効果: ${baseAction.type} ${finalAction.value}\n`;
-                        if (finalAction.value !== baseAction.value) { tooltipText += `  (基本値: ${baseAction.value})\n`; }
-                    });
-                }
-                if (baseItemData.passive && baseItemData.passive.effects) { baseItemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-                if (baseItemData.synergy) {
-                    tooltipText += `\nシナジー:\n`;
-                    const dir = t(baseItemData.synergy.direction);
-                    const effects = Array.isArray(baseItemData.synergy.effect) ? baseItemData.synergy.effect : [baseItemData.synergy.effect];
-                    tooltipText += `  - ${dir}の味方に\n`;
-                    effects.forEach(effect => {
-                        const effectType = t(effect.type);
-                        const sign = effect.value > 0 ? '+' : '';
-                        tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
-                    });
-                }
-                this.tooltip.show(itemContainer, tooltipText);
-            }
-            isDown = false;
-            isDragging = false;
-            itemContainer.setData('isLongPress', false);
-        });
-        return itemContainer;
-    }
-
-    rotateItem(itemContainer) {
-        try{this.soundManager.playSe('se_item_rotate'); } catch (e) {}
-        const originalRotation = itemContainer.getData('rotation');
-        const newRotation = (originalRotation + 90) % 360;
-        itemContainer.setData('rotation', newRotation);
-        const gridPos = itemContainer.getData('gridPos');
-        if (gridPos) {
-            if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                itemContainer.setData('rotation', originalRotation);
-                this.removeItemFromBackpack(itemContainer);
-                this.tweens.add({
-                    targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'),
-                    angle: 0, duration: 200, ease: 'Power2',
-                    onComplete: () => {
-                        itemContainer.setData('rotation', 0);
-                        this.updateArrowVisibility(itemContainer);
-                    }
-                });
-                return;
-            }
+            return true;
         }
-        itemContainer.setAngle(newRotation);
-        this.updateArrowVisibility(itemContainer);
-    }
     
-    _rotateMatrix(matrix) {
-        if (!matrix || matrix.length === 0 || !matrix[0]) return [[]];
-        const rows = matrix.length;
-        const cols = matrix[0].length;
-        const newMatrix = Array.from({ length: cols }, () => Array(rows).fill(0));
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                newMatrix[c][rows - 1 - r] = matrix[r][c];
-            }
-        }
-        return newMatrix;
-    }
-
-    canPlaceItem(itemContainer, startCol, startRow) {
-        const itemId = itemContainer.getData('itemId');
-        const rotation = itemContainer.getData('rotation') || 0;
-        let shape = this.getRotatedShape(itemId, rotation);
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    const checkRow = startRow + r;
-                    const checkCol = startCol + c;
-                    if (checkRow < 0 || checkRow >= this.backpackGridSize || checkCol < 0 || checkCol >= this.backpackGridSize || this.backpack[checkRow][checkCol] !== 0) {
-                        return false;
+        placeItemInBackpack(itemContainer, startCol, startRow) {
+            const itemId = itemContainer.getData('itemId');
+            const rotation = itemContainer.getData('rotation') || 0;
+            let shape = this.getRotatedShape(itemId, rotation);
+            const containerWidth = shape[0].length * this.cellSize;
+            const containerHeight = shape.length * this.cellSize;
+            itemContainer.x = this.gridX + startCol * this.cellSize + containerWidth / 2;
+            itemContainer.y = this.gridY + startRow * this.cellSize + containerHeight / 2;
+            itemContainer.setData('gridPos', { row: startRow, col: startCol });
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c] === 1) {
+                        this.backpack[startRow + r][startCol + c] = itemId;
                     }
                 }
             }
+            const index = this.inventoryItemImages.indexOf(itemContainer);
+            if (index > -1) this.inventoryItemImages.splice(index, 1);
+            if (!this.placedItemImages.includes(itemContainer)) {
+                this.placedItemImages.push(itemContainer);
+            }
+            this.updateArrowVisibility(itemContainer);
+            this.updateInventoryLayout();
         }
-        return true;
-    }
-
-    placeItemInBackpack(itemContainer, startCol, startRow) {
-        const itemId = itemContainer.getData('itemId');
-        const rotation = itemContainer.getData('rotation') || 0;
-        let shape = this.getRotatedShape(itemId, rotation);
-        const containerWidth = shape[0].length * this.cellSize;
-        const containerHeight = shape.length * this.cellSize;
-        itemContainer.x = this.gridX + startCol * this.cellSize + containerWidth / 2;
-        itemContainer.y = this.gridY + startRow * this.cellSize + containerHeight / 2;
-        itemContainer.setData('gridPos', { row: startRow, col: startCol });
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    this.backpack[startRow + r][startCol + c] = itemId;
+    
+                removeItemFromBackpack(itemContainer) {
+            const gridPos = itemContainer.getData('gridPos');
+            if (!gridPos) return;
+    
+            const itemId = itemContainer.getData('itemId');
+            const rotation = itemContainer.getData('rotation') || 0;
+            let shape = this.getRotatedShape(itemId, rotation);
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c] === 1) {
+                        this.backpack[gridPos.row + r][gridPos.col + c] = 0;
+                    }
                 }
             }
-        }
-        const index = this.inventoryItemImages.indexOf(itemContainer);
-        if (index > -1) this.inventoryItemImages.splice(index, 1);
-        if (!this.placedItemImages.includes(itemContainer)) {
-            this.placedItemImages.push(itemContainer);
-        }
-        this.updateArrowVisibility(itemContainer);
-        this.updateInventoryLayout();
-    }
-
-    removeItemFromBackpack(itemContainer) {
-        const gridPos = itemContainer.getData('gridPos');
-        if (!gridPos) return;
-        const itemId = itemContainer.getData('itemId');
-        const rotation = itemContainer.getData('rotation') || 0;
-        let shape = this.getRotatedShape(itemId, rotation);
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] === 1) {
-                    this.backpack[gridPos.row + r][gridPos.col + c] = 0;
-                }
+    
+            itemContainer.setData('gridPos', null);
+    
+            const index = this.placedItemImages.indexOf(itemContainer);
+            if (index > -1) this.placedItemImages.splice(index, 1);
+    
+            if (!this.inventoryItemImages.includes(itemContainer)) {
+                this.inventoryItemImages.push(itemContainer);
+                
+                // ★★★ この一行を追加 ★★★
+                // インベントリに戻したアイテムを、UIコンテナの子に正式に追加する
+                this.prepareContainer.add(itemContainer);
             }
+    
+            this.updateArrowVisibility(itemContainer);
         }
-        itemContainer.setData('gridPos', null);
-        const index = this.placedItemImages.indexOf(itemContainer);
-        if (index > -1) this.placedItemImages.splice(index, 1);
-        if (!this.inventoryItemImages.includes(itemContainer)) {
-            this.inventoryItemImages.push(itemContainer);
-        }
-        this.updateArrowVisibility(itemContainer);
-        this.updateInventoryLayout();
-    }
-
     getRotatedShape(itemId, rotation) {
         if (!itemId) {
             console.warn("getRotatedShape: 不正なitemIdが渡されました。", itemId);
