@@ -9,8 +9,9 @@
 [image storage="titlelogo" time=500]
 [link target="*start_tutorial_test" text="チュートリアル"]
 
-[link target="*start_score_attack" size=28 text="スコアアタック"]
-[link target="*start_rank_match" size=28 text="ランクマッチ"]
+[link target="*start_score_attack"  text="スコアアタック"]
+
+[link target="*start_rank_match"  text="ランクマッチ"]
 [p]
 [s]
 ; assets/scenario/title.ks
