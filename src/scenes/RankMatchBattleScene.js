@@ -1204,13 +1204,13 @@ recastOverlay.setVisible(hasRecast);
             const gridCol = Math.floor((pointer.x - this.gridX) / this.cellSize);
             const gridRow = Math.floor((pointer.y - this.gridY) / this.cellSize);
             if (droppedInSellZone) {
-                try{this.soundManager.playSe('se_item_sell'); } catch (e) {} 
+                try{this.soundManager.playSe('se_item_sell'); } catch (e) {}
                 const itemId = itemContainer.getData('itemId');
                 const itemData = ITEM_DATA[itemId];
                 const sellPrice = Math.max(1, Math.floor((itemData.cost || 0) / 2));
                 const currentCoins = this.stateManager.sf.coins || 0;
                 this.stateManager.setSF('coins', currentCoins + sellPrice);
-                this.updateShopButtons(); 
+                this.updateShopButtons();
                 const indexToRemove = this.inventoryItemImages.indexOf(itemContainer);
                 if (indexToRemove > -1) {
                     this.inventoryItemImages.splice(indexToRemove, 1);
@@ -1232,13 +1232,21 @@ recastOverlay.setVisible(hasRecast);
                     this.saveBackpackState();
                 });
             } else {
-                this.tweens.add({ 
-                    targets: itemContainer, 
-                    x: itemContainer.getData('originX'), 
-                    y: itemContainer.getData('originY'), 
-                    duration: 200, 
-                    ease: 'Power2' 
-                });
+                // ★★★ 修正箇所 ここから ★★★
+                // グリッドにも売却ゾーンにもドロップされなかった場合、インベントリに戻す
+                try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
+
+                // 1. アイテムをインベントリの管理リストに追加する（まだリストになければ）
+                if (!this.inventoryItemImages.includes(itemContainer)) {
+                    this.inventoryItemImages.push(itemContainer);
+                }
+
+                // 2. インベントリ全体のレイアウトを更新して、全アイテムを正しい位置に再配置する
+                this.updateInventoryLayout();
+
+                // 3. 変更後の状態を保存する
+                this.saveBackpackState();
+                // ★★★ 修正箇所 ここまで ★★★
             }
         });
         itemContainer.on('pointerup', (pointer, localX, localY, event) => {
@@ -1291,30 +1299,44 @@ recastOverlay.setVisible(hasRecast);
         });
         return itemContainer;
     }
+    // rotateItem メソッドを、このシンプル版に置き換えてください
 
-    rotateItem(itemContainer) {
-        try{this.soundManager.playSe('se_item_rotate'); } catch (e) {}
-        const originalRotation = itemContainer.getData('rotation');
+    // rotateItem メソッドを、これで丸ごと置き換えてください
+
+        rotateItem(itemContainer) {
+        const originalRotation = itemContainer.getData('rotation') || 0;
         const newRotation = (originalRotation + 90) % 360;
-        itemContainer.setData('rotation', newRotation);
+        
         const gridPos = itemContainer.getData('gridPos');
+
         if (gridPos) {
-            if (!this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
-                itemContainer.setData('rotation', originalRotation);
-                this.removeItemFromBackpack(itemContainer);
-                this.tweens.add({
-                    targets: itemContainer, x: itemContainer.getData('originX'), y: itemContainer.getData('originY'),
-                    angle: 0, duration: 200, ease: 'Power2',
-                    onComplete: () => {
-                        itemContainer.setData('rotation', 0);
-                        this.updateArrowVisibility(itemContainer);
-                    }
-                });
-                return;
+            // --- グリッド内での回転 ---
+            
+            // 1. チェックのために、一時的にグリッドから自分を消す
+            this.removeItemFromBackpack(itemContainer);
+
+            // 2. 回転後の状態で、元の場所に置けるかチェック
+            itemContainer.setData('rotation', newRotation);
+            if (this.canPlaceItem(itemContainer, gridPos.col, gridPos.row)) {
+                // 3a. 【成功】置ける場合：回転を確定し、再度グリッドに配置
+                try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+                this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
+                itemContainer.setAngle(newRotation);
+            } else {
+                // 3b. 【失敗】置けない場合：回転をキャンセルし、元の状態でグリッドに戻す
+                try { this.soundManager.playSe('se_place_fail'); } catch(e) {}
+                itemContainer.setData('rotation', originalRotation); // 角度を元に戻す
+                this.placeItemInBackpack(itemContainer, gridPos.col, gridPos.row);
             }
+        } else {
+            // --- インベントリ内での回転 ---
+            try { this.soundManager.playSe('se_item_rotate'); } catch(e) {}
+            itemContainer.setData('rotation', newRotation);
+            itemContainer.setAngle(newRotation);
         }
-        itemContainer.setAngle(newRotation);
+
         this.updateArrowVisibility(itemContainer);
+        this.time.delayedCall(100, () => { this.saveBackpackState(); });
     }
     
     _rotateMatrix(matrix) {
@@ -1373,12 +1395,14 @@ recastOverlay.setVisible(hasRecast);
         this.updateInventoryLayout();
     }
 
-    removeItemFromBackpack(itemContainer) {
+        removeItemFromBackpack(itemContainer) {
         const gridPos = itemContainer.getData('gridPos');
         if (!gridPos) return;
+
         const itemId = itemContainer.getData('itemId');
         const rotation = itemContainer.getData('rotation') || 0;
         let shape = this.getRotatedShape(itemId, rotation);
+
         for (let r = 0; r < shape.length; r++) {
             for (let c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] === 1) {
@@ -1386,15 +1410,14 @@ recastOverlay.setVisible(hasRecast);
                 }
             }
         }
+        
+        // ★★★ このメソッドは、以下の2行で仕事が終わる ★★★
         itemContainer.setData('gridPos', null);
+        
         const index = this.placedItemImages.indexOf(itemContainer);
         if (index > -1) this.placedItemImages.splice(index, 1);
-        if (!this.inventoryItemImages.includes(itemContainer)) {
-            this.inventoryItemImages.push(itemContainer);
-        }
-        this.updateArrowVisibility(itemContainer);
-        this.updateInventoryLayout();
     }
+
 
     getRotatedShape(itemId, rotation) {
         if (!itemId) {
@@ -2097,3 +2120,4 @@ recastOverlay.setVisible(hasRecast);
         await this.firebaseManager.uploadGhostData(rankMatchData);
     }
 }
+
