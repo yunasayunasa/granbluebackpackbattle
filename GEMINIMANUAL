@@ -1,123 +1,161 @@
-Odyssey Engine v2.1 - Internal Architecture Specification for AI Analysis & Development
-Document ID: OE-IAS-2.1-FINAL
-Version: 2.1
-Classification: GEMINI_INTERNAL_SPEC
-Objective: To provide a comprehensive, logically-structured model of the Odyssey Engine's architecture, data flow, and core protocols. This document serves as the ground truth for any future development, debugging, or extension tasks, ensuring architectural integrity.
-1.0 Global Architecture & Service Locator
-1.1 Global Singleton Pattern:
-The engine employs a Service Locator pattern using Phaser.Registry as the central repository for global singleton services. This avoids global namespace pollution and ensures a single point of access for critical managers.
-1.2 Core Services & Initialization Locus:
-Service	Class	Initialization Locus	Registry Key	Criticality
-State Manager	StateManager	PreloadScene.create	stateManager	MAXIMUM
-Config Manager	ConfigManager	PreloadScene.create	configManager	High
-Sound Manager	SoundManager	SystemScene.create	soundManager	High
-1.3 Key Scene Roles & Responsibilities:
-PreloadScene: Bootstrapper.
-Responsibility: (1) Load critical boot assets (asset_define.json). (2) Instantiate and register StateManager and ConfigManager. (3) Perform a 2-stage asset load based on the asset manifest. (4) Launch SystemScene with initial game data. (5) self.scene.stop().
-Lifecycle: Executes once at game boot. MUST be the only scene with active: true in main.js.
+Odyssey Engine v2.1 - Internal Architecture Specification (FINAL RECONSTRUCTION)
+Document ID: OE-IAS-2.1-FINAL-R5
+Version: 2.1 Revision 5 (Final Reconstruction)
+Classification: GEMINI_INTERNAL_SPEC_COMPLETE
+Objective: To provide a definitive, logically-structured, and comprehensive model of the Odyssey Engine's architecture, data flow, and core protocols. This document supersedes all previous versions and serves as the absolute ground truth for any future AI-driven analysis, debugging, or extension tasks. Architectural integrity is paramount.
+SECTION 1: SYSTEM ARCHITECTURE & LIFECYCLE
+1.1. Core Principle: Centralized Mediation & Decoupled Components
+The system is architected around a Mediator pattern. The SystemScene class functions as the central mediator, orchestrating loosely-coupled, highly-specialized scene components. Direct inter-component communication (e.g., GameScene directly manipulating BattleScene) is strictly prohibited. All scene lifecycle changes are brokered through SystemScene's event interface. Data state changes are brokered through the StateManager. This ensures low coupling and high cohesion, facilitating modular development and system stability.
+1.2. Service Locator & Instantiation Locus
+A Service Locator pattern is implemented via Phaser.Registry. This is the canonical method for accessing global singleton services, preventing global namespace pollution and ensuring a single point of access.
+Service	Class	Initialization Locus	Registry Key	Criticality	Description
+State Manager	StateManager	PreloadScene.create	stateManager	MAXIMUM	The Single Source of Truth for all mutable game data (f. and sf. vars).
+Config Manager	ConfigManager	PreloadScene.create	configManager	High	Manages persistent user configuration settings.
+Sound Manager	SoundManager	SystemScene.create	soundManager	High	Centralized controller for all audio playback (BGM, SE, Voice).
+1.3. Scene Roles & Responsibilities (Definitive)
+PreloadScene: System Bootstrapper.
+Lifecycle: Executes once at game boot. Must be the only scene with active: true in the initial Phaser game config.
+Responsibilities:
+Manifest Load: Perform an initial load of only the critical asset manifest (asset_define.json).
+Core Service Instantiation: Instantiate and register StateManager and ConfigManager into the Phaser.Registry.
+Dynamic Asset Loading: Based on the loaded manifest, queue all remaining game assets for a comprehensive second-stage load.
+Data Generation: Generate derived data structures, such as charaDefs, from asset key naming conventions.
+Handshake: On load.complete, launch SystemScene and pass initialGameData (containing charaDefs and the starting scenario key) to its init method.
+Self-Termination: Immediately call this.scene.stop() upon launching SystemScene. Its lifecycle is complete.
 SystemScene: Global Mediator & Scene Transition Controller.
-Responsibility: (1) Instantiate and register SoundManager. (2) Centralize all scene transitions via an event-driven protocol. (3) Manage global input state (game.input.enabled) during transitions. (4) Manage overlay scenes (NovelOverlayScene, SaveLoadScene) and their input-blocking policies.
-Lifecycle: Launched by PreloadScene. Persists for the entire game session. ALL scene transitions MUST be delegated to this scene.
+Lifecycle: Launched by PreloadScene. Persists for the entire game session. It is the system's central nervous system.
+Responsibilities:
+Service Instantiation: Instantiate and register the SoundManager.
+Event-Driven Control: Listen for request-scene-transition and return-to-novel events. It does not act, but only reacts to requests.
+Protocol Execution: Execute the strict Scene Transition Protocol (see Section 3.0) for all scene changes. This includes managing a mutex flag (isProcessingTransition) and a global input lock (game.input.enabled).
+Persistent Layer Management: Launch and manage persistent overlay scenes, most notably the UIScene.
 UIScene: Persistent UI Layer & HUD Orchestrator.
-Responsibility: (1) Instantiate all HUD components (HpBar, CoinHud, etc.) at create. (2) Subscribe to SystemScene's transition-complete event. (3) Control HUD visibility based on the active game scene (onSceneTransition method). (4) Act as a passive container; it does not know game logic.
-Lifecycle: Launched by SystemScene. Persists for the entire game session.
-GameScene: Novel-Part Executor & Persistence Layer.
-Responsibility: (1) Host the ScenarioManager. (2) Manage novel-specific game objects (characters, backgrounds). (3) Implement performSave/performLoad logic. (4) Communicate its "ready" state to SystemScene via gameScene-load-complete event.
-Lifecycle: Run/Stopped by SystemScene. Represents the primary "novel mode" gameplay.
-Custom Game Scenes (e.g., BattleScene): Modular Gameplay States.
-Responsibility: (1) Implement self-contained game logic. (2) Communicate its "ready" state to SystemScene via scene-ready event. (3) Request return to novel mode via return-to-novel event to SystemScene.
-Lifecycle: Run/Stopped by SystemScene.
-2.0 State Management Protocol (StateManager.js)
-2.1 Core Principle: Single Source of Truth (SSOT). All mutable game state is encapsulated within StateManager.
-2.2 Data Schema:
-this.f: Game Variables. Persisted within save slots. Represents the mutable state of a single playthrough (flags, stats, etc.).
-this.sf: System Variables. Persisted globally in localStorage. Represents meta-game state (config, achievements, global unlocks).
-2.3 State Mutation & Event Emission:
-setF(key, value): Direct mutation. Emits f-variable-changed only if value changes.
-eval(exp): Scripted mutation. This is a critical method.
-Creates a shallow copy of this.f (f_before).
-Executes exp within a sandboxed new Function('f', 'sf', ...) scope. f and sf are passed by reference, allowing the function to mutate them.
-Performs a key-by-key comparison between this.f (post-mutation) and f_before.
-For every key where the value has changed, it emits f-variable-changed.
-Conclusion: This mechanism allows for complex state changes via a single [eval] tag, while ensuring all dependent systems (like HUDs) are notified of the precise changes.
-2.4 State Hydration/Dehydration:
-getState(scenarioManager): Serialization. Creates a complete snapshot of the game state for persistence. The returned object schema is the ground truth for save data.
-setState(loadedState): Deserialization.
-Overwrites this.f and this.sf with data from loadedState.
-Crucially, it then iterates through all keys in the new this.f and emits f-variable-changed for each one. This forces all subscribed UI components to refresh their displays to match the loaded state.
-3.0 Scene Transition Protocol (Mediated by SystemScene)
-3.1 Protocol State Machine:
-isProcessingTransition (boolean flag): Acts as a mutex to prevent concurrent transitions.
-game.input.enabled (boolean): Global input lock during transitions.
-3.2 Transition Flow (GameScene -> BattleScene via [jump]):
-handleJump:
-Calls GameScene.performSave(0) (auto-save).
-Emits request-scene-transition event to SystemScene with payload { to, from, params }.
-Calls ScenarioManager.stop() to terminate the novel-part game loop.
-SystemScene._handleRequestSceneTransition:
+Lifecycle: Launched by SystemScene at startup. Persists for the entire game session, typically rendered with the highest depth.
+Responsibilities:
+Component Instantiation: In its create() method, instantiate all potential HUD components (HpBar, CoinHud, etc.). It must pass the global StateManager instance to each component's constructor.
+Event Subscription: Subscribe to SystemScene's transition-complete event.
+Visibility Orchestration: In the onSceneTransition callback, determine which HUD components should be visible based on the new active scene's key, and call .setVisible(true/false) accordingly.
+Architectural Note (The "UIScene Command" Architecture): UIScene is a passive orchestrator. The HUD components themselves are responsible for subscribing to StateManager's f-variable-changed event and updating their own visual state. UIScene does not know or care about the game's data, only about which UI elements to show and when.
+GameScene: Novel-Part Executor & Persistence Context.
+Lifecycle: Run and stopped exclusively by SystemScene. Represents the primary "novel mode" gameplay state.
+Responsibilities:
+Engine Hosting: Host the primary ScenarioManager instance.
+State Context: Maintain runtime state objects required for persistence and execution, including this.characters (a map of on-screen character GameObjects) and this.pendingChoices (an array for the [link]->[r]->[s] workflow).
+Persistence Interface: Implement the performSave and performLoad methods, which act as the interface between the StateManager's abstract data and the scene's concrete visual representation.
+Handshake: Emit the gameScene-load-complete event to signal its readiness to SystemScene after a performLoad operation is fully completed. This event is distinct from the generic scene-ready to handle the complexities of state restoration.
+SECTION 2: SCENARIO EXECUTION ENGINE (ScenarioManager.js)
+2.1. Core Principle: Explicit-Control, Asynchronous Game Loop
+The engine's execution model is designed for explicit authorial control over the narrative flow. Implicit or automatic wait states following any operation are strictly eliminated. The gameLoop only halts when a tag handler explicitly sets a wait-state flag, providing a predictable and deterministic execution path.
+2.2. The Game Loop (gameLoop method)
+Mechanism: An async while loop forms the heart of the execution engine.
+Continuation Condition: !this.isEnd && !this.isWaitingClick && !this.isWaitingChoice && !this.isStopped. The loop proceeds as long as none of these wait-state flags are true.
+Operation: In each iteration, it fetches the next line from the scenario array and calls await this.parse(line). The await keyword is critical, as it ensures that the engine waits for the completion of potentially time-consuming operations (like text typing or animations) before proceeding to the next line.
+2.3. Line Type Processing in parse(line)
+The parse method is the central dispatcher that determines how to handle each line of the script.
+Text Line ("dialogue" or "narrative"):
+Action: It calls await this.messageWindow.setText(...).
+Asynchronicity: The setText method in MessageWindow is implemented to return a Promise that resolves only when its typing animation is complete (or immediately if typing is disabled).
+Loop Impact: The await keyword pauses the gameLoop until the text has been fully rendered on screen. After the promise resolves, the loop continues to the next line. It does NOT set isWaitingClick.
+Tag Line ([...]):
+Action: It parses the tag name and parameters, then invokes the corresponding handler function from the tagHandlers map via await handler(this, params).
+Loop Impact: The effect on the gameLoop is determined entirely by the invoked handler's type and its return value, as defined by the protocol in section 2.4.
+2.4. Tag Handler Protocol (Strict Definition)
+All tag handlers are functions of the form (manager, params) => Promise<void>. This unified interface is mandatory. All handlers MUST return a Promise. The type of handler dictates its internal logic and its effect on the gameLoop.
+Type 1: Asynchronous Action Handler (e.g., [chara_show time>0], [wait], [chara_jump] without nowait)
+Purpose: To perform a time-consuming action (e.g., an animation, a timed pause).
+Implementation: Must return a new Promise(resolve => { ... onComplete: resolve }). The resolve function must be called when the action is finished.
+Effect: The await in gameLoop pauses execution until the Promise resolves, ensuring the action completes before the next line is processed.
+Type 2: Synchronous Action Handler (e.g., [eval], [if], [link], [r], [chara_mod time=0])
+Purpose: To perform an instantaneous state or scene graph mutation.
+Implementation: Must return Promise.resolve().
+Effect: The await in gameLoop resolves immediately, allowing the engine to proceed to the next line with no perceptible delay.
+Type 3: Wait-State Handler (e.g., [p], [s])
+Purpose: To explicitly halt the gameLoop pending external input or events.
+Implementation: Sets a manager wait-state flag (e.g., manager.isWaitingClick = true;). It must still return Promise.resolve().
+Effect: The handler itself completes instantly. The gameLoop's while condition then re-evaluates. Finding a wait-state flag is true, the loop terminates, pending an external event to clear the flag.
+2.5. Canonical Flow-Control Tag Definitions
+This table defines the roles of the primary flow-control tags according to the protocol.
+Tag	Name	Handler Type	Primary Responsibility
+[br]	(In-line Break)	N/A	Handled by ScenarioManager.manualWrap. Replaced with \n before rendering. Does not interact with the loop.
+[p]	Page Break / Pause	Wait-State	Sets manager.isWaitingClick = true;.
+[r]	Render Choices	Synchronous	Calls manager.scene.displayChoiceButtons();. Does not set a wait-state flag.
+[s]	Stop / Wait Choice	Wait-State	Sets manager.isWaitingChoice = true;.
+[link]	Define Link	Synchronous	Pushes choice data object to manager.scene.pendingChoices.
+2.6. User Input Protocol (onClick method)
+The onClick method is the primary mechanism for resuming the gameLoop from a isWaitingClick state.
+Pre-conditions: It first checks for other states (isTyping, isWaitingChoice) to avoid incorrect state transitions.
+Core Responsibility: If isWaitingClick is true, it performs the following sequence:
+Clear Visuals: Calls a method on MessageWindow (e.g., clearText()) to clear the current text.
+Clear Wait State: Sets this.isWaitingClick = false.
+Resume Loop: Calls this.next() to re-initiate the gameLoop.
+SECTION 3: SCENE TRANSITION & PERSISTENCE PROTOCOL (FULL, UNSHORTENED)
+3.1. Scene Transition Protocol (Mediated by SystemScene)
+This protocol is the sole mechanism for transitioning between major game states (e.g., GameScene, BattleScene). Direct calls to this.scene.start or this.scene.stop from game scenes are strictly forbidden to maintain system stability.
+State Machine Primitives:
+SystemScene.isProcessingTransition (boolean): A mutex flag to prevent concurrent or nested transition requests. It is set to true upon receiving a valid transition request and false only upon successful completion.
+this.game.input.enabled (boolean): A global input lock to prevent user interaction during the undefined state of a transition. It is set to false when a transition begins and true when it completes.
+Standard Transition Flow (GameScene -> BattleScene via [jump]):
+Initiation (handleJump in GameScene context):
+GameScene.performSave(0) is executed to create an auto-save state.
+An event request-scene-transition is emitted to SystemScene with the payload: { to: string, from: string, params: object }.
+ScenarioManager.stop() is called to terminate the novel-part game loop immediately.
+Mediation (_handleRequestSceneTransition in SystemScene):
+The method first checks if isProcessingTransition is true. If so, it logs a warning and aborts to prevent race conditions.
 Sets isProcessingTransition = true.
-Sets game.input.enabled = false.
-Calls this.scene.stop(from_scene).
-Calls _startAndMonitorScene(to_scene, params).
-SystemScene._startAndMonitorScene:
-Retrieves the target scene instance: this.scene.get(sceneKey).
-Registers a once listener for the scene's completion event.
-GameScene: listens for 'gameScene-load-complete'.
-Other Scenes: listen for 'scene-ready'.
-Calls this.scene.run(sceneKey, params).
-Target Scene (BattleScene.create):
-Performs all initialization.
-At the very end of create, emits this.events.emit('scene-ready').
-SystemScene._onTransitionComplete (Completion event listener callback):
-Sets isProcessingTransition = false.
-Sets game.input.enabled = true.
-Emits transition-complete event for UIScene to consume.
-3.3 Return Flow (BattleScene -> GameScene):
-BattleScene:
-Emits return-to-novel event to SystemScene with payload { from, params }.
-SystemScene._handleReturnToNovel:
-Protocol is identical to a standard transition, but the target is hardcoded to GameScene, and the returnParams are passed through.
-GameScene.init: Receives returnParams.
-GameScene.create:
-Detects isResuming = true.
-Calls await this.performLoad(0, this.returnParams).
-GameScene.performLoad:
-Loads state from localStorage.
-Calls StateManager.setState().
-Applies returnParams via StateManager.eval().
-Calls await _rebuildScene().
-Inside a finally block, emits 'gameScene-load-complete'. This guarantees the signal is sent to SystemScene even if the load process fails, preventing a system-wide freeze.
-4.0 Scenario Execution Engine (ScenarioManager.js)
-4.1 The Game Loop (gameLoop):
-An async while loop that executes as long as no wait-state flag is set (isWaitingClick, isWaitingChoice, isStopped).
-Processes one line of the scenario script at a time by calling await this.parse(line).
-The await is critical, as tag handlers can be asynchronous (e.g., animations).
-4.2 Tag Handler Protocol:
-A handler is a function that receives (manager, params).
-Asynchronous Handlers (e.g., chara_show with animation): Must return a Promise that resolves when the tag's action is complete. ScenarioManager will await this promise.
-Synchronous Handlers (e.g., if): Can be a standard function. await will still work and resolve immediately.
-Flow-breaking Handlers (e.g., jump, s): Do not return a Promise. They stop the loop by setting a wait-state flag (isStopped) or by calling manager.stop().
-4.3 Dynamic Asset Loading (loadScenario):
-Receives a scenarioKey.
-Checks if the text is already in cache. If not, dynamically loads it via this.scene.load.
-Parses the loaded text for @asset declarations before processing any other lines.
-Compares the declared assets against the texture/audio cache.
-If any assets are missing, it launches a temporary LoadingScene to load them. The await new Promise construct pauses loadScenario until the loading is complete.
-Only after all required assets are confirmed to be present, it replaces the internal scenario context and proceeds with execution.
-Implication: This enables large, modular games where assets are loaded on-demand per chapter/scene, minimizing initial load time.
-5.0 Development & Extension Protocols
-5.1 Adding a New Tag:
-Create src/handlers/new_tag.js. Export a handler function handleNewTag.
-The function must adhere to the Tag Handler Protocol (see 4.2). It must manipulate the scene via manager.scene or state via manager.stateManager.
-In src/handlers/index.js, import the function and add it to the tagHandlers export object: 'new_tag': handleNewTag.
-No modification to GameScene or ScenarioManager is required. The system uses dynamic imports to load the handlers.
-5.2 Adding a New Game Scene (PuzzleScene):
-Create src/scenes/PuzzleScene.js, extending Phaser.Scene.
-Adhere to the 5 Commandments for Custom Scenes:
-Emit scene-ready: At the end of create(), call this.events.emit('scene-ready');. This is the handshake signal to SystemScene.
-Play BGM: In create(), call this.soundManager.playBgm('puzzle_music');. The manager handles stopping the previous track.
-Return to Novel: To end the scene, emit an event to SystemScene: this.scene.get('SystemScene').events.emit('return-to-novel', { from: this.scene.key, params: { score: 100 } });. NEVER call this.scene.stop() on yourself.
-Implement shutdown(): Clean up all scene-specific timers, event listeners, and objects to prevent memory leaks.
-Do Not Touch HUD: Modify game state via this.stateManager.setF('puzzle_pieces', 5);. The UIScene and its components will react automatically.
-Add PuzzleScene to the scene list in main.js.
+Sets this.game.input.enabled = false.
+Stops the source scene: this.scene.stop(payload.from).
+Crucially, it kills all pre-existing tweens in the game via this.tweens.killAll() to prevent orphaned animations from interfering with the new scene.
+Delegates to the monitoring subroutine: _startAndMonitorScene(payload.to, payload.params).
+Monitoring & Execution (_startAndMonitorScene in SystemScene):
+Retrieves the target scene instance: const targetScene = this.scene.get(sceneKey).
+Registers a once listener for the target scene's specific "ready" event. This is a critical, polymorphic step designed for extensibility:
+If sceneKey === 'GameScene', it listens for the specific 'gameScene-load-complete' event, which signals completion of a potentially complex state restoration.
+For all other custom scenes, it listens for the generic 'scene-ready' event.
+With the listener in place, it finally runs the target scene: this.scene.run(sceneKey, params).
+Target Scene Handshake:
+The target scene (e.g., BattleScene) performs its initialization within its create() method.
+As the final action in create(), it must emit its ready signal: this.events.emit('scene-ready');. This fulfills its part of the transition contract.
+Completion (_onTransitionComplete in SystemScene):
+This method is the callback for the once listener.
+It resets the state machine: isProcessingTransition = false and this.game.input.enabled = true.
+It emits a global transition-complete event with the new scene key, which is primarily consumed by UIScene to update HUD visibility.
+Return Flow (BattleScene -> GameScene):
+The flow is nearly identical, initiated by the BattleScene emitting a return-to-novel event to SystemScene.
+SystemScene handles this event, stops the BattleScene, and initiates the startup of GameScene via _startAndMonitorScene.
+The key difference lies in GameScene's startup, which detects a resume state and triggers performLoad instead of a fresh start.
+3.2. Save/Load Protocol (GameScene methods)
+This protocol defines the exact process for state serialization and deserialization, ensuring perfect state restoration.
+performSave(slot):
+State Aggregation: It calls this.stateManager.getState(this.scenarioManager). This is a delegation, not an implementation.
+StateManager.getState(): This is the aggregator. It constructs a single JSON-compatible object containing:
+saveDate: A timestamp string.
+variables: The entire this.f object.
+scenario: The complete logical state from ScenarioManager (filename, line number, ifStack, callStack, wait flags, current message text, etc.).
+layers: The visual state, including the storage key for the current background and a dictionary of all visible characters with their properties (texture key, position, scale, tint, etc.).
+sound: The storage key of the currently playing BGM from SoundManager.
+Serialization & Persistence: GameScene receives this object, JSON.stringifys it, and writes it to localStorage with the key save_data_${slot}.
+performLoad(slot):
+Deserialization: Reads the string from localStorage and JSON.parses it into a loadedState object.
+State Hydration: Calls this.stateManager.setState(loadedState).
+StateManager.setState() overwrites this.f.
+Crucially, it then iterates through every key in the newly restored this.f and emits a f-variable-changed event for each. This "brute-force" notification ensures all subscribed HUDs (which are unaware of the load operation) refresh their displays to match the loaded state.
+Parameter Application: If returnParams exist (from a return-to-novel transition), they are applied to the state via this.stateManager.eval().
+Visual Reconstruction: Calls await _rebuildScene(loadedState).
+_rebuildScene is a helper function that clears all existing layers (backgrounds, characters) and reconstructs them from the layers and scenario data in loadedState. This includes repositioning characters, setting the background, and restoring the message window text if it was in a wait state.
+Handshake with SystemScene (CRITICAL):
+The call to this.events.emit('gameScene-load-complete'); is placed within a finally block at the end of the performLoad's try...catch structure.
+Rationale: This guarantees that the "ready" signal is sent to SystemScene regardless of whether the load process succeeds or fails. This is the primary mechanism preventing a system-wide freeze if localStorage data is corrupted or a _rebuildScene error occurs. Without the finally block, an error would leave SystemScene waiting indefinitely for a signal that never arrives.
+SECTION 4: DEVELOPMENT & EXTENSION CONTRACTS
+This section defines the strict contracts that must be adhered to when extending the engine's functionality. Failure to comply will likely lead to system instability.
+4.1. Contract: Adding a New Game Scene
+Any new, non-novel scene (e.g., BattleScene, PuzzleScene) integrated into the engine MUST adhere to the following 5-point contract to ensure system stability.
+Emit scene-ready on Completion: The create() method must conclude by emitting this.events.emit('scene-ready');. This is the non-negotiable handshake with SystemScene.
+Delegate BGM Control: Request BGM playback via this.soundManager.playBgm('key'); in create(). The SoundManager's "New Scene Responsibility" architecture ensures the previous BGM is handled correctly. Do not manually stop BGM.
+Delegate Scene Termination: To return to the novel, emit this.scene.get('SystemScene').events.emit('return-to-novel', ...);. NEVER call this.scene.stop() on the scene itself. Lifecycle management is the exclusive domain of SystemScene.
+Implement shutdown() for Complete Cleanup: The shutdown() method must be implemented. It is responsible for destroying all objects, timers (this.time.addEvent), and event listeners (this.events.on) that were created within that scene's create() method to prevent memory leaks across scene transitions.
+Isolate from HUD: State modification must be performed via this.stateManager.setF(...). Direct manipulation of HUD elements (e.g., this.scene.get('UIScene').hpBar.setValue(...)) is strictly forbidden, as it violates the decoupled UI architecture.
+4.2. Contract: Adding a New Tag Handler
+The handler function must be implemented in its own file within src/handlers/.
+It must be imported and registered in the tagHandlers object in src/handlers/index.js. Use as for aliasing if function names conflict (e.g., handleReturn).
+It must adhere to one of the three handler types defined in Section 2.4 and MUST return a Promise.
 END OF DOCUMENT
