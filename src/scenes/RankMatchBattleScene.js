@@ -9,8 +9,8 @@ const ELEMENT_COLORS = {
 const TOOLTIP_TRANSLATIONS = {
     up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
     up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
-    weapon: '武器', support: '支援', healer: '回復', defense: '防御', add_attack: '攻撃力', add_recast: 'リキャスト',
-    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復効果'
+    attack: '攻撃', block: 'ブロック', heal: '回復', defense: '防御力', add_attack: '攻撃力', add_recast: 'リキャスト',
+    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量アップ'
 };
 const ELEMENT_RESONANCE_RULES = {
     fire: { threshold: 3, description: (count) => `攻撃力+${count}` },
@@ -2120,4 +2120,5 @@ recastOverlay.setVisible(hasRecast);
         await this.firebaseManager.uploadGhostData(rankMatchData);
     }
 }
+
 
