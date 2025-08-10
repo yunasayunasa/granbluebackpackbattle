@@ -88,7 +88,7 @@ export default class FirebaseManager {
             try {
                 const collectionRef = collection(this.db, searchPath);
                 // 複数件取得してクライアント側でランダムに選ぶ
-                const q = query(collectionRef, limit(10)); 
+                const q = query(collectionRef, limit(5)); 
                 const querySnapshot = await getDocs(q);
 
                 if (!querySnapshot.empty) {
@@ -117,4 +117,5 @@ export default class FirebaseManager {
             return null;
         }
     }
+
 }
