@@ -17,29 +17,28 @@
 
 
     <!-- Firebase SDKをインポート -->
-   <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+    <script type="module">
+        // 必要な関数をインポート
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        // ★ Firestoreを使うために、getFirestore をインポート
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyB36eEmOv2usVrYQrPPvXyBKLh97K84xq8",
-    authDomain: "napzack-1190b.firebaseapp.com",
-    projectId: "napzack-1190b",
-    storageBucket: "napzack-1190b.firebasestorage.app",
-    messagingSenderId: "871750556397",
-    appId: "1:871750556397:web:fdccfcb55dfc812bf20ae4",
-    measurementId: "G-MDN547BMJE"
+        // Your web app's Firebase configuration
+       const firebaseConfig = {
+    apiKey: "AIzaSyB6n1WdR3xHvR_Wqv3GjQQNdVjzj2W_ElU",
+    authDomain: "knapsackbattle.firebaseapp.com",
+    projectId: "knapsackbattle",
+    storageBucket: "knapsackbattle.firebasestorage.app",
+    messagingSenderId: "324783664191",
+    appId: "1:324783664191:web:47d9e80a67cda7aafedc8a",
+    measurementId: "G-Q8B3DRM8HM"
   };
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-
+        // Firebaseを初期化
+        const app = initializeApp(firebaseConfig);
+        
+        // ★ Firestoreのインスタンスを取得
+        const firestore = getFirestore(app);
 
         // ★★★ 最も重要 ★★★
         // ゲームの他の部分から使えるように、グローバル変数として公開する
@@ -54,4 +53,3 @@
     <script type="module" src="src/main.js"></script>
 </body>
 </html>
-
