@@ -57,6 +57,11 @@ export default class FirebaseManager {
     // core/FirebaseManager.js
 
     async findOpponentList(playerRank) {
+         // ▼▼▼ この3行を追加 ▼▼▼
+    console.error("！！！！！！！！！！！！！！！！！！！！！！！！");
+    console.error("！！！ findOpponentListが呼び出されました ！！！");
+    console.error(new Error("呼び出し元のスタックトレース")); // これでどこから呼ばれたか追跡できる
+    // ▲▲▲ ここまで追加 ▲▲▲
         if (!this.db) return null;
 
         console.log(`%c[Firebase] ランクマッチの対戦相手リストを探しています... Rank: ${playerRank}`, "color: blue;");
@@ -117,4 +122,5 @@ export default class FirebaseManager {
             return null;
         }
     }
+
 }
