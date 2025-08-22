@@ -6,7 +6,7 @@ import { EnemyGenerator } from '../core/EnemyGenerator.js';
 const ELEMENT_COLORS = {
     fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff, organization: 0xffd700 
 };
-const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization'];
+const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization','divine_general'];
 
 const TOOLTIP_TRANSLATIONS = {
     // --- 汎用 ---
@@ -460,14 +460,12 @@ const enemyInitialStats = {
         console.log("敵最終ステータス:", this.enemyStats);
     }
 
-    calculateFinalBattleState(initialItems, initialStats) {
+   calculateFinalBattleState(initialItems, initialStats) {
         console.log("--- calculateFinalBattleState 開始 ---");
         
-        // === STEP 1: 属性共鳴の計算 ===
-        // ★★★ このオブジェクトに 'organization' を追加 ★★★
-        const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0, organization: 0 };
+        // === STEP 1: 属性と神将のカウント ===
+        const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0, organization: 0, divine_general: 0};
         const elementKeys = Object.keys(elementCounts);
-
         initialItems.forEach(item => {
             if (item.tags && Array.isArray(item.tags)) {
                 item.tags.forEach(tag => { if (elementKeys.includes(tag)) elementCounts[tag]++; });
@@ -475,8 +473,22 @@ const enemyInitialStats = {
                 console.warn(`アイテム[${item.id}]に 'tags' プロパティがありません`);
             }
         });
-        console.log("%c属性カウント結果:", "color: yellow; font-weight: bold;", elementCounts);
+        console.log("%c属性/タグカウント結果:", "color: yellow; font-weight: bold;", elementCounts);
 
+        // === STEP 2: 共鳴の計算 ===
+
+        // --- 2a. 十二神将共鳴 ---
+        const divineGeneralCount = elementCounts.divine_general || 0;
+        if (divineGeneralCount >= 2) {
+            console.log(`%c✨ 十二神将共鳴【神気】発動！ (最大HP+15, 防御+2)`, "color: cyan;");
+            initialStats.max_hp += 15;
+        }
+        if (divineGeneralCount >= 4) {
+            console.log(`%c✨ 十二神将共鳴【神速】発動！ (リキャスト-10%)`, "color: cyan;");
+            initialItems.forEach(item => { if (item.recast) item.recast *= 0.9; });
+        }
+
+        // --- 2b. 属性共鳴 ---
         for (const element in ELEMENT_RESONANCE_RULES) {
             const rule = ELEMENT_RESONANCE_RULES[element];
             const count = elementCounts[element] || 0;
@@ -495,7 +507,7 @@ const enemyInitialStats = {
                         if (item.tags.includes(element)) {
                             let isBoosted = false;
                             if (element === 'fire' && item.action) {
-                                const bonus = Math.floor(count / 2);
+                                const bonus = Math.floor(count / 2); // この計算式は元のまま
                                 if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += bonus; }); }
                                 else if(item.action.type === 'attack') { item.action.value += bonus; }
                                 isBoosted = true;
@@ -510,13 +522,12 @@ const enemyInitialStats = {
             }
         }
         
-        // ★★★★★ このブロックを、既存の共鳴ループの後に追加 ★★★★★
-        // --- 【将来のアップデート用】組織共鳴 ---
-       
+        // --- 2c. 【将来用】組織共鳴 ---
+        /*
         const orgCount = elementCounts.organization || 0;
         const ORG_THRESHOLD = 3;
         if (orgCount >= ORG_THRESHOLD) {
-            const damageReduction = 0.5; // 例: 自傷ダメージを50%軽減
+            const damageReduction = 0.5;
             console.log(`%c✨ 組織共鳴発動！ (自傷ダメージ -${damageReduction * 100}%)`, "color: gold;");
             initialItems.forEach(item => {
                 if (item.tags.includes('organization') && item.action) {
@@ -529,11 +540,33 @@ const enemyInitialStats = {
                 }
             });
         }
-      
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        */
+        
+        // === STEP 3: 個別パッシブの計算 ===
+        if (divineGeneralCount > 0) {
+            initialItems.forEach(item => {
+                if (item.passive?.effects.some(e => e.type === 'vajra_passive')) {
+                    const reductionValue = item.passive.effects.find(e => e.type === 'vajra_passive').value;
+                    const reduction = (divineGeneralCount - 1) * reductionValue;
+                    if (reduction > 0) {
+                        item.recast = Math.max(0.1, item.recast - reduction);
+                        console.log(`%cヴァジラ効果: リキャスト-${reduction}s`, "color: magenta;");
+                    }
+                }
+                if (item.passive?.effects.some(e => e.type === 'haila_passive')) {
+                    const bonusValue = item.passive.effects.find(e => e.type === 'haila_passive').value;
+                    const bonusAttack = divineGeneralCount * bonusValue;
+                    if (Array.isArray(item.action)) {
+                        item.action.forEach(act => { if(act.type === 'attack') act.value += bonusAttack; });
+                    } else if(item.action?.type === 'attack') {
+                        item.action.value += bonusAttack;
+                    }
+                    console.log(`%cハイラ効果: 攻撃力+${bonusAttack}`, "color: magenta;");
+                }
+            });
+        }
 
-        // === STEP 2: シナジー効果の計算 ===
-
+        // === STEP 4: シナジー効果の計算 ===
         initialItems.forEach((sourceItem, sourceIndex) => {
             if (!sourceItem.synergy) return;
             initialItems.forEach((targetItem, targetIndex) => {
@@ -551,24 +584,31 @@ const enemyInitialStats = {
                                 if (targetShape[tr][tc] === 0) continue;
                                 const targetCellPos = { r: targetItem.row + tr, c: targetItem.col + tc };
                                 let isMatch = false;
-                                const direction = sourceItem.synergy.direction;
+                                let direction = sourceItem.synergy.direction;
+                                const rotation = sourceItem.rotation || 0;
+                                if (rotation === 90 || rotation === 270) {
+                                    if (direction === 'horizontal') direction = 'vertical';
+                                    else if (direction === 'vertical') direction = 'horizontal';
+                                }
                                 const dr = targetCellPos.r - sourceCellPos.r;
                                 const dc = targetCellPos.c - sourceCellPos.c;
-                                if (direction === 'adjacent') { if (Math.abs(dr) + Math.abs(dc) === 1) isMatch = true; } 
-                                else if (direction === 'horizontal') { if (dr === 0 && Math.abs(dc) === 1) isMatch = true; }
-                                else if (direction === 'vertical') { if (dc === 0 && Math.abs(dr) === 1) isMatch = true; }
-                                else if (direction === 'up_and_sides') { if ((dc === 0 && dr === -1) || (dr === 0 && Math.abs(dc) === 1)) { isMatch = true; } }
-                                else {
+                                if (direction === 'horizontal') {
+                                    if (dr === 0 && Math.abs(dc) === 1) isMatch = true;
+                                } else if (direction === 'vertical') {
+                                    if (dc === 0 && Math.abs(dr) === 1) isMatch = true;
+                                } else if (direction === 'adjacent') {
+                                    if (Math.abs(dr) + Math.abs(dc) === 1) isMatch = true;
+                                } else {
                                     let targetDir = {r: 0, c: 0};
                                     switch(direction) {
                                         case 'up': targetDir = {r: -1, c: 0}; break; case 'down': targetDir = {r: 1,  c: 0}; break;
                                         case 'left': targetDir = {r: 0, c: -1}; break; case 'right': targetDir = {r: 0, c: 1}; break;
                                     }
                                     if (targetDir.r !== 0 || targetDir.c !== 0) {
-                                        const rad = Phaser.Math.DegToRad(sourceItem.rotation);
+                                        const rad = Phaser.Math.DegToRad(rotation);
                                         const rotC = Math.round(targetDir.c * Math.cos(rad) - targetDir.r * Math.sin(rad));
                                         const rotR = Math.round(targetDir.c * Math.sin(rad) + targetDir.r * Math.cos(rad));
-                                        if (sourceCellPos.r + rotR === targetCellPos.r && sourceCellPos.c + rotC === targetCellPos.c) { isMatch = true; }
+                                        if (dr === rotR && dc === rotC) isMatch = true;
                                     }
                                 }
                                 if (isMatch) {
@@ -590,6 +630,12 @@ const enemyInitialStats = {
                                             targetItem.appliedTriggers.push({ sourceId: sourceItem.id, effect: effect });
                                             console.log(`  -> 起動時に「${effect.type}」を付与`);
                                         }
+                                   else if  (effect.type === 'add_tag') {
+                                            if (!targetItem.tags.includes(effect.value)) {
+                                                targetItem.tags.push(effect.value);
+                                                console.log(`%cマコラ効果: [${targetItem.id}]に「${effect.value}」タグ付与`, "color: magenta;");
+                                            }
+                                        }
                                     });
                                     synergyApplied = true;
                                 }
@@ -600,14 +646,23 @@ const enemyInitialStats = {
             });
         });
         
+        // === STEP 5: 最終ステータスの計算 ===
         let finalMaxHp = initialStats.max_hp;
         let finalDefense = 0;
+        if (divineGeneralCount >= 2) {
+            finalDefense += 2;
+        }
+        let finalCurrentHp = Math.min(initialStats.hp, finalMaxHp);
         const battleItems = [];
         initialItems.forEach(item => {
             if (item.passive && item.passive.effects) {
                 item.passive.effects.forEach(effect => {
                     if (effect.type === 'defense') finalDefense += effect.value;
                     if (effect.type === 'max_hp') finalMaxHp += effect.value;
+                    if (effect.type === 'halve_own_hp_on_start') {
+                        finalCurrentHp = Math.floor(finalCurrentHp / 2);
+                        console.log(`%cインダラ効果: HPが半減`, "color: magenta;");
+                    }
                 });
             }
             if (item.recast > 0) {
@@ -618,12 +673,8 @@ const enemyInitialStats = {
         const activatedResonances = Object.keys(elementCounts).filter(el => ELEMENT_RESONANCE_RULES[el] && elementCounts[el] >= ELEMENT_RESONANCE_RULES[el].threshold);
         return {
             finalStats: {
-                max_hp: finalMaxHp,
-                hp: Math.min(initialStats.hp, finalMaxHp),
-                defense: finalDefense,
-                block: [],
-                attack: 0,
-                darkResonanceLevel: darkResonanceLevel
+                max_hp: finalMaxHp, hp: finalCurrentHp, defense: finalDefense,
+                block: [], attack: 0, darkResonanceLevel: darkResonanceLevel
             },
             battleItems: battleItems,
             finalizedItems: initialItems,
