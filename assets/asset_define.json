@@ -100,6 +100,17 @@
     "char_beatrix": "assets/char/beatrix.png",
     "char_vaseraga": "assets/char/vaseraga.png",
     "char_eustace": "assets/char/eustace.png",
+
+     "char_haila": "assets/char/haila.png",
+    "char_vajra": "assets/char/vajra.png",
+    "char_kumbhira": "assets/char/kumbhira.png",
+    "char_syatora": "assets/char/syatora.png",
+    "char_sindara": "assets/char/sindara.png",
+     "char_makora": "assets/char/makora.png",
+    "char_vikala": "assets/char/vikala.png",
+    "char_indara": "assets/char/indara.png",
+   
+    
     
 
     "avatar_ghost": "assets/images/avatars/avatar_ghost.png"

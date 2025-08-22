@@ -595,8 +595,8 @@ export const ITEM_DATA = {
         }
     },
 
-    'catura': { // シャトラ
-        storage: 'char_catura',
+    'syatora': { // シャトラ
+        storage: 'char_syatora',
         shape: [[1], [1]],
         tags: ["divine_general", "wind", "healer"],
         cost: 45,
@@ -630,8 +630,8 @@ export const ITEM_DATA = {
         }
     },
 
-    'makura': { // マコラ
-        storage: 'char_makura',
+    'makora': { // マコラ
+        storage: 'char_makora',
         shape: [[1], [1], [1]],
         tags: ["divine_general", "light", "support"],
         cost: 40,
