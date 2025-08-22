@@ -485,10 +485,10 @@ export const ITEM_DATA = {
     // 🏢 組織
     // =================================================================
     'ilza': {
-        storage: 'char_ilza', // 仮の画像キー
+        storage: 'char_ilza', 
         shape: [[1], [1]],
         tags: ["organization", "earth"],
-        cost: 40, // コストは仮です
+        cost: 40, 
         rarity: 3,
         // アクションが2種類あるので、配列で定義
         action: [
@@ -497,13 +497,13 @@ export const ITEM_DATA = {
         ],
         recast: 4.0,
         synergy: {
-            direction: 'adjacent', // 四方向
+            direction: 'adjacent', 
             effect: { type: 'add_attack', value: 3 }
         }
     },
 
     'zeta': {
-        storage: 'char_zeta', // 仮の画像キー
+        storage: 'char_zeta', 
         shape: [[1, 1], [1, 1]],
         tags: ["organization", "fire"],
         cost: 45,
@@ -520,11 +520,11 @@ export const ITEM_DATA = {
     },
     
     'beatrix': {
-        storage: 'char_beatrix', // 仮の画像キー
+        storage: 'char_beatrix', 
         shape: [[1], [1]],
         tags: ["organization", "dark"],
         cost: 25,
-        rarity: 2, // 他より少し手に入りやすく
+        rarity: 2, 
         action: [
             { type: 'attack', value: 10 },
             { type: 'self_pain', value: 4 }
@@ -534,9 +534,9 @@ export const ITEM_DATA = {
     },
 
     'vaseraga': {
-        storage: 'char_vaseraga', // 仮の画像キー
+        storage: 'char_vaseraga', 
         shape: [[1, 1], [1, 1], [1, 1]],
-        tags: ["organization", "dark", "defense"], // defenseタグを追加
+        tags: ["organization", "dark", "defense"],
         cost: 50,
         rarity: 3,
         action: [
@@ -548,7 +548,7 @@ export const ITEM_DATA = {
     },
 
     'eustace': {
-        storage: 'char_eustace', // 仮の画像キー
+        storage: 'char_eustace', 
         shape: [[1], [1]],
         tags: ["organization", "wind"],
         cost: 35,
@@ -559,7 +559,7 @@ export const ITEM_DATA = {
         ],
         recast: 5.0,
         synergy: {
-            direction: 'vertical', // 上下
+            direction: 'vertical', 
             effect: { type: 'add_attack', value: 3 }
         }
     },

@@ -95,6 +95,13 @@
     "char_bowman": "assets/char/bowman.png",
     "char_rei": "assets/char/rei.png",
 
+    "char_ilza": "assets/char/ilza.png",
+    "char_zeta": "assets/char/zeta.png",
+    "char_beatrix": "assets/char/beatrix.png",
+    "char_vaseraga": "assets/char/vaseraga.png",
+    "char_eustace": "assets/char/eustace.png",
+    
+
     "avatar_ghost": "assets/images/avatars/avatar_ghost.png"
 
   },
