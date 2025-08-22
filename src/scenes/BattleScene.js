@@ -544,15 +544,43 @@ export default class BattleScene extends Phaser.Scene {
 
         // === STEP 2: 共鳴の計算 ===
 
-        // --- 2a. 十二神将共鳴 ---
+         // --- 2a. 十二神将共鳴 ---
         const divineGeneralCount = elementCounts.divine_general || 0;
-        if (divineGeneralCount >= 2) {
+
+        if (divineGeneralCount >= 2) { // 【神気】
             console.log(`%c✨ 十二神将共鳴【神気】発動！ (最大HP+15, 防御+2)`, "color: cyan;");
             initialStats.max_hp += 15;
         }
-        if (divineGeneralCount >= 4) {
+
+        if (divineGeneralCount >= 4) { // 【神速】
             console.log(`%c✨ 十二神将共鳴【神速】発動！ (リキャスト-10%)`, "color: cyan;");
             initialItems.forEach(item => { if (item.recast) item.recast *= 0.9; });
+        }
+        
+        if (divineGeneralCount >= 6) { // 【神威】
+            console.log(`%c✨ 十二神将共鳴【神威】発動！ (全味方の攻撃力+3)`, "color: cyan;");
+            const attackBonus = 3;
+            initialItems.forEach(item => {
+                if (item.action) {
+                    const actions = Array.isArray(item.action) ? item.action : [item.action];
+                    actions.forEach(act => {
+                        if (act.type === 'attack') act.value += attackBonus;
+                    });
+                }
+            });
+        }
+
+        if (divineGeneralCount >= 12) { // 【神域】
+            console.log(`%c✨ 十二神将共鳴【神域】発動！ (全味方の攻撃力+5)`, "color: gold;");
+            const attackBonus = 5;
+            initialItems.forEach(item => {
+                if (item.action) {
+                    const actions = Array.isArray(item.action) ? item.action : [item.action];
+                    actions.forEach(act => {
+                        if (act.type === 'attack') act.value += attackBonus;
+                    });
+                }
+            });
         }
 
         // --- 2b. 属性共鳴 ---
@@ -594,7 +622,7 @@ export default class BattleScene extends Phaser.Scene {
         const orgCount = elementCounts.organization || 0;
         const ORG_THRESHOLD = 3;
         if (orgCount >= ORG_THRESHOLD) {
-            const damageReduction = 0.5;
+            const damageReduction = 0.3;
             console.log(`%c✨ 組織共鳴発動！ (自傷ダメージ -${damageReduction * 100}%)`, "color: gold;");
             initialItems.forEach(item => {
                 if (item.tags.includes('organization') && item.action) {
