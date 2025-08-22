@@ -456,7 +456,7 @@ export const ITEM_DATA = {
     'cassius': {
         storage: 'char_cassius',
         shape: [[1], [1]],
-        tags: ["support", "dark","organization"],
+        tags: ["support", "dark", "organization"],
         cost: 20,
         rarity: 1,
         action: [{ type: 'attack', value: 7}, { type: 'heal', value: 7 }],
