@@ -480,7 +480,7 @@ export const ITEM_DATA = {
         rarity: 1,
         passive: { effects: [{ type: 'defense', value: 3 }] }
     },
-    
+    /*
         // =================================================================
     // 🏢 組織
     // =================================================================
@@ -563,5 +563,5 @@ export const ITEM_DATA = {
             effect: { type: 'add_attack', value: 3 }
         }
     },
-    
+    */
 };
