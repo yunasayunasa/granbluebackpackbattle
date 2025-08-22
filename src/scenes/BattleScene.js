@@ -1121,25 +1121,7 @@ export default class BattleScene extends Phaser.Scene {
 
     playResonanceAura(targetObject, color) {
         if (!targetObject || !targetObject.active) return;
-        // ★★★ この if 文を追加 ★★★
-        if (color === ELEMENT_COLORS['divine_general']) {
-            // --- 虹色パーティクルの特別処理 ---
-            const particles = this.add.particles(0, 0, 'particle_white', {
-                x: { min: targetObject.x - targetObject.displayWidth/2, max: targetObject.x + targetObject.displayWidth/2 },
-                y: targetObject.y + targetObject.displayHeight / 2,
-                lifespan: 1500,
-                speedY: { min: -80, max: -120 },
-                scale: { start: 0.6, end: 0 },
-                gravityY: 100,
-                blendMode: 'ADD',
-                // ★★★ 色をランダムに変化させる ★★★
-                color: [ 0xff0000, 0xff7f00, 0xffff00, 0x00ff00, 0x0000ff, 0x4b0082, 0x9400d3 ],
-                quantity: 1
-            });
-            this.time.delayedCall(1300, () => { particles.stop(); });
-            this.time.delayedCall(3000, () => { particles.destroy(); });
-
-        } else {
+      
         const centerX = targetObject.x;
         const bottomY = targetObject.y + targetObject.displayHeight / 2;
         const effectDuration = 1500;
@@ -1154,7 +1136,7 @@ export default class BattleScene extends Phaser.Scene {
         }).setDepth(targetObject.depth + 1);
         this.time.delayedCall(effectDuration - 200, () => { particles.stop(); });
         this.time.delayedCall(effectDuration * 2, () => { particles.destroy(); });
-    }}
+    }
 
         createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
