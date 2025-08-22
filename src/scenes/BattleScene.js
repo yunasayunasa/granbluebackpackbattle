@@ -97,6 +97,7 @@ export default class BattleScene extends Phaser.Scene {
         this.shopItemSlots = [];
         this.isShopVisible = false;
         this.isTimeUp = false;
+        this.kamuiTimer = null;
         this.currentEnemyLayout = null;
         this.transitionWipe = null;
     }
@@ -336,6 +337,28 @@ export default class BattleScene extends Phaser.Scene {
         console.log("BattleScene: create 完了");
     }
 
+        startBattle() {
+        console.log("★★ 戦闘開始！ ★★");
+        this.battleStartTime = this.time.now;
+        
+        this.battleTimerText = this.add.text(this.scale.width / 2, 50, `TIME: ${this.maxBattleDuration}`, {
+            fontSize: '40px', fill: '#ffffff', stroke: '#000000', strokeThickness: 5
+        }).setOrigin(0.5).setDepth(100);
+
+        // ★★★ このブロックを追加 ★★★
+        // --- 【神威】効果発動タイマーをセット ---
+        if (this.playerStats.kamui_activated) {
+            this.kamuiTimer = this.time.addEvent({
+                delay: 3000, // 3000ミリ秒 (3秒) ごとに
+                callback: this._applyKamuiEffect,
+                callbackScope: this,
+                loop: true // 繰り返し実行
+            });
+        }
+        // (敵側の神威タイマーも同様にセット可能)
+        // ★★★ 追加ここまで ★★★
+    }
+
     prepareForBattle() {
         console.log("--- 戦闘準備開始 ---");
         const playerInitialItems = [];
@@ -398,6 +421,11 @@ export default class BattleScene extends Phaser.Scene {
     // ★★★ 書き換えここまで ★★★
         this.stateManager.setF('player_max_hp', this.playerStats.max_hp);
         this.stateManager.setF('player_hp', this.playerStats.hp);
+           // --- 【神威】発動条件の判定 ---
+    this.playerStats.kamui_activated = (divineGeneralCount >= 6);
+    if (this.playerStats.kamui_activated) {
+        console.log(`%c✨ 十二神将共鳴【神威】発動準備完了！ (3秒ごとに攻撃力+1)`, "color: cyan;");
+    }
         console.log("プレイヤー最終ステータス:", this.playerStats);
 
         const enemyInitialItems = [];
@@ -476,6 +504,11 @@ export default class BattleScene extends Phaser.Scene {
 
         this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
         this.stateManager.setF('enemy_hp', this.enemyStats.hp);
+           // --- 【神威】発動条件の判定 ---
+    this.playerStats.kamui_activated = (divineGeneralCount >= 6);
+    if (this.playerStats.kamui_activated) {
+        console.log(`%c✨ 十二神将共鳴【神威】発動準備完了！ (3秒ごとに攻撃力+1)`, "color: cyan;");
+    }
         console.log("敵最終ステータス:", this.enemyStats);
     }
 
@@ -2055,6 +2088,7 @@ export default class BattleScene extends Phaser.Scene {
             this.battleTimerText.destroy();
             this.battleTimerText = null;
         }
+        if (this.kamuiTimer) this.kamuiTimer.remove();
     }
     
      /**
@@ -2106,8 +2140,34 @@ export default class BattleScene extends Phaser.Scene {
              onComplete: () => painText.destroy()
          });
      }
+// BattleScene.js の末尾に追加
 
-     // scenes/BattleScene.js の末尾に追加
+    /**
+     * 十二神将共鳴【神威】の効果を適用する
+     * @private
+     */
+    _applyKamuiEffect() {
+        if (this.gameState !== 'battle') return; // 戦闘中のみ実行
+
+        console.log(`%c✨【神威】効果発動！ 味方全体の攻撃力+1`, "color: gold;");
+
+        // 戦闘に参加している全てのアクティブなアイテムをループ
+        this.playerBattleItems.forEach(battleItem => {
+            const itemData = battleItem.data; // dataプロパティにアイテムのステータスが入っている
+
+            if (itemData.action) {
+                const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
+                actions.forEach(act => {
+                    if (act.type === 'attack') {
+                        act.value += 1;
+                    }
+                });
+            }
+        });
+        
+        // (ここに、攻撃力が上がったことを示すエフェクトを追加するとさらに良くなる)
+        // 例: this.playerAvatar.setTint(0xffff00); this.time.delayedCall(100, () => this.playerAvatar.clearTint());
+    }
 
     /**
      * 指定されたアイテムIDに基づいて、ツールチップに表示するテキストを動的に生成する
