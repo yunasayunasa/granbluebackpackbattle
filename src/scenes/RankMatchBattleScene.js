@@ -354,17 +354,28 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
         }).setOrigin(0.5).setDepth(100);
 
         // ★★★ このブロックを追加 ★★★
+      // in startBattle()
+
         // --- 【神威】効果発動タイマーをセット ---
         if (this.playerStats.kamui_activated) {
-            this.kamuiTimer = this.time.addEvent({
-                delay: 3000, // 3000ミリ秒 (3秒) ごとに
-                callback: this._applyKamuiEffect,
+            this.kamuiTimer_player = this.time.addEvent({
+                delay: 3000,
+                // ★ 引数で 'player' を渡す
+                callback: () => this._applyKamuiEffect('player'),
                 callbackScope: this,
-                loop: true // 繰り返し実行
+                loop: true
             });
         }
-        // (敵側の神威タイマーも同様にセット可能)
-        // ★★★ 追加ここまで ★★★
+        // ★ 敵用のタイマーを追加
+        if (this.enemyStats.kamui_activated) {
+            this.kamuiTimer_enemy = this.time.addEvent({
+                delay: 3000,
+                // ★ 引数で 'enemy' を渡す
+                callback: () => this._applyKamuiEffect('enemy'),
+                callbackScope: this,
+                loop: true
+            });
+        }
     }
 
     prepareForBattle() {
@@ -944,6 +955,13 @@ const enemyInitialStats = {
                 const attackerStats = this[`${attacker}Stats`];
                 if (action.type === 'attack') {
                     let totalAttack = action.value;
+                     const attackerStats = this[`${attacker}Stats`]; // ★ attackerStats をここで取得
+
+                // --- 神威のボーナスを加算 ---
+                // ★ attackerStats を参照するように修正
+                if (attackerStats.kamui_bonus > 0) {
+                    totalAttack += attackerStats.kamui_bonus;
+                }
                      if (itemData.tags.includes('dark') && attackerStats.darkResonanceLevel > 0) {
                         const hpPercent = (attackerStats.hp / attackerStats.max_hp) * 100;
                         let bonus = 0;
@@ -2310,43 +2328,33 @@ recastOverlay.setVisible(hasRecast);
     }
    // BattleScene.js の末尾に追加
 
+  // _applyKamuiEffect メソッドを、この全文で置き換えてください
+
     /**
-     * 十二神将共鳴【神威】の効果を適用する
+     * 十二神将共鳴【神威】の効果を適用する (プレイヤー/敵 兼用)
+     * @param {string} side - 'player' または 'enemy'
      * @private
      */
-    // scenes/BattleScene.js
-
-    _applyKamuiEffect() {
+    _applyKamuiEffect(side) {
         if (this.gameState !== 'battle') return;
 
-        console.log(`%c✨【神威】効果発動！ 味方全体の攻撃力+1`, "color: gold;");
-
-        // --- 1. データ上の攻撃力を+1する (既存のロジック) ---
-        this.playerBattleItems.forEach(battleItem => {
-            const itemData = battleItem.data;
-            if (itemData.action) {
-                const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
-                actions.forEach(act => {
-                    if (act.type === 'attack') {
-                        act.value += 1;
-                    }
-                });
-            }
-        });
+        const targetStats = this[`${side}Stats`];
+        const targetBattleItems = this[`${side}BattleItems`];
         
-        // ★★★ 2. 視覚的なフィードバック（エフェクト）を追加 ★★★
-        
-        // 盤面に配置されている全ての味方アイテムを取得
-        const placedItems = this.placedItemImages;
+        if (!targetStats || !targetBattleItems) return;
 
-        placedItems.forEach(itemContainer => {
+        console.log(`%c✨【神威】効果発動！ ${side}側の攻撃力ボーナス+1`, "color: gold;");
+
+        // --- 1. データ上の攻撃力ボーナスを+1する ---
+        targetStats.kamui_bonus += 1;
+        
+        // --- 2. 視覚的なフィードバック（エフェクト） ---
+        // 戦闘中のアクティブなアイテムのリストから、ゲームオブジェクトを光らせる
+        targetBattleItems.forEach(battleItem => {
+            const itemContainer = battleItem.gameObject; // ★ 正しい参照
             if (itemContainer && itemContainer.active) {
-                // 白色にティントをかけて光ったように見せる
                 itemContainer.setTint(0xffffff);
-
-                // 150ミリ秒後に、ティントを元に戻す
                 this.time.delayedCall(150, () => {
-                    // delayedCallが実行される時点でもオブジェクトが存在するか確認
                     if (itemContainer && itemContainer.active) {
                         itemContainer.clearTint();
                     }
@@ -2354,7 +2362,6 @@ recastOverlay.setVisible(hasRecast);
             }
         });
     }
-
     /**
      * 指定されたアイテムIDに基づいて、ツールチップに表示するテキストを動的に生成する
      * @param {string} itemId - 表示するアイテムのID
