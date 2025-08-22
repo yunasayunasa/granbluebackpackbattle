@@ -77,38 +77,24 @@ export default class RewardScene extends Phaser.Scene {
                 const scale = Math.min(120 / itemImage.width, 120 / itemImage.height);
                 itemImage.setScale(scale);
 
-                itemImage.on('pointerdown', (pointer, localX, localY, event) => {
-                    // ★★★ pointer ではなく event を使う ★★★
+                
+                   itemImage.on('pointerdown', (pointer, localX, localY, event) => {
                     event.stopPropagation();
 
-                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                    let tooltipText = `【${itemId}】\n`;
-                    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                    if (itemElements.length > 0) { tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`; }
-                    const sizeH = itemData.shape.length;
-                    const sizeW = itemData.shape[0].length;
-                    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-                    if (itemData.recast) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
-                    if (itemData.action) {
-                        const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
-                        actions.forEach(action => { tooltipText += `効果: ${t(action.type)} ${action.value}\n`; });
-                    }
-                    if (itemData.passive && itemData.passive.effects) {
-                        itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${t(e.type)} +${e.value}\n`; });
-                    }
-                    if (itemData.synergy) {
-                        tooltipText += `\nシナジー:\n`;
-                        const dir = t(itemData.synergy.direction);
-                        const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
-                        tooltipText += `  - ${dir}の味方に\n`;
-                        effects.forEach(effect => {
-                            const effectType = t(effect.type);
-                            const sign = effect.value >= 0 ? '+' : '';
-                            tooltipText += `    効果: ${effectType} ${sign}${effect.value}\n`;
-                        });
-                    }
+                    // ★★★ このブロックを書き換え ★★★
+                    
+                    // 1. BattleSceneのインスタンスを取得
+                    //    (ScoreAttackBattleScene があればそちらを指定)
+                    const battleScene = this.scene.get('BattleScene');
+                    
+                    // 2. BattleSceneのメソッドを借りて、テキストを生成
+                    //    (第2引数は渡さないので、基本ステータスが表示される)
+                    const tooltipText = battleScene.generateTooltipText(itemId);
+                    
+                    // 3. ツールチップを表示
                     this.tooltip.show(itemImage, tooltipText);
-                }); // ★★★ 抜けていた `)` を追加 ★★★
+                    // ★★★ 書き換えここまで ★★★
+                });
             } // ★ if文の閉じ括弧
 
             this.add.text(x, y + 50, itemId, {
