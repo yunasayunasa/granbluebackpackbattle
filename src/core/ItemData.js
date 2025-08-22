@@ -573,7 +573,7 @@ export const ITEM_DATA = {
         tags: ["divine_general", "water", "weapon"],
         cost: 60,
         rarity: 4, // 最高レアリティ
-        recast: 15.0,
+        recast: 25.0,
         action: { type: 'attack', value: 50 },
         // パッシブでリキャストが短縮される
         passive: {
