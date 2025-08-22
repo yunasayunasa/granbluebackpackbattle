@@ -6,6 +6,8 @@ import { EnemyGenerator } from '../core/EnemyGenerator.js';
 const ELEMENT_COLORS = {
     fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff,   organization: 0xffd700 
 };
+const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization'];
+
 const TOOLTIP_TRANSLATIONS = {
     up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
     up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
