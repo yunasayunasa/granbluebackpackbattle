@@ -54,7 +54,7 @@ export const ITEM_DATA = {
         shape: [[1, 0], [1, 1]],
         shapeType: 'L字型', 
         size: { w: 2, h: 2 },
-        tags: ["support", "fire"],
+        tags: ["support", "fire","divine_general"],
         cost: 28,
         rarity: 2,
          passive: { effects: [{ type: 'max_hp', value: 10 }] },
@@ -250,7 +250,7 @@ export const ITEM_DATA = {
     'mahira': {
         storage: 'char_mahira',
         shape: [[1]],
-        tags: ["support", "earth"],
+        tags: ["support", "earth","divine_general"],
         cost: 13,
         rarity: 1,
          passive: { effects: [{ type: 'max_hp', value: 10 }] },
@@ -330,7 +330,7 @@ export const ITEM_DATA = {
     'anchira': {
         storage: 'char_anchira',
         shape: [[1]],
-        tags: ["support", "wind"],
+        tags: ["support", "wind","divine_general"],
         cost: 14,
         rarity: 1,
         action: { type: 'attack', value: 1 },
@@ -563,5 +563,126 @@ export const ITEM_DATA = {
             effect: { type: 'add_attack', value: 3 }
         }
     },
-    */
+        // =================================================================
+    // 🌠 十二神将
+    // =================================================================
+
+    'vajra': {
+        storage: 'char_vajra', // 仮の画像キー
+        shape: [[1, 1], [1, 0]], // L字型などユニークな形に
+        tags: ["divine_general", "water", "weapon"],
+        cost: 60,
+        rarity: 4, // 最高レアリティ
+        recast: 15.0,
+        action: { type: 'attack', value: 50 },
+        // パッシブでリキャストが短縮される
+        passive: {
+            effects: [{ type: 'vajra_passive', value: 2.0 }]
+        }
+    },
+
+    'kumbhira': { // クビラ
+        storage: 'char_kumbhira',
+        shape: [[1]], // 1x1
+        tags: ["divine_general", "light", "support"],
+        cost: 20,
+        rarity: 2,
+        recast: 1.0,
+        action: { type: 'block', value: 1 },
+        synergy: {
+            direction: 'horizontal', // 左右
+            effect: { type: 'add_block_on_activate', value: 1 }
+        }
+    },
+
+    'catura': { // シャトラ
+        storage: 'char_catura',
+        shape: [[1], [1]],
+        tags: ["divine_general", "wind", "healer"],
+        cost: 45,
+        rarity: 3,
+        recast: 8.0,
+        action: [
+            { type: 'attack', value: 3 },
+            { type: 'heal', value: 3 }
+        ],
+        synergy: {
+            direction: 'adjacent', // 四方向
+            effect: { type: 'add_recast', value: -1.0 }
+        }
+    },
+
+    'sindara': {
+        storage: 'char_sindara',
+        shape: [[1, 1], [1, 1]],
+        tags: ["divine_general", "earth", "support"],
+        cost: 50,
+        rarity: 3,
+        recast: 5.0,
+        action: [
+            { type: 'attack', value: 5 },
+            { type: 'block', value: 5 },
+            { type: 'heal', value: 5 }
+        ],
+        synergy: {
+            direction: 'horizontal', // 左右
+            effect: { type: 'add_recast', value: -1.0 }
+        }
+    },
+
+    'makura': { // マコラ
+        storage: 'char_makura',
+        shape: [[1], [1], [1]],
+        tags: ["divine_general", "light", "support"],
+        cost: 40,
+        rarity: 3,
+        // アクションは持たず、シナジーで他のキャラを神将化する
+        synergy: {
+            direction: 'up',
+            effect: { type: 'add_tag', value: 'divine_general' }
+        }
+    },
+
+    'vikala': { // ビカラ
+        storage: 'char_vikala',
+        shape: [[1, 1]], // 横長
+        tags: ["divine_general", "dark", "support"],
+        cost: 40,
+        rarity: 3,
+        recast: 6.0,
+        // HP50%以下で味方全体のリキャスト短縮
+        action: { type: 'recast_boost_player_by_hp', percent: 30 }
+    },
+
+    'cidala': { // シンダラ -> クビラ -> シャトラ -> ... 
+        // 将来の神将用のプレースホルダ
+        // 便宜上ハイラとインダラをここに定義します
+    },
+
+    'haila': {
+        storage: 'char_haila',
+        shape: [[1, 1], [1, 1]],
+        tags: ["divine_general", "water", "weapon"],
+        cost: 55,
+        rarity: 4,
+        recast: 4.0,
+        action: { type: 'attack', value: 8 },
+        // パッシブで攻撃力が上がる
+        passive: {
+            effects: [{ type: 'haila_passive', value: 1 }]
+        }
+    },
+
+    'indara': {
+        storage: 'char_indara',
+        shape: [[1, 1], [0, 1]], // 特殊な形状
+        tags: ["divine_general", "dark", "support"],
+        cost: 50,
+        rarity: 4,
+        // パッシブで戦闘開始時にHPを半減させる
+        passive: {
+            effects: [{ type: 'halve_own_hp_on_start' }]
+        }
+    }
+        */
 };
