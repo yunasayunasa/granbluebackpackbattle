@@ -12,7 +12,7 @@ const TOOLTIP_TRANSLATIONS = {
     up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
     up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
     attack: '攻撃', block: 'ブロック', heal: '回復', defense: '防御力', add_attack: '攻撃力', add_recast: 'リキャスト',
-    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量アップ',organization: '組織',
+    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量アップ','organization': '組織',
     'self_pain': '自傷ダメージ'
 };
 const ELEMENT_RESONANCE_RULES = {
@@ -2194,43 +2194,46 @@ recastOverlay.setVisible(hasRecast);
      * @param {object} [finalizedItemData=null] - (任意) 戦闘中の強化ステータスを反映させる場合
      * @returns {string} - 生成されたツールチップの全文
      */
+    // scenes/BattleScene.js
+
     generateTooltipText(itemId, finalizedItemData = null) {
         const baseItemData = ITEM_DATA[itemId];
         if (!baseItemData) return "不明なアイテム";
 
-        // 翻訳ヘルパー関数
         const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
         let tooltipText = `【${t(itemId)}】\n`;
 
-        // --- 属性 ---
         const itemAttributes = baseItemData.tags.filter(tag => ATTRIBUTE_TAGS.includes(tag));
         if (itemAttributes.length > 0) {
             tooltipText += `属性: [${itemAttributes.map(el => t(el)).join(', ')}]\n`;
         }
         
-        // --- サイズ ---
         const sizeH = baseItemData.shape.length;
         const sizeW = baseItemData.shape[0].length;
         tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
         
-        // --- リキャスト ---
         if (baseItemData.recast) {
-            // 戦闘中の強化データを優先し、なければ基本データを表示
             const recastValue = finalizedItemData ? finalizedItemData.recast : baseItemData.recast;
             tooltipText += `リキャスト: ${recastValue.toFixed(1)}秒\n`;
         }
 
         // --- 効果 (Action) ---
         if (baseItemData.action) {
+            tooltipText += `\n効果:\n`; // 見出しを追加
             const baseActions = Array.isArray(baseItemData.action) ? baseItemData.action : [baseItemData.action];
             const finalActions = (finalizedItemData && finalizedItemData.action) ? (Array.isArray(finalizedItemData.action) ? finalizedItemData.action : [finalizedItemData.action]) : baseActions;
             
             baseActions.forEach((baseAction, index) => {
                 const finalAction = finalActions[index] || baseAction;
-                let desc = t(finalAction.type).replace('{value}', finalAction.value);
-                tooltipText += `効果: ${desc}\n`;
+                
+                // ★★★ このブロックを修正 ★★★
+                // 翻訳テンプレートを取得してから、値を置換する
+                const template = t(finalAction.type) || `${finalAction.type} {value}`;
+                const desc = template.replace('{value}', finalAction.value);
+                tooltipText += `  - ${desc}\n`;
+
                 if (finalAction.value !== baseAction.value) {
-                    tooltipText += `  (基本値: ${baseAction.value})\n`;
+                    tooltipText += `    (基本値: ${baseAction.value})\n`;
                 }
             });
         }
@@ -2239,7 +2242,8 @@ recastOverlay.setVisible(hasRecast);
         if (baseItemData.passive && baseItemData.passive.effects) {
             tooltipText += `\nパッシブ:\n`;
             baseItemData.passive.effects.forEach(e => {
-                const desc = t(e.type).replace('{value}', e.value);
+                const template = t(e.type) || `${e.type} +{value}`;
+                const desc = template.replace('{value}', e.value);
                 tooltipText += `  - ${desc}\n`;
             });
         }
@@ -2251,16 +2255,15 @@ recastOverlay.setVisible(hasRecast);
             const effects = Array.isArray(baseItemData.synergy.effect) ? baseItemData.synergy.effect : [baseItemData.synergy.effect];
             tooltipText += `  - ${dir}の味方に:\n`;
             effects.forEach(effect => {
-                // valueが'divine_general'のような文字列の場合も考慮
                 const valueStr = t(effect.value) || effect.value;
-                const desc = t(effect.type).replace('{value}', valueStr);
+                const template = t(effect.type) || `${effect.type} {value}`;
+                const desc = template.replace('{value}', valueStr);
                 tooltipText += `    - ${desc}\n`;
             });
         }
         
         return tooltipText;
     }
-
 }
 
 
