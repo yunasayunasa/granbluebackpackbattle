@@ -98,6 +98,8 @@ export default class BattleScene extends Phaser.Scene {
         this.isShopVisible = false;
         this.isTimeUp = false;
         this.kamuiTimer = null;
+         this.kamuiTimer_player = null;
+        this.kamuiTimer_enemy = null;
         this.currentEnemyLayout = null;
         this.transitionWipe = null;
     }
@@ -2103,12 +2105,30 @@ export default class BattleScene extends Phaser.Scene {
 
     
     
-    shutdown() {
+   shutdown() {
+        console.log(`${this.scene.key}: shutdown`);
+        
+        // 戦闘タイマーの破棄
         if (this.battleTimerText) {
             this.battleTimerText.destroy();
             this.battleTimerText = null;
         }
-        if (this.kamuiTimer) this.kamuiTimer.remove();
+
+        // ★★★ このブロックを追加 ★★★
+        // 神威タイマーが存在すれば、破棄する
+        if (this.kamuiTimer_player) {
+            this.kamuiTimer_player.remove();
+            this.kamuiTimer_player = null;
+            console.log("Player Kamui timer removed.");
+        }
+        if (this.kamuiTimer_enemy) {
+            this.kamuiTimer_enemy.remove();
+            this.kamuiTimer_enemy = null;
+            console.log("Enemy Kamui timer removed.");
+        }
+        // ★★★ 追加ここまで ★★★
+
+        // (もし他にもシーン固有のタイマーやイベントがあれば、ここで破棄する)
     }
     
      /**
