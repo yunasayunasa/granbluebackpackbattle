@@ -2146,15 +2146,16 @@ export default class BattleScene extends Phaser.Scene {
      * 十二神将共鳴【神威】の効果を適用する
      * @private
      */
+   // scenes/BattleScene.js
+
     _applyKamuiEffect() {
-        if (this.gameState !== 'battle') return; // 戦闘中のみ実行
+        if (this.gameState !== 'battle') return;
 
         console.log(`%c✨【神威】効果発動！ 味方全体の攻撃力+1`, "color: gold;");
 
-        // 戦闘に参加している全てのアクティブなアイテムをループ
+        // --- 1. データ上の攻撃力を+1する (既存のロジック) ---
         this.playerBattleItems.forEach(battleItem => {
-            const itemData = battleItem.data; // dataプロパティにアイテムのステータスが入っている
-
+            const itemData = battleItem.data;
             if (itemData.action) {
                 const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
                 actions.forEach(act => {
@@ -2165,8 +2166,25 @@ export default class BattleScene extends Phaser.Scene {
             }
         });
         
-        // (ここに、攻撃力が上がったことを示すエフェクトを追加するとさらに良くなる)
-        // 例: this.playerAvatar.setTint(0xffff00); this.time.delayedCall(100, () => this.playerAvatar.clearTint());
+        // ★★★ 2. 視覚的なフィードバック（エフェクト）を追加 ★★★
+        
+        // 盤面に配置されている全ての味方アイテムを取得
+        const placedItems = this.placedItemImages;
+
+        placedItems.forEach(itemContainer => {
+            if (itemContainer && itemContainer.active) {
+                // 白色にティントをかけて光ったように見せる
+                itemContainer.setTint(0xffffff);
+
+                // 150ミリ秒後に、ティントを元に戻す
+                this.time.delayedCall(150, () => {
+                    // delayedCallが実行される時点でもオブジェクトが存在するか確認
+                    if (itemContainer && itemContainer.active) {
+                        itemContainer.clearTint();
+                    }
+                });
+            }
+        });
     }
 
     /**
