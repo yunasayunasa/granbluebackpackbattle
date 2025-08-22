@@ -446,7 +446,7 @@ export default class BattleScene extends Phaser.Scene {
         
         // ★★★★★ このブロックを、既存の共鳴ループの後に追加 ★★★★★
         // --- 【将来のアップデート用】組織共鳴 ---
-        /*
+        
         const orgCount = elementCounts.organization || 0;
         const ORG_THRESHOLD = 3;
         if (orgCount >= ORG_THRESHOLD) {
@@ -463,7 +463,7 @@ export default class BattleScene extends Phaser.Scene {
                 }
             });
         }
-        */
+      
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
         initialItems.forEach((sourceItem, sourceIndex) => {
@@ -795,7 +795,7 @@ export default class BattleScene extends Phaser.Scene {
                         this.showHealPopup(targetAvatar, Math.floor(healAmount));
                     }
                 }
-                /*
+              
                   // ★★★★★ この else if ブロックを追加 ★★★★★
              //--- 【将来のアップデート用】自傷ダメージ ---
              else if (action.type === 'self_pain') {
@@ -820,7 +820,7 @@ export default class BattleScene extends Phaser.Scene {
                 }
              }
             // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-            */
+           
             });
         }
         this.handleActivationTriggers(itemData, attacker);
@@ -2009,7 +2009,7 @@ export default class BattleScene extends Phaser.Scene {
         await this.firebaseManager.uploadGhostData(rankMatchData);
     }
 
-    /*
+
      // ★★★★★ このメソッドを追加 ★★★★★
     // --- 【将来のアップデート用】自傷ダメージのポップアップ ---
      showPainPopup(targetObject, amount) {
@@ -2036,5 +2036,5 @@ export default class BattleScene extends Phaser.Scene {
              onComplete: () => painText.destroy()
          });
      }
-    */
+    
 }

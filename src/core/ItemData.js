@@ -480,4 +480,88 @@ export const ITEM_DATA = {
         rarity: 1,
         passive: { effects: [{ type: 'defense', value: 3 }] }
     }
+    /*
+        // =================================================================
+    // 🏢 組織
+    // =================================================================
+    'ilza': {
+        storage: 'char_ilza', // 仮の画像キー
+        shape: [[1], [1]],
+        tags: ["organization", "earth"],
+        cost: 40, // コストは仮です
+        rarity: 3,
+        // アクションが2種類あるので、配列で定義
+        action: [
+            { type: 'attack', value: 15 },
+            { type: 'self_pain', value: 10 }
+        ],
+        recast: 4.0,
+        synergy: {
+            direction: 'adjacent', // 四方向
+            effect: { type: 'add_attack', value: 3 }
+        }
+    },
+
+    'zeta': {
+        storage: 'char_zeta', // 仮の画像キー
+        shape: [[1, 1], [1, 1]],
+        tags: ["organization", "fire"],
+        cost: 45,
+        rarity: 3,
+        action: [
+            { type: 'attack', value: 20 },
+            { type: 'self_pain', value: 10 }
+        ],
+        recast: 3.0,
+        synergy: {
+            direction: 'left',
+            effect: { type: 'add_attack', value: 3 }
+        }
+    },
+    
+    'beatrix': {
+        storage: 'char_beatrix', // 仮の画像キー
+        shape: [[1], [1]],
+        tags: ["organization", "dark"],
+        cost: 25,
+        rarity: 2, // 他より少し手に入りやすく
+        action: [
+            { type: 'attack', value: 10 },
+            { type: 'self_pain', value: 4 }
+        ],
+        recast: 2.0
+        // シナジーなし
+    },
+
+    'vaseraga': {
+        storage: 'char_vaseraga', // 仮の画像キー
+        shape: [[1, 1], [1, 1], [1, 1]],
+        tags: ["organization", "dark", "defense"], // defenseタグを追加
+        cost: 50,
+        rarity: 3,
+        action: [
+            { type: 'block', value: 20 },
+            { type: 'self_pain', value: 10 }
+        ],
+        recast: 5.0
+        // シナジーなし
+    },
+
+    'eustace': {
+        storage: 'char_eustace', // 仮の画像キー
+        shape: [[1], [1]],
+        tags: ["organization", "wind"],
+        cost: 35,
+        rarity: 2,
+        action: [
+            { type: 'attack', value: 15 },
+            { type: 'self_pain', value: 8 }
+        ],
+        recast: 5.0,
+        synergy: {
+            direction: 'vertical', // 上下
+            effect: { type: 'add_attack', value: 3 }
+        }
+    },
+    */
 };

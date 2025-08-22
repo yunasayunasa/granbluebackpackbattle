@@ -480,7 +480,7 @@ const enemyInitialStats = {
         
         // ★★★★★ このブロックを、既存の共鳴ループの後に追加 ★★★★★
         // --- 【将来のアップデート用】組織共鳴 ---
-        /*
+       
         const orgCount = elementCounts.organization || 0;
         const ORG_THRESHOLD = 3;
         if (orgCount >= ORG_THRESHOLD) {
@@ -497,7 +497,7 @@ const enemyInitialStats = {
                 }
             });
         }
-        */
+      
         // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
         // === STEP 2: シナジー効果の計算 ===
@@ -831,7 +831,7 @@ const enemyInitialStats = {
                         this.showHealPopup(targetAvatar, Math.floor(healAmount));
                     }
                 }
-                  /*
+                
                   // ★★★★★ この else if ブロックを追加 ★★★★★
              //--- 【将来のアップデート用】自傷ダメージ ---
              else if (action.type === 'self_pain') {
@@ -856,7 +856,7 @@ const enemyInitialStats = {
                 }
              }
             // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-            */
+          
             });
         }
         this.handleActivationTriggers(itemData, attacker);
@@ -2181,7 +2181,7 @@ recastOverlay.setVisible(hasRecast);
 
       // ★★★★★ このメソッドを追加 ★★★★★
     // --- 【将来のアップデート用】自傷ダメージのポップアップ ---
-    /*
+  
     showPainPopup(targetObject, amount) {
         if (!targetObject || amount <= 0) return;
         // 紫色など、特別な色のテキストでダメージ量を表示
@@ -2206,7 +2206,7 @@ recastOverlay.setVisible(hasRecast);
             onComplete: () => painText.destroy()
         });
     }
-    */
+   
 }
 
 
