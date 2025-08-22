@@ -4,7 +4,7 @@ import Tooltip from '../ui/Tooltip.js';
 import { EnemyGenerator } from '../core/EnemyGenerator.js';
 
 const ELEMENT_COLORS = {
-    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff, organization: 0xffd700 
+    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff, organization: 0xffd700 ,divine_general: 0xffffff
 };
 const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization','divine_general'];
 

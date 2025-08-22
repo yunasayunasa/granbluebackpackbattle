@@ -4,7 +4,7 @@ import Tooltip from '../ui/Tooltip.js';
 import { EnemyGenerator } from '../core/EnemyGenerator.js';
 
 const ELEMENT_COLORS = {
-    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff,   organization: 0xffd700 
+    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff,   organization: 0xffd700 ,divine_general: 0xffffff
 };
 const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization','divine_general'];
 
@@ -368,6 +368,33 @@ export default class BattleScene extends Phaser.Scene {
                 });
             }
         });
+         // --- 【将来用】組織共鳴のエフェクト再生 ---
+    
+    const orgCount = playerResult.finalizedItems.filter(item => item.tags.includes('organization')).length;
+    if (orgCount >= 3) { // 組織共鳴の閾値
+        const flashColor = ELEMENT_COLORS['organization'];
+        if (flashColor) {
+            playerResult.finalizedItems.forEach(item => {
+                if (item.tags.includes('organization') && item.gameObject) {
+                    this.playResonanceAura(item.gameObject, flashColor);
+                }
+            });
+        }
+    }
+    
+    // ★★★ 追加ここまで ★★
+         // 十二神将共鳴のエフェクトを再生
+          const divineGeneralCount = playerResult.finalizedItems.filter(item => item.tags.includes('divine_general')).length;
+     if (divineGeneralCount >= 2) {
+        const flashColor = ELEMENT_COLORS['divine_general'];
+        // 十二神将のキャラクター全てを光らせる
+        playerResult.finalizedItems.forEach(item => {
+            if (item.tags.includes('divine_general') && item.gameObject) {
+                this.playResonanceAura(item.gameObject, flashColor);
+            }
+        });
+    }
+    // ★★★ 
         this.stateManager.setF('player_max_hp', this.playerStats.max_hp);
         this.stateManager.setF('player_hp', this.playerStats.hp);
         console.log("プレイヤー最終ステータス:", this.playerStats);
@@ -420,6 +447,31 @@ export default class BattleScene extends Phaser.Scene {
                 });
             }
         });
+         // --- 【将来用】組織共鳴のエフェクト再生 ---
+    
+   if (orgCount >= 3) { // 組織共鳴の閾値
+        const flashColor = ELEMENT_COLORS['organization'];
+        if (flashColor) {
+            playerResult.finalizedItems.forEach(item => {
+                if (item.tags.includes('organization') && item.gameObject) {
+                    this.playResonanceAura(item.gameObject, flashColor);
+                }
+            });
+        }
+    }
+    
+    // ★★★ 追加ここまで ★★
+         // 十二神将共鳴のエフェクトを再生
+     if (divineGeneralCount >= 2) {
+        const flashColor = ELEMENT_COLORS['divine_general'];
+        // 十二神将のキャラクター全てを光らせる
+        playerResult.finalizedItems.forEach(item => {
+            if (item.tags.includes('divine_general') && item.gameObject) {
+                this.playResonanceAura(item.gameObject, flashColor);
+            }
+        });
+    }
+    // ★★★ 
         this.finalizedEnemyItems = enemyResult.finalizedItems;
 
         this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
@@ -1069,6 +1121,25 @@ export default class BattleScene extends Phaser.Scene {
 
     playResonanceAura(targetObject, color) {
         if (!targetObject || !targetObject.active) return;
+        // ★★★ この if 文を追加 ★★★
+        if (color === ELEMENT_COLORS['divine_general']) {
+            // --- 虹色パーティクルの特別処理 ---
+            const particles = this.add.particles(0, 0, 'particle_white', {
+                x: { min: targetObject.x - targetObject.displayWidth/2, max: targetObject.x + targetObject.displayWidth/2 },
+                y: targetObject.y + targetObject.displayHeight / 2,
+                lifespan: 1500,
+                speedY: { min: -80, max: -120 },
+                scale: { start: 0.6, end: 0 },
+                gravityY: 100,
+                blendMode: 'ADD',
+                // ★★★ 色をランダムに変化させる ★★★
+                color: [ 0xff0000, 0xff7f00, 0xffff00, 0x00ff00, 0x0000ff, 0x4b0082, 0x9400d3 ],
+                quantity: 1
+            });
+            this.time.delayedCall(1300, () => { particles.stop(); });
+            this.time.delayedCall(3000, () => { particles.destroy(); });
+
+        } else {
         const centerX = targetObject.x;
         const bottomY = targetObject.y + targetObject.displayHeight / 2;
         const effectDuration = 1500;
@@ -1083,7 +1154,7 @@ export default class BattleScene extends Phaser.Scene {
         }).setDepth(targetObject.depth + 1);
         this.time.delayedCall(effectDuration - 200, () => { particles.stop(); });
         this.time.delayedCall(effectDuration * 2, () => { particles.destroy(); });
-    }
+    }}
 
         createItem(itemId, x, y) {
         const itemData = ITEM_DATA[itemId];
