@@ -542,7 +542,7 @@ export default class BattleScene extends Phaser.Scene {
         }
         
         // --- 2c. 【将来用】組織共鳴 ---
-        /*
+        
         const orgCount = elementCounts.organization || 0;
         const ORG_THRESHOLD = 3;
         if (orgCount >= ORG_THRESHOLD) {
@@ -559,7 +559,7 @@ export default class BattleScene extends Phaser.Scene {
                 }
             });
         }
-        */
+        
         
         // === STEP 3: 個別パッシブの計算 ===
         if (divineGeneralCount > 0) {

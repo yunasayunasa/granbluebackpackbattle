@@ -376,6 +376,33 @@ const finalEnemyHp = enemyBaseHp * hpPenaltyMultiplier;
                 });
             }
         });
+            // --- 【将来用】組織共鳴のエフェクト再生 ---
+    
+    const orgCount = playerResult.finalizedItems.filter(item => item.tags.includes('organization')).length;
+    if (orgCount >= 3) { // 組織共鳴の閾値
+        const flashColor = ELEMENT_COLORS['organization'];
+        if (flashColor) {
+            playerResult.finalizedItems.forEach(item => {
+                if (item.tags.includes('organization') && item.gameObject) {
+                    this.playResonanceAura(item.gameObject, flashColor);
+                }
+            });
+        }
+    }
+    
+    // ★★★ 追加ここまで ★★
+         // 十二神将共鳴のエフェクトを再生
+          const divineGeneralCount = playerResult.finalizedItems.filter(item => item.tags.includes('divine_general')).length;
+     if (divineGeneralCount >= 2) {
+        const flashColor = ELEMENT_COLORS['divine_general'];
+        // 十二神将のキャラクター全てを光らせる
+        playerResult.finalizedItems.forEach(item => {
+            if (item.tags.includes('divine_general') && item.gameObject) {
+                this.playResonanceAura(item.gameObject, flashColor);
+            }
+        });
+    }
+    // ★★★  
         this.stateManager.setF('player_max_hp', this.playerStats.max_hp);
         this.stateManager.setF('player_hp', this.playerStats.hp);
         console.log("プレイヤー最終ステータス:", this.playerStats);
@@ -453,6 +480,31 @@ const enemyInitialStats = {
                 });
             }
         });
+            // --- 【将来用】組織共鳴のエフェクト再生 ---
+    
+   if (orgCount >= 3) { // 組織共鳴の閾値
+        const flashColor = ELEMENT_COLORS['organization'];
+        if (flashColor) {
+            playerResult.finalizedItems.forEach(item => {
+                if (item.tags.includes('organization') && item.gameObject) {
+                    this.playResonanceAura(item.gameObject, flashColor);
+                }
+            });
+        }
+    }
+    
+    // ★★★ 追加ここまで ★★
+         // 十二神将共鳴のエフェクトを再生
+     if (divineGeneralCount >= 2) {
+        const flashColor = ELEMENT_COLORS['divine_general'];
+        // 十二神将のキャラクター全てを光らせる
+        playerResult.finalizedItems.forEach(item => {
+            if (item.tags.includes('divine_general') && item.gameObject) {
+                this.playResonanceAura(item.gameObject, flashColor);
+            }
+        });
+    }
+    // ★★★ 
         this.finalizedEnemyItems = enemyResult.finalizedItems;
 
         this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
@@ -523,7 +575,7 @@ const enemyInitialStats = {
         }
         
         // --- 2c. 【将来用】組織共鳴 ---
-        /*
+        
         const orgCount = elementCounts.organization || 0;
         const ORG_THRESHOLD = 3;
         if (orgCount >= ORG_THRESHOLD) {
@@ -540,7 +592,7 @@ const enemyInitialStats = {
                 }
             });
         }
-        */
+        
         
         // === STEP 3: 個別パッシブの計算 ===
         if (divineGeneralCount > 0) {
