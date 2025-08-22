@@ -11,9 +11,15 @@ const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'orga
 const TOOLTIP_TRANSLATIONS = {
     up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
     up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
-    attack: '攻撃', block: 'ブロック', heal: '回復', defense: '防御力', add_attack: '攻撃力', add_recast: 'リキャスト',
+    defense: '防御力',  
     'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量', 'organization': '組織',
-    'self_pain': '自傷ダメージ'
+       'attack': '攻撃力 {value}',
+    'block': 'ブロック {value}',
+    'heal': 'HPを{value}回復',
+    'self_pain': '自傷ダメージ {value}',
+    
+    'add_attack': '攻撃力 +{value}',
+    'add_recast': 'リキャスト +{value}秒'
 };
 const ELEMENT_RESONANCE_RULES = {
     fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor(count / 2)}` },
