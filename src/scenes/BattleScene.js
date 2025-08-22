@@ -9,17 +9,41 @@ const ELEMENT_COLORS = {
 const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization'];
 
 const TOOLTIP_TRANSLATIONS = {
-    up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
-    up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
-    defense: '防御力',  
-    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量', 'organization': '組織',
-       'attack': '攻撃力 {value}',
+    // --- 汎用 ---
+    'up': '上', 'down': '下', 'left': '左', 'right': '右',
+    'adjacent': '隣接', 'horizontal': '左右', 'vertical': '上下',
+    'up_and_sides': '上と左右',
+
+    // --- 属性 ---
+    'fire': '火', 'water': '水', 'earth': '土', 'wind': '風', 'light': '光', 'dark': '闇',
+    'organization': '組織',
+    'divine_general': '十二神将',
+
+    // --- アイテムタグ ---
+    'weapon': '武器', 'support': '支援', 'healer': '回復', 'defense': '防御',
+    
+    // --- 効果タイプ (Action) ---
+    'attack': '攻撃力 {value}',
     'block': 'ブロック {value}',
     'heal': 'HPを{value}回復',
     'self_pain': '自傷ダメージ {value}',
-    
+
+    // --- 効果タイプ (Passive & Synergy) ---
     'add_attack': '攻撃力 +{value}',
-    'add_recast': 'リキャスト +{value}秒'
+    'add_recast': 'リキャスト +{value}s',
+    'add_block_on_activate': '起動時ブロック +{value}',
+    'heal_on_activate': '起動時回復 +{value}',
+    'add_heal_power': '回復効果 +{value}',
+    'add_tag': '「{value}」タグを付与',
+    
+    // ★★★ 抜けていた passive の効果タイプを追加 ★★★
+    'max_hp': '最大HP +{value}',
+    'defense': '防御力 +{value}',
+    
+    // ★★★ 十二神将用の特殊効果タイプ ★★★
+    'vajra_passive': '他の神将1人につきリキャスト -{value}s',
+    'haila_passive': '神将1人につき攻撃力 +{value}',
+    'halve_own_hp_on_start': '戦闘開始時 HP半減',
 };
 const ELEMENT_RESONANCE_RULES = {
     fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor(count / 2)}` },
@@ -981,34 +1005,11 @@ export default class BattleScene extends Phaser.Scene {
             itemContainer.setDepth(3).setInteractive({ draggable: false });
             itemContainer.on('pointerup', (pointer, localX, localY, event) => {
                 event.stopPropagation();
-                const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                let tooltipText = `【${baseItemId}】\n`;
-                const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                if (itemElements.length > 0) {
-                    tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-                }
-                const sizeH = itemData.shape.length;
-                const sizeW = itemData.shape[0].length;
-                tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-                if (itemData.action) {
-                    const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
-                    actions.forEach(action => {
-                        tooltipText += `効果: ${action.type} ${action.value}\n`;
-                    });
-                }
-                if (itemData.passive && itemData.passive.effects) { itemData.passive.effects.forEach(e => { tooltipText += `パッシブ: ${e.type} +${e.value}\n`; }); }
-                if (itemData.synergy) {
-                    tooltipText += `\nシナジー:\n`;
-                    const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
-                    const dir = t(itemData.synergy.direction);
-                    effects.forEach(effect => {
-                        const effectType = t(effect.type);
-                        tooltipText += `  - ${dir}の味方に\n`;
-                        tooltipText += `    効果: ${effectType} +${effect.value}\n`;
-                    });
-                }
-                this.tooltip.show(itemContainer, tooltipText);
-            });
+                const tooltipText = this.generateTooltipText(baseItemId);
+
+                    // ツールチップを表示
+                    this.tooltip.show(itemContainer, tooltipText);
+                });
             this.enemyItemImages.push(itemContainer);
         }
     }
@@ -1679,36 +1680,14 @@ export default class BattleScene extends Phaser.Scene {
                     slotContainer.removeInteractive();
                     this.updateShopButtons();
                 } else {
-                    const t = (key) => TOOLTIP_TRANSLATIONS[key] || key;
-                    let tooltipText = `【${itemId}】\n`;
-                    const itemElements = itemData.tags.filter(tag => ELEMENT_RESONANCE_RULES[tag]);
-                    if (itemElements.length > 0) {
-                        tooltipText += `属性: [${itemElements.map(el => t(el)).join(', ')}]\n`;
-                    }
-                    const sizeH = itemData.size ? itemData.size.h : itemData.shape.length;
-                    const sizeW = itemData.size ? itemData.size.w : itemData.shape[0].length;
-                    tooltipText += `サイズ: ${sizeH} x ${sizeW}\n\n`;
-                    if (itemData.recast && itemData.recast > 0) { tooltipText += `リキャスト: ${itemData.recast.toFixed(1)}秒\n`; }
-                    if(itemData.action) {
-                        const actions = Array.isArray(itemData.action) ? itemData.action : [itemData.action];
-                        actions.forEach(action => {
-                            tooltipText += `効果: ${action.type} ${action.value}\n`;
-                        });
-                    }
-                    if(itemData.synergy) {
-                        tooltipText += `\nシナジー:\n`;
-                        const effects = Array.isArray(itemData.synergy.effect) ? itemData.synergy.effect : [itemData.synergy.effect];
-                        const dir = t(itemData.synergy.direction);
-                        effects.forEach(effect => {
-                            const effectType = t(effect.type);
-                            tooltipText += `  - ${dir}の味方に\n`;
-                            tooltipText += `    効果: ${effectType} +${effect.value}\n`;
-                        });
-                    }
+                 const tooltipText = this.generateTooltipText(itemId);
+                    
+                    // ツールチップを表示
                     const matrix = slotContainer.getWorldTransformMatrix();
                     const worldX = matrix.tx;
                     const worldY = matrix.ty;
-                    this.tooltip.showAt(worldX, worldY - slotContainer.height / 2 - 10, tooltipText);
+                    // showAt は存在しない可能性があるので、showを使うのが安全
+                    this.tooltip.show(slotContainer, tooltipText);
                 }
             });
         });
