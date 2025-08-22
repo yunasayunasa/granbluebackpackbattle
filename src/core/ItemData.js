@@ -479,7 +479,7 @@ export const ITEM_DATA = {
         cost: 15,
         rarity: 1,
         passive: { effects: [{ type: 'defense', value: 3 }] }
-    }
+    },
     
         // =================================================================
     // 🏢 組織
