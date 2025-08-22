@@ -8,14 +8,45 @@ import Tooltip from '../ui/Tooltip.js';
 const ELEMENT_COLORS = {
     fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff
 };
-const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization'];
+const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization','divine_general'];
 
 const TOOLTIP_TRANSLATIONS = {
-    up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
-    up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
-    weapon: '武器', support: '支援', healer: '回復', defense: '防御', add_attack: '攻撃力', add_recast: 'リキャスト',
-    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復効果',organization: '組織',
-    self_pain: '自傷ダメージ'
+    // --- 汎用 ---
+    'up': '上', 'down': '下', 'left': '左', 'right': '右',
+    'adjacent': '隣接', 'horizontal': '左右', 'vertical': '上下',
+    'up_and_sides': '上と左右',
+
+    // --- 属性 ---
+    'fire': '火', 'water': '水', 'earth': '土', 'wind': '風', 'light': '光', 'dark': '闇',
+    'organization': '組織',
+    'divine_general': '十二神将',
+
+    // --- アイテムタグ ---
+    'weapon': '武器', 'support': '支援', 'healer': '回復', 'defense': '防御',
+    
+    // --- 効果タイプ (Action) ---
+    'attack': '攻撃力 {value}',
+    'block': 'ブロック {value}',
+    'heal': 'HPを{value}回復',
+    'self_pain': '自傷ダメージ {value}',
+
+    // --- 効果タイプ (Passive & Synergy) ---
+    'add_attack': '攻撃力 +{value}',
+    'add_recast': 'リキャスト +{value}s',
+    'add_block_on_activate': '起動時ブロック +{value}',
+    'heal_on_activate': '起動時回復 +{value}',
+    'add_heal_power': '回復効果 +{value}',
+    'add_tag': '「{value}」タグを付与',
+    
+    // ★★★ 抜けていた passive の効果タイプを追加 ★★★
+    'max_hp': '最大HP +{value}',
+    'defense': '防御力 +{value}',
+    
+    // ★★★ 十二神将用の特殊効果タイプ ★★★
+    'vajra_passive': '他の神将1人につきリキャスト -{value}s',
+    'haila_passive': '神将1人につき攻撃力 +{value}',
+    'halve_own_hp_on_start': '戦闘開始時 HP半減',
+      'recast_boost_player_by_hp': 'HP50%以下時 味方全体のリキャスト-{value}%'
 };
 const ELEMENT_RESONANCE_RULES = {
     fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor(count / 2)}` },

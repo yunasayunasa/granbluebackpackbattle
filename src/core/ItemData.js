@@ -651,7 +651,7 @@ export const ITEM_DATA = {
         rarity: 3,
         recast: 6.0,
         // HP50%以下で味方全体のリキャスト短縮
-        action: { type: 'recast_boost_player_by_hp', percent: 30 }
+          action: { type: 'recast_boost_player_by_hp', value: 30 }
     },
 
     'cidala': { // シンダラ -> クビラ -> シャトラ -> ... 

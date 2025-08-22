@@ -45,6 +45,7 @@ const TOOLTIP_TRANSLATIONS = {
     'vajra_passive': '他の神将1人につきリキャスト -{value}s',
     'haila_passive': '神将1人につき攻撃力 +{value}',
     'halve_own_hp_on_start': '戦闘開始時 HP半減',
+      'recast_boost_player_by_hp': 'HP50%以下時 味方全体のリキャスト-{value}%'
 };
 const ELEMENT_RESONANCE_RULES = {
     fire: { threshold: 3, description: (count) => `攻撃力+${Math.floor(count / 2)}` },
@@ -1039,6 +1040,33 @@ export default class BattleScene extends Phaser.Scene {
                      }
                 }
              }
+              else if (action.type === 'recast_boost_player_by_hp') {
+                const targetSide = attacker; // 効果対象はスキル使用者側
+                const targetStats = this[`${targetSide}Stats`];
+                const targetBattleItems = this[`${targetSide}BattleItems`];
+
+                // HPが50%以下かどうかを判定
+                if (targetStats.hp / targetStats.max_hp <= 0.5) {
+                    console.log(`%c✨ ${targetSide}側の背水効果発動！ 味方全体のリキャスト短縮！`, "color: magenta;");
+                    
+                    const reductionPercent = action.percent / 100; // 例: 30 -> 0.3
+                    
+                    targetBattleItems.forEach(battleItem => {
+                        const maxRecast = battleItem.data.recast;
+                        if (maxRecast > 0) {
+                            // 各アイテムのリキャスト最大値から、短縮する秒数を計算
+                            const reductionAmount = maxRecast * reductionPercent;
+                            // 次のアクションまでの残り時間を、計算した秒数だけ減らす
+                            battleItem.nextActionTime -= reductionAmount;
+                        }
+                    });
+
+                    // (ここに、リキャストが加速したことを示すエフェクトを追加するとさらに良くなる)
+                    // 例: const targetAvatar = (targetSide === 'player') ? this.playerAvatar : this.enemyAvatar;
+                    //     this.playRecastBoostEffect(targetAvatar);
+                }
+            }
+            // ★★★ 追加ここまで ★★★
             // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
            
             });
