@@ -57,6 +57,7 @@ export const ITEM_DATA = {
         tags: ["support", "fire"],
         cost: 28,
         rarity: 2,
+         passive: { effects: [{ type: 'max_hp', value: 10 }] },
         action: { type: 'attack', value: 8 },
         recast: 4.0,
         synergy: {
@@ -122,12 +123,12 @@ export const ITEM_DATA = {
         tags: ["hero", "water"],
         cost: 55,
         rarity: 3,
-        passive: { effects: [{ type: 'max_hp', value: 15 }] },
-        action: { type: 'attack', value: 8},
+        passive: { effects: [{ type: 'max_hp', value: 20 }] },
+        action: { type: 'attack', value: 10},
         recast: 7.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'add_recast', value: -0.4 }
+            effect: { type: 'add_recast', value: -0.6 }
         }
     },
     'poseidon': {
@@ -137,7 +138,7 @@ export const ITEM_DATA = {
         cost: 35,
         rarity: 2,
         passive: { effects: [{ type: 'defense', value: 1 }] },
-        action: { type: 'attack', value: 5 },
+        action: { type: 'attack', value: 8 },
         recast: 5.0,
         synergy: {
             direction: 'adjacent',
@@ -147,7 +148,7 @@ export const ITEM_DATA = {
     'yachima': {
         storage: 'char_yachima',
         shape: [[1], [1]],
-        tags: ["strategist", "water", "fire", "earth", "wind", "light", "dark"],
+        tags: ["strategist", "water", "fire", "earth", "wind", "light", "dark","organization"],
         cost: 40,
         rarity: 2
     },
@@ -158,7 +159,7 @@ export const ITEM_DATA = {
         cost: 20,
         rarity: 2,
         action: { type: 'attack', value: 5 },
-        recast: 5.0,
+        recast: 4.0,
         synergy: {
             direction: 'adjacent',
             effect: { type: 'add_attack', value: 1 }
@@ -183,7 +184,7 @@ export const ITEM_DATA = {
         tags: ["monster", "water"],
         cost: 10,
         rarity: 1,
-        action: { type: 'attack', value: 2 },
+        action: { type: 'attack', value: 3 },
         recast: 2.5,
         synergy: {
             direction: 'adjacent',
@@ -205,7 +206,7 @@ export const ITEM_DATA = {
         recast: 7.0,
         synergy: {
             direction: 'adjacent',
-            effect: { type: 'add_block_on_activate', value: 5}
+            effect: { type: 'add_block_on_activate', value: 3}
         }
     },
     'octo': {
@@ -214,7 +215,7 @@ export const ITEM_DATA = {
         tags: ["master", "earth"],
         cost: 38,
         rarity: 2,
-        passive: { effects: [{ type: 'max_hp', value: 10 }] },
+        passive: { effects: [{ type: 'max_hp', value: 20 }] },
         action: { type: 'attack', value: 25 },
         recast: 10.0,
         synergy: {
@@ -228,6 +229,7 @@ export const ITEM_DATA = {
         tags: ["support", "earth"],
         cost: 26,
         rarity: 2,
+         passive: { effects: [{ type: 'max_hp', value: 10 }] },
         action: { type: 'block', value: 12 },
         recast: 4.0,
         synergy: {
@@ -241,7 +243,7 @@ export const ITEM_DATA = {
         tags: ["primal", "earth"],
         cost: 16,
         rarity: 1,
-        passive: { effects: [{ type: 'defense', value: 1 }] },
+        passive: { effects: [{ type: 'defense', value: 2 }] },
         action: { type: 'block', value: 10 },
         recast: 4.0
     },
@@ -251,6 +253,7 @@ export const ITEM_DATA = {
         tags: ["support", "earth"],
         cost: 13,
         rarity: 1,
+         passive: { effects: [{ type: 'max_hp', value: 10 }] },
         action: { type: 'attack', value: 3 },
         recast: 3.0,
         synergy: {
@@ -268,8 +271,8 @@ export const ITEM_DATA = {
         tags: ["hero", "wind"],
         cost: 58,
         rarity: 3,
-        passive: { effects: [{ type: 'max_hp', value: 20 }] },
-        action: { type: 'block', value: 20 },
+        passive: { effects: [{ type: 'max_hp', value: 10 }] },
+        action: { type: 'block', value: 15 },
         recast: 5.0,
         synergy: {
             direction: 'adjacent',
@@ -347,7 +350,7 @@ export const ITEM_DATA = {
         tags: ["hero", "light"],
         cost: 52,
         rarity: 3,
-        passive: { effects: [{ type: 'max_hp', value: 10 }] },
+        passive: { effects: [{ type: 'max_hp', value: 20 }] },
         action: { type: 'attack', value: 18 },
         recast: 5.0,
         synergy: {
@@ -361,6 +364,7 @@ export const ITEM_DATA = {
         tags: ["master", "light"],
         cost: 40,
         rarity: 2,
+         passive: { effects: [{ type: 'max_hp', value: 10 }] },
         triggerAction: {
             trigger: { type: 'hp_below', percent: 25, once: true },
             action: { type: 'heal_percent', value: 50 }
@@ -378,6 +382,7 @@ export const ITEM_DATA = {
         tags: ["support", "light"],
         cost: 28,
         rarity: 2,
+         passive: { effects: [{ type: 'max_hp', value: 5 }] },
         action: { type: 'heal', value: 12 },
         recast: 4.5,
         synergy: {
@@ -391,6 +396,7 @@ export const ITEM_DATA = {
         tags: ["primal", "light"],
         cost: 18,
         rarity: 1,
+         passive: { effects: [{ type: 'max_hp', value: 5 }] },
         action: { type: 'attack', value: 5 },
         recast: 4.0,
         synergy: {
@@ -404,6 +410,7 @@ export const ITEM_DATA = {
         tags: ["primal", "light"],
         cost: 20,
         rarity: 1,
+         passive: { effects: [{ type: 'max_hp', value: 5 }] },
         action: { type: 'block', value: 10 },
         recast: 6.0,
         synergy: {
@@ -433,7 +440,7 @@ export const ITEM_DATA = {
         tags: ["dragon", "dark"],
         cost: 36,
         rarity: 2,
-        passive: { effects: [{ type: 'defense', value: 2 }] },
+        passive: { effects: [{ type: 'defense', value: 3 }] },
         action: { type: 'block', value: 15 },
         recast: 5.0
     },
@@ -449,7 +456,7 @@ export const ITEM_DATA = {
     'cassius': {
         storage: 'char_cassius',
         shape: [[1], [1]],
-        tags: ["support", "dark"],
+        tags: ["support", "dark","organization"],
         cost: 20,
         rarity: 1,
         action: [{ type: 'attack', value: 7}, { type: 'heal', value: 7 }],
