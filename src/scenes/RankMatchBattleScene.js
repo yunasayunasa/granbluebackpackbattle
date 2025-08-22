@@ -4,13 +4,13 @@ import Tooltip from '../ui/Tooltip.js';
 import { EnemyGenerator } from '../core/EnemyGenerator.js';
 
 const ELEMENT_COLORS = {
-    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff
+    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff, organization: 0xffd700 
 };
 const TOOLTIP_TRANSLATIONS = {
     up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
     up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
     attack: '攻撃', block: 'ブロック', heal: '回復', defense: '防御力', add_attack: '攻撃力', add_recast: 'リキャスト',
-    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量アップ','organization': '組織',
+    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量アップ',organization: '組織',
     'self_pain': '自傷ダメージ'
 };
 const ELEMENT_RESONANCE_RULES = {
@@ -19,7 +19,11 @@ const ELEMENT_RESONANCE_RULES = {
     earth: { threshold: 3, description: (count) => `ブロック効果+${count * 2}` },
     light: { threshold: 3, description: (count) => `回復効果+${count * 2}` },
     water: { threshold: 3, description: (count) => `シナジー効果+${count - 2}` },
-    dark:  { threshold: 3, description: (count) => `背水効果(小)` }
+    dark:  { threshold: 3, description: (count) => `背水効果(小)` },
+     organization: {
+        threshold: 3,
+         description: (count) => `自傷ダメージ-50%` // 説明文
+     }
 };
 
 export default class RankMatchBattleScene extends Phaser.Scene {
