@@ -4,7 +4,8 @@ import Tooltip from '../ui/Tooltip.js';
 import { EnemyGenerator } from '../core/EnemyGenerator.js';
 
 const ELEMENT_COLORS = {
-    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff,   organization: 0xffd700 ,divine_general: 0xffffff
+    fire: 0xff4d4d, wind: 0x4dff4d, earth: 0xffaa4d, water: 0x4d4dff, light: 0xffff4d, dark: 0xaa4dff,    organization: 0xc0c0c0, // 銀色 (Silver)
+    divine_general: 0xffd700  // 金色 (Gold)
 };
 const ATTRIBUTE_TAGS = ['fire', 'water', 'earth', 'wind', 'light', 'dark', 'organization','divine_general'];
 
@@ -358,43 +359,43 @@ export default class BattleScene extends Phaser.Scene {
         this.playerStats = playerResult.finalStats;
         this.playerBattleItems = playerResult.battleItems;
         this.finalizedPlayerItems = playerResult.finalizedItems;
-        playerResult.activatedResonances.forEach(element => {
-            const flashColor = ELEMENT_COLORS[element];
-            if (flashColor) {
-                this.finalizedPlayerItems.forEach(item => {
-                    if (item.tags.includes(element) && item.gameObject) {
-                        this.playResonanceAura(item.gameObject, flashColor);
-                    }
-                });
-            }
-        });
-         // --- 【将来用】組織共鳴のエフェクト再生 ---
-    
-    const orgCount = playerResult.finalizedItems.filter(item => item.tags.includes('organization')).length;
-    if (orgCount >= 3) { // 組織共鳴の閾値
-        const flashColor = ELEMENT_COLORS['organization'];
+         // --- 属性共鳴のエフェクト再生 ---
+    playerResult.activatedResonances.forEach(element => {
+        const flashColor = ELEMENT_COLORS[element];
         if (flashColor) {
             playerResult.finalizedItems.forEach(item => {
-                if (item.tags.includes('organization') && item.gameObject) {
+                if (item.tags.includes(element) && item.gameObject) {
                     this.playResonanceAura(item.gameObject, flashColor);
                 }
             });
         }
+    });
+
+    // --- 【将来用】組織共鳴のエフェクト再生 ---
+    
+    const orgCount = playerResult.finalizedItems.filter(item => item.tags.includes('organization')).length;
+    if (orgCount >= 3) {
+        const flashColor = ELEMENT_COLORS['organization']; // 銀色
+        playerResult.finalizedItems.forEach(item => {
+            if (item.tags.includes('organization') && item.gameObject) {
+                this.playResonanceAura(item.gameObject, flashColor);
+            }
+        });
     }
     
-    // ★★★ 追加ここまで ★★
-         // 十二神将共鳴のエフェクトを再生
-          const divineGeneralCount = playerResult.finalizedItems.filter(item => item.tags.includes('divine_general')).length;
-     if (divineGeneralCount >= 2) {
-        const flashColor = ELEMENT_COLORS['divine_general'];
-        // 十二神将のキャラクター全てを光らせる
+
+    // --- 十二神将共鳴のエフェクト再生 ---
+    const divineGeneralCount = playerResult.finalizedItems.filter(item => item.tags.includes('divine_general')).length;
+    if (divineGeneralCount >= 2) {
+        const flashColor = ELEMENT_COLORS['divine_general']; // 金色
         playerResult.finalizedItems.forEach(item => {
             if (item.tags.includes('divine_general') && item.gameObject) {
                 this.playResonanceAura(item.gameObject, flashColor);
             }
         });
     }
-    // ★★★ 
+    
+    // ★★★ 書き換えここまで ★★★
         this.stateManager.setF('player_max_hp', this.playerStats.max_hp);
         this.stateManager.setF('player_hp', this.playerStats.hp);
         console.log("プレイヤー最終ステータス:", this.playerStats);
@@ -437,41 +438,40 @@ export default class BattleScene extends Phaser.Scene {
                 });
             }
         });
-        enemyResult.activatedResonances.forEach(element => {
-            const flashColor = ELEMENT_COLORS[element];
-            if (flashColor) {
-                enemyResult.finalizedItems.forEach(item => {
-                    if (item.tags.includes(element) && item.gameObject) {
-                        this.playResonanceAura(item.gameObject, flashColor);
-                    }
-                });
-            }
-        });
-         // --- 【将来用】組織共鳴のエフェクト再生 ---
-    
-   if (orgCount >= 3) { // 組織共鳴の閾値
-        const flashColor = ELEMENT_COLORS['organization'];
+         // --- 属性共鳴のエフェクト再生 ---
+    playerResult.activatedResonances.forEach(element => {
+        const flashColor = ELEMENT_COLORS[element];
         if (flashColor) {
             playerResult.finalizedItems.forEach(item => {
-                if (item.tags.includes('organization') && item.gameObject) {
+                if (item.tags.includes(element) && item.gameObject) {
                     this.playResonanceAura(item.gameObject, flashColor);
                 }
             });
         }
+    });
+
+    // --- 【将来用】組織共鳴のエフェクト再生 ---
+     if (orgCount >= 3) {
+        const flashColor = ELEMENT_COLORS['organization']; // 銀色
+        playerResult.finalizedItems.forEach(item => {
+            if (item.tags.includes('organization') && item.gameObject) {
+                this.playResonanceAura(item.gameObject, flashColor);
+            }
+        });
     }
     
-    // ★★★ 追加ここまで ★★
-         // 十二神将共鳴のエフェクトを再生
-     if (divineGeneralCount >= 2) {
-        const flashColor = ELEMENT_COLORS['divine_general'];
-        // 十二神将のキャラクター全てを光らせる
+
+    // --- 十二神将共鳴のエフェクト再生 ---
+    if (divineGeneralCount >= 2) {
+        const flashColor = ELEMENT_COLORS['divine_general']; // 金色
         playerResult.finalizedItems.forEach(item => {
             if (item.tags.includes('divine_general') && item.gameObject) {
                 this.playResonanceAura(item.gameObject, flashColor);
             }
         });
     }
-    // ★★★ 
+    
+    // ★★★ 書き換えここまで ★★★
         this.finalizedEnemyItems = enemyResult.finalizedItems;
 
         this.stateManager.setF('enemy_max_hp', this.enemyStats.max_hp);
