@@ -10,7 +10,8 @@ const TOOLTIP_TRANSLATIONS = {
     up: '上', down: '下', left: '左', right: '右', adjacent: '隣接', horizontal: '左右', vertical: '上下',
     up_and_sides: '上と左右', fire: '火', water: '水', earth: '土', wind: '風', light: '光', dark: '闇',
     attack: '攻撃', block: 'ブロック', heal: '回復', defense: '防御力', add_attack: '攻撃力', add_recast: 'リキャスト',
-    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量アップ'
+    'add_block_on_activate': '起動時ブロック', 'heal_on_activate': '起動時回復', 'add_heal_power': '回復量アップ','organization': '組織',
+    'self_pain': '自傷ダメージ'
 };
 const ELEMENT_RESONANCE_RULES = {
     fire: { threshold: 3, description: (count) => `攻撃力+${count}` },
@@ -425,8 +426,12 @@ const enemyInitialStats = {
 
     calculateFinalBattleState(initialItems, initialStats) {
         console.log("--- calculateFinalBattleState 開始 ---");
-        const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0 };
+        
+        // === STEP 1: 属性共鳴の計算 ===
+        // ★★★ このオブジェクトに 'organization' を追加 ★★★
+        const elementCounts = { fire: 0, water: 0, earth: 0, wind: 0, light: 0, dark: 0, organization: 0 };
         const elementKeys = Object.keys(elementCounts);
+
         initialItems.forEach(item => {
             if (item.tags && Array.isArray(item.tags)) {
                 item.tags.forEach(tag => { if (elementKeys.includes(tag)) elementCounts[tag]++; });
@@ -447,7 +452,6 @@ const enemyInitialStats = {
                             const bonus = count - 2;
                             if (item.synergy.effect.value > 0) item.synergy.effect.value += bonus;
                             else item.synergy.effect.value -= bonus;
-                            console.log(`  -> [${item.id}] のシナジー効果がアップ`);
                         }
                     });
                 } else {
@@ -455,8 +459,9 @@ const enemyInitialStats = {
                         if (item.tags.includes(element)) {
                             let isBoosted = false;
                             if (element === 'fire' && item.action) {
-                                       if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += count; }); }
-                            else if(item.action.type === 'attack') { item.action.value += count; }
+                                const bonus = Math.floor(count / 2);
+                                if (Array.isArray(item.action)) { item.action.forEach(act => { if(act.type === 'attack') act.value += bonus; }); }
+                                else if(item.action.type === 'attack') { item.action.value += bonus; }
                                 isBoosted = true;
                             }
                             if (element === 'wind' && item.recast) { item.recast = Math.max(0.1, item.recast - (0.2 * (count - 2))); isBoosted = true; }
@@ -468,6 +473,30 @@ const enemyInitialStats = {
                 }
             }
         }
+        
+        // ★★★★★ このブロックを、既存の共鳴ループの後に追加 ★★★★★
+        // --- 【将来のアップデート用】組織共鳴 ---
+        /*
+        const orgCount = elementCounts.organization || 0;
+        const ORG_THRESHOLD = 3;
+        if (orgCount >= ORG_THRESHOLD) {
+            const damageReduction = 0.5; // 例: 自傷ダメージを50%軽減
+            console.log(`%c✨ 組織共鳴発動！ (自傷ダメージ -${damageReduction * 100}%)`, "color: gold;");
+            initialItems.forEach(item => {
+                if (item.tags.includes('organization') && item.action) {
+                    const actions = Array.isArray(item.action) ? item.action : [item.action];
+                    actions.forEach(act => {
+                        if (act.type === 'self_pain') {
+                            act.value = Math.ceil(act.value * (1 - damageReduction));
+                        }
+                    });
+                }
+            });
+        }
+        */
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+        // === STEP 2: シナジー効果の計算 ===
 
         initialItems.forEach((sourceItem, sourceIndex) => {
             if (!sourceItem.synergy) return;
@@ -798,6 +827,32 @@ const enemyInitialStats = {
                         this.showHealPopup(targetAvatar, Math.floor(healAmount));
                     }
                 }
+                  /*
+                  // ★★★★★ この else if ブロックを追加 ★★★★★
+             //--- 【将来のアップデート用】自傷ダメージ ---
+             else if (action.type === 'self_pain') {
+                 const attackerStats = this[`${attacker}Stats`];
+                 const painAmount = action.value;
+            
+                 // ブロックを無視して直接HPを減らす
+                 attackerStats.hp -= painAmount;
+                 this.stateManager.setF(`${attacker}_hp`, attackerStats.hp);
+            
+            //     // 自傷ダメージ専用のエフェクトを表示
+                 this.showPainPopup(attackerObject, painAmount);
+            //
+                 if (attackerStats.hp <= 0) {
+                     this.gameState = 'end';
+                    if (attacker === 'player') {
+                         this.endBattle('lose');
+                    } else {
+                         // 敵が自傷で倒れた場合も、プレイヤーの勝利とする
+                         this.playFinishBlowEffects(this.enemyAvatar);
+                     }
+                }
+             }
+            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+            */
             });
         }
         this.handleActivationTriggers(itemData, attacker);
@@ -2119,6 +2174,35 @@ recastOverlay.setVisible(hasRecast);
         // ★★★ console.log の代わりに、uploadGhostData を呼び出す ★★★
         await this.firebaseManager.uploadGhostData(rankMatchData);
     }
+
+      // ★★★★★ このメソッドを追加 ★★★★★
+    // --- 【将来のアップデート用】自傷ダメージのポップアップ ---
+    /*
+    showPainPopup(targetObject, amount) {
+        if (!targetObject || amount <= 0) return;
+        // 紫色など、特別な色のテキストでダメージ量を表示
+        const painText = this.add.text(0, 0, `-${amount}`, {
+            fontSize: '32px',
+            fill: '#ff00ff', // マゼンタ
+            stroke: '#ffffff',
+            strokeThickness: 5,
+            fontStyle: 'italic'
+        }).setOrigin(0.5);
+    
+        const x = targetObject.x;
+        const y = targetObject.y - (targetObject.height / 2);
+        painText.setPosition(x, y).setDepth(999);
+    
+        this.tweens.add({
+            targets: painText,
+            y: y + 50, // 通常のダメージとは逆（下）に落ちる
+            alpha: 0,
+            duration: 1200,
+            ease: 'Power1',
+            onComplete: () => painText.destroy()
+        });
+    }
+    */
 }
 
 
