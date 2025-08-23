@@ -54,7 +54,9 @@ export const ITEM_DATA = {
         shape: [[1, 0], [1, 1]],
         shapeType: 'L字型', 
         size: { w: 2, h: 2 },
-        tags: ["support", "fire","divine_general"],
+        tags: ["support", "fire"
+            //,"divine_general"
+        ],
         cost: 28,
         rarity: 2,
          passive: { effects: [{ type: 'max_hp', value: 10 }] },
@@ -250,7 +252,9 @@ export const ITEM_DATA = {
     'mahira': {
         storage: 'char_mahira',
         shape: [[1]],
-        tags: ["support", "earth","divine_general"],
+        tags: ["support", "earth"
+            //,"divine_general"
+            ],
         cost: 13,
         rarity: 1,
          passive: { effects: [{ type: 'max_hp', value: 10 }] },
@@ -330,7 +334,9 @@ export const ITEM_DATA = {
     'anchira': {
         storage: 'char_anchira',
         shape: [[1]],
-        tags: ["support", "wind","divine_general"],
+        tags: ["support", "wind"
+           // ,"divine_general"
+        ],
         cost: 14,
         rarity: 1,
         action: { type: 'attack', value: 1 },

@@ -592,8 +592,8 @@ const enemyInitialStats = {
         }
         
         if (divineGeneralCount >= 6) { // 【神威】
-            console.log(`%c✨ 十二神将共鳴【神威】発動！ (全味方の攻撃力+3)`, "color: cyan;");
-            const attackBonus = 3;
+            console.log(`%c✨ 十二神将共鳴【神威】発動！ (全味方の攻撃力+2)`, "color: cyan;");
+            const attackBonus = 2;
             initialItems.forEach(item => {
                 if (item.action) {
                     const actions = Array.isArray(item.action) ? item.action : [item.action];
