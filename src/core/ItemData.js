@@ -661,10 +661,7 @@ export const ITEM_DATA = {
           action: { type: 'recast_boost_player_by_hp', value: 30 }
     },
 
-    'cidala': { // シンダラ -> クビラ -> シャトラ -> ... 
-        // 将来の神将用のプレースホルダ
-        // 便宜上ハイラとインダラをここに定義します
-    },
+    
 
     'haila': {
         storage: 'char_haila',
