@@ -568,7 +568,7 @@ export const ITEM_DATA = {
             direction: 'vertical', 
             effect: { type: 'add_attack', value: 3 }
         }
-    }
+    },
     
        // =================================================================
     // 🌠 十二神将
