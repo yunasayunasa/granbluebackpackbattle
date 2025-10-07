@@ -252,7 +252,7 @@ export const ITEM_DATA = {
     'mahira': {
         storage: 'char_mahira',
         shape: [[1]],
-        tags: ["support", "earth"
+        tags: ["divine_general", "earth"
             //,"divine_general"
             ],
         cost: 13,
@@ -334,7 +334,7 @@ export const ITEM_DATA = {
     'anchira': {
         storage: 'char_anchira',
         shape: [[1]],
-        tags: ["support", "wind"
+        tags: ["divine_general", "wind"
            // ,"divine_general"
         ],
         cost: 14,
