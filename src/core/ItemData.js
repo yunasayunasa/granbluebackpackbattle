@@ -54,7 +54,7 @@ export const ITEM_DATA = {
         shape: [[1, 0], [1, 1]],
         shapeType: 'L字型', 
         size: { w: 2, h: 2 },
-        tags: ["support", "fire"
+        tags: ["divine_general", "support", "fire"
             //,"divine_general"
         ],
         cost: 28,
@@ -574,7 +574,7 @@ export const ITEM_DATA = {
     // 🌠 十二神将
     // =================================================================
 
-/*    'vajra': {
+   'vajra': {
         storage: 'char_vajra', // 仮の画像キー
         shape: [[1, 1,1], [1, 1,1], [1, 1,1]], // L字型などユニークな形に
         tags: ["divine_general", "water", "weapon"],
@@ -688,5 +688,5 @@ export const ITEM_DATA = {
             effects: [{ type: 'halve_own_hp_on_start' }]
         }
     }
-      */  
+      
 };
